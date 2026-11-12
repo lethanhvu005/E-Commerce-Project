@@ -1,0 +1,1792 @@
+[
+  {
+    "width": 1648,
+    "height": 928,
+    "theme": "dark",
+    "overflow": false,
+    "elements": {
+      ".gear-header": {
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1648,
+          "height": 73,
+          "top": 0,
+          "right": 1648,
+          "bottom": 73,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1648px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".gear-hero": {
+        "rect": {
+          "x": 0,
+          "y": 73,
+          "width": 1648,
+          "height": 856,
+          "top": 73,
+          "right": 1648,
+          "bottom": 929,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1648px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys": {
+        "rect": {
+          "x": 0,
+          "y": 73,
+          "width": 1648,
+          "height": 856,
+          "top": 73,
+          "right": 1648,
+          "bottom": 929,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1648px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "hidden"
+      },
+      ".campaign-keys .gear-slide-copy": {
+        "rect": {
+          "x": 80.75,
+          "y": 167.15625,
+          "width": 494.390625,
+          "height": 514.96875,
+          "top": 167.15625,
+          "right": 575.140625,
+          "bottom": 682.125,
+          "left": 80.75
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "494.391px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys h1": {
+        "rect": {
+          "x": 80.75,
+          "y": 213.84375,
+          "width": 494.390625,
+          "height": 295.28125,
+          "top": 213.84375,
+          "right": 575.140625,
+          "bottom": 509.125,
+          "left": 80.75
+        },
+        "fontSize": "94.76px",
+        "lineHeight": "96.6552px",
+        "width": "494.391px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .hero-buy": {
+        "rect": {
+          "x": 80.75,
+          "y": 622.125,
+          "width": 494.390625,
+          "height": 60,
+          "top": 622.125,
+          "right": 575.140625,
+          "bottom": 682.125,
+          "left": 80.75
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "494.391px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .gear-stage": {
+        "rect": {
+          "x": 0,
+          "y": 1,
+          "width": 1648,
+          "height": 928,
+          "top": 1,
+          "right": 1648,
+          "bottom": 929,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1648px",
+        "backgroundSize": "cover",
+        "backgroundPosition": "50% 50%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .campaign-index": {
+        "rect": {
+          "x": 80.75,
+          "y": 821.0625,
+          "width": 187.53125,
+          "height": 46.5,
+          "top": 821.0625,
+          "right": 268.28125,
+          "bottom": 867.5625,
+          "left": 80.75
+        },
+        "fontSize": "10px",
+        "lineHeight": "15.5px",
+        "width": "187.531px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".slider-dock": {
+        "rect": {
+          "x": 730.5,
+          "y": 873,
+          "width": 187,
+          "height": 48,
+          "top": 873,
+          "right": 917.5,
+          "bottom": 921,
+          "left": 730.5
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "187px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "matrix(1, 0, 0, 1, -93.5, 0)",
+        "overflow": "visible"
+      }
+    }
+  },
+  {
+    "width": 1648,
+    "height": 928,
+    "theme": "light",
+    "overflow": false,
+    "elements": {
+      ".gear-header": {
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1648,
+          "height": 73,
+          "top": 0,
+          "right": 1648,
+          "bottom": 73,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1648px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".gear-hero": {
+        "rect": {
+          "x": 0,
+          "y": 73,
+          "width": 1648,
+          "height": 856,
+          "top": 73,
+          "right": 1648,
+          "bottom": 929,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1648px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys": {
+        "rect": {
+          "x": 0,
+          "y": 73,
+          "width": 1648,
+          "height": 856,
+          "top": 73,
+          "right": 1648,
+          "bottom": 929,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1648px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "hidden"
+      },
+      ".campaign-keys .gear-slide-copy": {
+        "rect": {
+          "x": 80.75,
+          "y": 167.15625,
+          "width": 494.390625,
+          "height": 514.96875,
+          "top": 167.15625,
+          "right": 575.140625,
+          "bottom": 682.125,
+          "left": 80.75
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "494.391px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys h1": {
+        "rect": {
+          "x": 80.75,
+          "y": 213.84375,
+          "width": 494.390625,
+          "height": 295.28125,
+          "top": 213.84375,
+          "right": 575.140625,
+          "bottom": 509.125,
+          "left": 80.75
+        },
+        "fontSize": "94.76px",
+        "lineHeight": "96.6552px",
+        "width": "494.391px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .hero-buy": {
+        "rect": {
+          "x": 80.75,
+          "y": 622.125,
+          "width": 494.390625,
+          "height": 60,
+          "top": 622.125,
+          "right": 575.140625,
+          "bottom": 682.125,
+          "left": 80.75
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "494.391px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .gear-stage": {
+        "rect": {
+          "x": 461.4375,
+          "y": 73,
+          "width": 1203.03125,
+          "height": 856,
+          "top": 73,
+          "right": 1664.46875,
+          "bottom": 929,
+          "left": 461.4375
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1203.03px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .campaign-index": {
+        "rect": {
+          "x": 80.75,
+          "y": 821.0625,
+          "width": 187.53125,
+          "height": 46.5,
+          "top": 821.0625,
+          "right": 268.28125,
+          "bottom": 867.5625,
+          "left": 80.75
+        },
+        "fontSize": "10px",
+        "lineHeight": "15.5px",
+        "width": "187.531px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".slider-dock": {
+        "rect": {
+          "x": 730.5,
+          "y": 873,
+          "width": 187,
+          "height": 48,
+          "top": 873,
+          "right": 917.5,
+          "bottom": 921,
+          "left": 730.5
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "187px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "matrix(1, 0, 0, 1, -93.5, 0)",
+        "overflow": "visible"
+      }
+    }
+  },
+  {
+    "width": 1440,
+    "height": 900,
+    "theme": "dark",
+    "overflow": false,
+    "elements": {
+      ".gear-header": {
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 73,
+          "top": 0,
+          "right": 1440,
+          "bottom": 73,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1440px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".gear-hero": {
+        "rect": {
+          "x": 0,
+          "y": 73,
+          "width": 1440,
+          "height": 828,
+          "top": 73,
+          "right": 1440,
+          "bottom": 901,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1440px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys": {
+        "rect": {
+          "x": 0,
+          "y": 73,
+          "width": 1440,
+          "height": 828,
+          "top": 73,
+          "right": 1440,
+          "bottom": 901,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1440px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "hidden"
+      },
+      ".campaign-keys .gear-slide-copy": {
+        "rect": {
+          "x": 70.546875,
+          "y": 164.078125,
+          "width": 432,
+          "height": 477.890625,
+          "top": 164.078125,
+          "right": 502.546875,
+          "bottom": 641.96875,
+          "left": 70.546875
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "432px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys h1": {
+        "rect": {
+          "x": 70.546875,
+          "y": 210.765625,
+          "width": 432,
+          "height": 258.203125,
+          "top": 210.765625,
+          "right": 502.546875,
+          "bottom": 468.96875,
+          "left": 70.546875
+        },
+        "fontSize": "82.8px",
+        "lineHeight": "84.456px",
+        "width": "432px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .hero-buy": {
+        "rect": {
+          "x": 70.546875,
+          "y": 581.96875,
+          "width": 432,
+          "height": 60,
+          "top": 581.96875,
+          "right": 502.546875,
+          "bottom": 641.96875,
+          "left": 70.546875
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "432px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .gear-stage": {
+        "rect": {
+          "x": 0,
+          "y": 1,
+          "width": 1440,
+          "height": 900,
+          "top": 1,
+          "right": 1440,
+          "bottom": 901,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1440px",
+        "backgroundSize": "cover",
+        "backgroundPosition": "50% 50%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .campaign-index": {
+        "rect": {
+          "x": 70.546875,
+          "y": 793.078125,
+          "width": 187.53125,
+          "height": 46.5,
+          "top": 793.078125,
+          "right": 258.078125,
+          "bottom": 839.578125,
+          "left": 70.546875
+        },
+        "fontSize": "10px",
+        "lineHeight": "15.5px",
+        "width": "187.531px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".slider-dock": {
+        "rect": {
+          "x": 626.5,
+          "y": 845,
+          "width": 187,
+          "height": 48,
+          "top": 845,
+          "right": 813.5,
+          "bottom": 893,
+          "left": 626.5
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "187px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "matrix(1, 0, 0, 1, -93.5, 0)",
+        "overflow": "visible"
+      }
+    }
+  },
+  {
+    "width": 1440,
+    "height": 900,
+    "theme": "light",
+    "overflow": false,
+    "elements": {
+      ".gear-header": {
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 73,
+          "top": 0,
+          "right": 1440,
+          "bottom": 73,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1440px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".gear-hero": {
+        "rect": {
+          "x": 0,
+          "y": 73,
+          "width": 1440,
+          "height": 828,
+          "top": 73,
+          "right": 1440,
+          "bottom": 901,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1440px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys": {
+        "rect": {
+          "x": 0,
+          "y": 73,
+          "width": 1440,
+          "height": 828,
+          "top": 73,
+          "right": 1440,
+          "bottom": 901,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1440px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "hidden"
+      },
+      ".campaign-keys .gear-slide-copy": {
+        "rect": {
+          "x": 70.546875,
+          "y": 164.078125,
+          "width": 432,
+          "height": 477.890625,
+          "top": 164.078125,
+          "right": 502.546875,
+          "bottom": 641.96875,
+          "left": 70.546875
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "432px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys h1": {
+        "rect": {
+          "x": 70.546875,
+          "y": 210.765625,
+          "width": 432,
+          "height": 258.203125,
+          "top": 210.765625,
+          "right": 502.546875,
+          "bottom": 468.96875,
+          "left": 70.546875
+        },
+        "fontSize": "82.8px",
+        "lineHeight": "84.456px",
+        "width": "432px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .hero-buy": {
+        "rect": {
+          "x": 70.546875,
+          "y": 581.96875,
+          "width": 432,
+          "height": 60,
+          "top": 581.96875,
+          "right": 502.546875,
+          "bottom": 641.96875,
+          "left": 70.546875
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "432px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .gear-stage": {
+        "rect": {
+          "x": 403.1875,
+          "y": 73,
+          "width": 1051.203125,
+          "height": 828,
+          "top": 73,
+          "right": 1454.390625,
+          "bottom": 901,
+          "left": 403.1875
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1051.2px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .campaign-index": {
+        "rect": {
+          "x": 70.546875,
+          "y": 793.078125,
+          "width": 187.53125,
+          "height": 46.5,
+          "top": 793.078125,
+          "right": 258.078125,
+          "bottom": 839.578125,
+          "left": 70.546875
+        },
+        "fontSize": "10px",
+        "lineHeight": "15.5px",
+        "width": "187.531px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".slider-dock": {
+        "rect": {
+          "x": 626.5,
+          "y": 845,
+          "width": 187,
+          "height": 48,
+          "top": 845,
+          "right": 813.5,
+          "bottom": 893,
+          "left": 626.5
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "187px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "matrix(1, 0, 0, 1, -93.5, 0)",
+        "overflow": "visible"
+      }
+    }
+  },
+  {
+    "width": 1024,
+    "height": 768,
+    "theme": "dark",
+    "overflow": false,
+    "elements": {
+      ".gear-header": {
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 88,
+          "top": 0,
+          "right": 1024,
+          "bottom": 88,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1024px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".gear-hero": {
+        "rect": {
+          "x": 0,
+          "y": 88,
+          "width": 1024,
+          "height": 696,
+          "top": 88,
+          "right": 1024,
+          "bottom": 784,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1024px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys": {
+        "rect": {
+          "x": 0,
+          "y": 88,
+          "width": 1024,
+          "height": 696,
+          "top": 88,
+          "right": 1024,
+          "bottom": 784,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1024px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "hidden"
+      },
+      ".campaign-keys .gear-slide-copy": {
+        "rect": {
+          "x": 50.171875,
+          "y": 164.546875,
+          "width": 307.1875,
+          "height": 405.875,
+          "top": 164.546875,
+          "right": 357.359375,
+          "bottom": 570.421875,
+          "left": 50.171875
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "307.188px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys h1": {
+        "rect": {
+          "x": 50.171875,
+          "y": 211.234375,
+          "width": 307.1875,
+          "height": 184.1875,
+          "top": 211.234375,
+          "right": 357.359375,
+          "bottom": 395.421875,
+          "left": 50.171875
+        },
+        "fontSize": "58.88px",
+        "lineHeight": "60.0576px",
+        "width": "307.188px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .hero-buy": {
+        "rect": {
+          "x": 50.171875,
+          "y": 508.421875,
+          "width": 307.1875,
+          "height": 62,
+          "top": 508.421875,
+          "right": 357.359375,
+          "bottom": 570.421875,
+          "left": 50.171875
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "307.188px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .gear-stage": {
+        "rect": {
+          "x": 0,
+          "y": 16,
+          "width": 1024,
+          "height": 768,
+          "top": 16,
+          "right": 1024,
+          "bottom": 784,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1024px",
+        "backgroundSize": "cover",
+        "backgroundPosition": "50% 50%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .campaign-index": {
+        "rect": {
+          "x": 50.171875,
+          "y": 676.0625,
+          "width": 187.53125,
+          "height": 46.5,
+          "top": 676.0625,
+          "right": 237.703125,
+          "bottom": 722.5625,
+          "left": 50.171875
+        },
+        "fontSize": "10px",
+        "lineHeight": "15.5px",
+        "width": "187.531px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".slider-dock": {
+        "rect": {
+          "x": 418.5,
+          "y": 728,
+          "width": 187,
+          "height": 48,
+          "top": 728,
+          "right": 605.5,
+          "bottom": 776,
+          "left": 418.5
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "187px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "matrix(1, 0, 0, 1, -93.5, 0)",
+        "overflow": "visible"
+      }
+    }
+  },
+  {
+    "width": 1024,
+    "height": 768,
+    "theme": "light",
+    "overflow": false,
+    "elements": {
+      ".gear-header": {
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 88,
+          "top": 0,
+          "right": 1024,
+          "bottom": 88,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1024px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".gear-hero": {
+        "rect": {
+          "x": 0,
+          "y": 88,
+          "width": 1024,
+          "height": 696,
+          "top": 88,
+          "right": 1024,
+          "bottom": 784,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1024px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys": {
+        "rect": {
+          "x": 0,
+          "y": 88,
+          "width": 1024,
+          "height": 696,
+          "top": 88,
+          "right": 1024,
+          "bottom": 784,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "1024px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "hidden"
+      },
+      ".campaign-keys .gear-slide-copy": {
+        "rect": {
+          "x": 50.171875,
+          "y": 164.546875,
+          "width": 307.1875,
+          "height": 405.875,
+          "top": 164.546875,
+          "right": 357.359375,
+          "bottom": 570.421875,
+          "left": 50.171875
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "307.188px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys h1": {
+        "rect": {
+          "x": 50.171875,
+          "y": 211.234375,
+          "width": 307.1875,
+          "height": 184.1875,
+          "top": 211.234375,
+          "right": 357.359375,
+          "bottom": 395.421875,
+          "left": 50.171875
+        },
+        "fontSize": "58.88px",
+        "lineHeight": "60.0576px",
+        "width": "307.188px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .hero-buy": {
+        "rect": {
+          "x": 50.171875,
+          "y": 508.421875,
+          "width": 307.1875,
+          "height": 62,
+          "top": 508.421875,
+          "right": 357.359375,
+          "bottom": 570.421875,
+          "left": 50.171875
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "307.188px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .gear-stage": {
+        "rect": {
+          "x": 286.71875,
+          "y": 88,
+          "width": 747.515625,
+          "height": 696,
+          "top": 88,
+          "right": 1034.234375,
+          "bottom": 784,
+          "left": 286.71875
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "747.516px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .campaign-index": {
+        "rect": {
+          "x": 50.171875,
+          "y": 676.0625,
+          "width": 187.53125,
+          "height": 46.5,
+          "top": 676.0625,
+          "right": 237.703125,
+          "bottom": 722.5625,
+          "left": 50.171875
+        },
+        "fontSize": "10px",
+        "lineHeight": "15.5px",
+        "width": "187.531px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".slider-dock": {
+        "rect": {
+          "x": 418.5,
+          "y": 728,
+          "width": 187,
+          "height": 48,
+          "top": 728,
+          "right": 605.5,
+          "bottom": 776,
+          "left": 418.5
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "187px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "matrix(1, 0, 0, 1, -93.5, 0)",
+        "overflow": "visible"
+      }
+    }
+  },
+  {
+    "width": 768,
+    "height": 1024,
+    "theme": "dark",
+    "overflow": false,
+    "elements": {
+      ".gear-header": {
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 80,
+          "top": 0,
+          "right": 768,
+          "bottom": 80,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "768px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".gear-hero": {
+        "rect": {
+          "x": 0,
+          "y": 80,
+          "width": 768,
+          "height": 528,
+          "top": 80,
+          "right": 768,
+          "bottom": 608,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "768px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys": {
+        "rect": {
+          "x": 19,
+          "y": 80,
+          "width": 730,
+          "height": 480,
+          "top": 80,
+          "right": 749,
+          "bottom": 560,
+          "left": 19
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "730px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "hidden"
+      },
+      ".campaign-keys .gear-slide-copy": {
+        "rect": {
+          "x": 19,
+          "y": 80,
+          "width": 379.59375,
+          "height": 480,
+          "top": 80,
+          "right": 398.59375,
+          "bottom": 560,
+          "left": 19
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "379.594px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys h1": {
+        "rect": {
+          "x": 31,
+          "y": 160.140625,
+          "width": 255.3125,
+          "height": 169.109375,
+          "top": 160.140625,
+          "right": 286.3125,
+          "bottom": 329.25,
+          "left": 31
+        },
+        "fontSize": "54px",
+        "lineHeight": "55.08px",
+        "width": "255.312px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .hero-buy": {
+        "rect": {
+          "x": 31,
+          "y": 411.9375,
+          "width": 269.90625,
+          "height": 44,
+          "top": 411.9375,
+          "right": 300.90625,
+          "bottom": 455.9375,
+          "left": 31
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "269.906px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .gear-stage": {
+        "rect": {
+          "x": 362.09375,
+          "y": 145,
+          "width": 381.90625,
+          "height": 370,
+          "top": 145,
+          "right": 744,
+          "bottom": 515,
+          "left": 362.09375
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "381.906px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .campaign-index": {
+        "rect": {
+          "x": 31,
+          "y": 482.9375,
+          "width": 155.984375,
+          "height": 34.09375,
+          "top": 482.9375,
+          "right": 186.984375,
+          "bottom": 517.03125,
+          "left": 31
+        },
+        "fontSize": "8px",
+        "lineHeight": "12.4px",
+        "width": "155.984px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".slider-dock": {
+        "rect": {
+          "x": 290.5,
+          "y": 560,
+          "width": 187,
+          "height": 48,
+          "top": 560,
+          "right": 477.5,
+          "bottom": 608,
+          "left": 290.5
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "187px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      }
+    }
+  },
+  {
+    "width": 768,
+    "height": 1024,
+    "theme": "light",
+    "overflow": false,
+    "elements": {
+      ".gear-header": {
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 80,
+          "top": 0,
+          "right": 768,
+          "bottom": 80,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "768px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".gear-hero": {
+        "rect": {
+          "x": 0,
+          "y": 80,
+          "width": 768,
+          "height": 528,
+          "top": 80,
+          "right": 768,
+          "bottom": 608,
+          "left": 0
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "768px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys": {
+        "rect": {
+          "x": 19,
+          "y": 80,
+          "width": 730,
+          "height": 480,
+          "top": 80,
+          "right": 749,
+          "bottom": 560,
+          "left": 19
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "730px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "hidden"
+      },
+      ".campaign-keys .gear-slide-copy": {
+        "rect": {
+          "x": 19,
+          "y": 80,
+          "width": 379.59375,
+          "height": 480,
+          "top": 80,
+          "right": 398.59375,
+          "bottom": 560,
+          "left": 19
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "379.594px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys h1": {
+        "rect": {
+          "x": 31,
+          "y": 160.140625,
+          "width": 255.3125,
+          "height": 169.109375,
+          "top": 160.140625,
+          "right": 286.3125,
+          "bottom": 329.25,
+          "left": 31
+        },
+        "fontSize": "54px",
+        "lineHeight": "55.08px",
+        "width": "255.312px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .hero-buy": {
+        "rect": {
+          "x": 31,
+          "y": 411.9375,
+          "width": 269.90625,
+          "height": 44,
+          "top": 411.9375,
+          "right": 300.90625,
+          "bottom": 455.9375,
+          "left": 31
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "269.906px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .gear-stage": {
+        "rect": {
+          "x": 362.09375,
+          "y": 145,
+          "width": 381.90625,
+          "height": 370,
+          "top": 145,
+          "right": 744,
+          "bottom": 515,
+          "left": 362.09375
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "381.906px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .campaign-index": {
+        "rect": {
+          "x": 31,
+          "y": 482.9375,
+          "width": 155.984375,
+          "height": 34.09375,
+          "top": 482.9375,
+          "right": 186.984375,
+          "bottom": 517.03125,
+          "left": 31
+        },
+        "fontSize": "8px",
+        "lineHeight": "12.4px",
+        "width": "155.984px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".slider-dock": {
+        "rect": {
+          "x": 290.5,
+          "y": 560,
+          "width": 187,
+          "height": 48,
+          "top": 560,
+          "right": 477.5,
+          "bottom": 608,
+          "left": 290.5
+        },
+        "fontSize": "14px",
+        "lineHeight": "21.7px",
+        "width": "187px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      }
+    }
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "overflow": false,
+    "elements": {
+      ".gear-header": {
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 80,
+          "top": 0,
+          "right": 390,
+          "bottom": 80,
+          "left": 0
+        },
+        "fontSize": "13px",
+        "lineHeight": "20.15px",
+        "width": "390px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".gear-hero": {
+        "rect": {
+          "x": 0,
+          "y": 80,
+          "width": 390,
+          "height": 698,
+          "top": 80,
+          "right": 390,
+          "bottom": 778,
+          "left": 0
+        },
+        "fontSize": "13px",
+        "lineHeight": "20.15px",
+        "width": "390px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys": {
+        "rect": {
+          "x": 14,
+          "y": 80,
+          "width": 362,
+          "height": 650,
+          "top": 80,
+          "right": 376,
+          "bottom": 730,
+          "left": 14
+        },
+        "fontSize": "13px",
+        "lineHeight": "20.15px",
+        "width": "362px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "hidden"
+      },
+      ".campaign-keys .gear-slide-copy": {
+        "rect": {
+          "x": 14,
+          "y": 80,
+          "width": 362,
+          "height": 306.578125,
+          "top": 80,
+          "right": 376,
+          "bottom": 386.578125,
+          "left": 14
+        },
+        "fontSize": "13px",
+        "lineHeight": "20.15px",
+        "width": "362px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys h1": {
+        "rect": {
+          "x": 17,
+          "y": 129.59375,
+          "width": 228.0625,
+          "height": 151.984375,
+          "top": 129.59375,
+          "right": 245.0625,
+          "bottom": 281.578125,
+          "left": 17
+        },
+        "fontSize": "48px",
+        "lineHeight": "49.44px",
+        "width": "228.062px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .hero-buy": {
+        "rect": {
+          "x": 17,
+          "y": 346.578125,
+          "width": 230.578125,
+          "height": 40,
+          "top": 346.578125,
+          "right": 247.578125,
+          "bottom": 386.578125,
+          "left": 17
+        },
+        "fontSize": "13px",
+        "lineHeight": "20.15px",
+        "width": "230.578px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .gear-stage": {
+        "rect": {
+          "x": 29,
+          "y": 425,
+          "width": 347,
+          "height": 270,
+          "top": 425,
+          "right": 376,
+          "bottom": 695,
+          "left": 29
+        },
+        "fontSize": "13px",
+        "lineHeight": "20.15px",
+        "width": "347px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .campaign-index": {
+        "rect": {
+          "x": 17,
+          "y": 682,
+          "width": 143.421875,
+          "height": 27,
+          "top": 682,
+          "right": 160.421875,
+          "bottom": 709,
+          "left": 17
+        },
+        "fontSize": "7px",
+        "lineHeight": "10.5px",
+        "width": "143.422px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".slider-dock": {
+        "rect": {
+          "x": 101.5,
+          "y": 730,
+          "width": 187,
+          "height": 48,
+          "top": 730,
+          "right": 288.5,
+          "bottom": 778,
+          "left": 101.5
+        },
+        "fontSize": "13px",
+        "lineHeight": "20.15px",
+        "width": "187px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      }
+    }
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "overflow": false,
+    "elements": {
+      ".gear-header": {
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 80,
+          "top": 0,
+          "right": 390,
+          "bottom": 80,
+          "left": 0
+        },
+        "fontSize": "13px",
+        "lineHeight": "20.15px",
+        "width": "390px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".gear-hero": {
+        "rect": {
+          "x": 0,
+          "y": 80,
+          "width": 390,
+          "height": 698,
+          "top": 80,
+          "right": 390,
+          "bottom": 778,
+          "left": 0
+        },
+        "fontSize": "13px",
+        "lineHeight": "20.15px",
+        "width": "390px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys": {
+        "rect": {
+          "x": 14,
+          "y": 80,
+          "width": 362,
+          "height": 650,
+          "top": 80,
+          "right": 376,
+          "bottom": 730,
+          "left": 14
+        },
+        "fontSize": "13px",
+        "lineHeight": "20.15px",
+        "width": "362px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "hidden"
+      },
+      ".campaign-keys .gear-slide-copy": {
+        "rect": {
+          "x": 14,
+          "y": 80,
+          "width": 362,
+          "height": 306.578125,
+          "top": 80,
+          "right": 376,
+          "bottom": 386.578125,
+          "left": 14
+        },
+        "fontSize": "13px",
+        "lineHeight": "20.15px",
+        "width": "362px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys h1": {
+        "rect": {
+          "x": 17,
+          "y": 129.59375,
+          "width": 228.0625,
+          "height": 151.984375,
+          "top": 129.59375,
+          "right": 245.0625,
+          "bottom": 281.578125,
+          "left": 17
+        },
+        "fontSize": "48px",
+        "lineHeight": "49.44px",
+        "width": "228.062px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .hero-buy": {
+        "rect": {
+          "x": 17,
+          "y": 346.578125,
+          "width": 230.578125,
+          "height": 40,
+          "top": 346.578125,
+          "right": 247.578125,
+          "bottom": 386.578125,
+          "left": 17
+        },
+        "fontSize": "13px",
+        "lineHeight": "20.15px",
+        "width": "230.578px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .gear-stage": {
+        "rect": {
+          "x": 29,
+          "y": 425,
+          "width": 347,
+          "height": 270,
+          "top": 425,
+          "right": 376,
+          "bottom": 695,
+          "left": 29
+        },
+        "fontSize": "13px",
+        "lineHeight": "20.15px",
+        "width": "347px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".campaign-keys .campaign-index": {
+        "rect": {
+          "x": 17,
+          "y": 682,
+          "width": 143.421875,
+          "height": 27,
+          "top": 682,
+          "right": 160.421875,
+          "bottom": 709,
+          "left": 17
+        },
+        "fontSize": "7px",
+        "lineHeight": "10.5px",
+        "width": "143.422px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      },
+      ".slider-dock": {
+        "rect": {
+          "x": 101.5,
+          "y": 730,
+          "width": 187,
+          "height": 48,
+          "top": 730,
+          "right": 288.5,
+          "bottom": 778,
+          "left": 101.5
+        },
+        "fontSize": "13px",
+        "lineHeight": "20.15px",
+        "width": "187px",
+        "backgroundSize": "auto",
+        "backgroundPosition": "0% 0%",
+        "transform": "none",
+        "overflow": "visible"
+      }
+    }
+  }
+]

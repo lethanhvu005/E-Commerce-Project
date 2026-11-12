@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#080b16" />
+    <meta
+      name="description"
+      content="NEXA GEAR / CommerceOS — giao diện thương mại điện tử đa trang, frontend tĩnh mô phỏng."
+    />
+    <title>Quản trị customers • NEXA CommerceOS</title>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+  <script src="assets/js/theme.js"></script>
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+
+  <body data-page="admin/customers">
+    <div id="loading" class="loading-bar" aria-hidden="true"></div>
+    <div id="app">
+      <div class="admin-app">
+        <aside class="admin-sidebar" id="admin-sidebar">
+          <div class="admin-logo">
+            <span
+              class="brand-mark"
+              style="width: 28px; height: 28px; font-size: 16px"
+              >N</span
+            >
+            CommerceOS<span
+              style="
+                font-size: 8px;
+                color: #a1aed1;
+                font-weight: 500;
+                align-self: center;
+              "
+              >DEMO</span
+            >
+          </div>
+          <nav class="admin-menu">
+            <button class="admin-link" data-route="admin/dashboard">
+              <span class="ico">◫</span>Tổng quan</button
+            ><button class="admin-link" data-route="admin/products">
+              <span class="ico">⬡</span>Sản phẩm</button
+            ><button class="admin-link" data-route="admin/orders">
+              <span class="ico">▤</span>Đơn hàng</button
+            ><button class="admin-link" data-route="admin/inventory">
+              <span class="ico">▣</span>Tồn kho</button
+            ><button class="admin-link" data-route="admin/analytics">
+              <span class="ico">▥</span>Báo cáo</button
+            ><button class="admin-link active" data-route="admin/customers">
+              <span class="ico">♙</span>Khách hàng</button
+            ><button class="admin-link" data-route="admin/promotions">
+              <span class="ico">◈</span>Ưu đãi</button
+            ><button class="admin-link" data-route="admin/reviews">
+              <span class="ico">★</span>Đánh giá</button
+            ><button class="admin-link" data-route="admin/support">
+              <span class="ico">☏</span>Hỗ trợ</button
+            ><button class="admin-link" data-route="admin/settings">
+              <span class="ico">⚙</span>Cài đặt</button
+            ><button class="admin-link" data-route="home">
+              <span class="ico">↗</span>Xem cửa hàng
+            </button>
+          </nav>
+          <div class="sidebar-bottom">
+            <div class="admin-user">
+              <span class="admin-avatar">A</span>
+              <div>
+                <b>Admin Demo</b><br /><span>Local-only prototype</span>
+              </div>
+            </div>
+          </div>
+        </aside>
+        <div class="admin-main">
+          <header class="admin-top">
+            <button
+              class="sidebar-toggle"
+              data-action="sidebar"
+              aria-label="Mở menu quản trị"
+            >
+              ☰</button
+            ><label class="admin-top-search"
+              >⌕
+              <input
+                id="admin-global-search"
+                placeholder="Tìm sản phẩm, đơn hàng, khách hàng..."
+                aria-label="Tìm nhanh admin"
+            /></label>
+            <div class="admin-top-right">
+              <span class="demo-pill desktop-only">STATIC DEMO</span
+              ><button
+                class="icon-btn"
+                style="color: #42536c"
+                data-route="home"
+                title="Xem cửa hàng"
+              >
+                ↗</button
+              ><span
+                class="admin-avatar"
+                style="height: 32px; width: 32px; font-size: 12px"
+                >A</span
+              ><b class="desktop-only">Admin</b>
+            </div>
+          </header>
+          <main class="admin-content">
+            <div class="admin-intro">
+              <div>
+                <h1>Quản lý khách hàng</h1>
+                <p>
+                  CRM cơ bản và phân nhóm khách hàng · dữ liệu minh họa / lưu
+                  cục bộ
+                </p>
+              </div>
+              <span class="demo-pill">ADMIN FRONTEND</span>
+            </div>
+            <div class="admin-panel ux-admin-panel">
+              <h3>Khách hàng mẫu</h3>
+              <div class="admin-table-wrap">
+                <table class="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Khách hàng</th>
+                      <th>Phân nhóm</th>
+                      <th>Đơn hàng</th>
+                      <th>Tổng chi</th>
+                      <th>Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Nguyễn Văn An</td>
+                      <td>VIP</td>
+                      <td>12</td>
+                      <td>28.490.000 ₫</td>
+                      <td><span class="pill blue">Đã xác nhận</span></td>
+                    </tr>
+                    <tr>
+                      <td>Trần Thị Mai</td>
+                      <td>Mới</td>
+                      <td>2</td>
+                      <td>7.480.000 ₫</td>
+                      <td><span class="pill blue">Đã xác nhận</span></td>
+                    </tr>
+                    <tr>
+                      <td>Lê Minh Hoàng</td>
+                      <td>Thường</td>
+                      <td>5</td>
+                      <td>13.240.000 ₫</td>
+                      <td><span class="pill blue">Đã xác nhận</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="ux-note">
+                Dữ liệu CRM giả, không có thông tin cá nhân khách hàng thật.
+              </p>
+            </div>
+          </main>
+        </div>
+      </div>
+      <div id="admin-veil" class="admin-veil hide" data-action="sidebar"></div>
+    </div>
+    <noscript
+      ><p class="container">
+        Đây là phiên bản HTML tĩnh; cần bật JavaScript để dùng giỏ hàng, slider
+        và chat.
+      </p></noscript
+    >
+    <div
+      id="toast-region"
+      class="toast-region"
+      role="status"
+      aria-live="polite"
+    ></div>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+  <script src="assets/js/app.js" defer></script>
+</body>
+</html>

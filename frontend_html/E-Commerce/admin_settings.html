@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#080b16" />
+    <meta
+      name="description"
+      content="NEXA GEAR / CommerceOS — giao diện thương mại điện tử đa trang, frontend tĩnh mô phỏng."
+    />
+    <title>Quản trị settings • NEXA CommerceOS</title>
+    <link rel="stylesheet" href="assets/css/base/tokens-and-reset.css" />
+    <link rel="stylesheet" href="assets/css/components/header-buttons.css" />
+    <link rel="stylesheet" href="assets/css/pages/home-and-products.css" />
+    <link rel="stylesheet" href="assets/css/pages/catalog-and-detail.css" />
+    <link rel="stylesheet" href="assets/css/pages/cart-and-checkout.css" />
+    <link rel="stylesheet" href="assets/css/pages/admin.css" />
+    <link rel="stylesheet" href="assets/css/base/responsive.css" />
+    <link
+      rel="stylesheet"
+      href="assets/css/components/interaction-slider.css"
+    />
+    <link rel="stylesheet" href="assets/css/pages/account-and-content.css" />
+    <link rel="stylesheet" href="assets/css/components/chatbox.css" />
+    <link rel="stylesheet" href="assets/css/themes/light.css" />
+    <link rel="stylesheet" href="assets/css/themes/admin-dark.css" />
+    <link rel="stylesheet" href="assets/css/base/experience-responsive.css" />
+    <link rel="stylesheet" href="assets/css/pages/reviews-discussion.css" />
+    <link rel="stylesheet" href="assets/css/themes/detail-dark.css" />
+    <link rel="stylesheet" href="assets/css/components/product-images.css" />
+  </head>
+
+  <body data-page="admin/settings">
+    <div id="loading" class="loading-bar" aria-hidden="true"></div>
+    <div id="app">
+      <div class="admin-app">
+        <aside class="admin-sidebar" id="admin-sidebar">
+          <div class="admin-logo">
+            <span
+              class="brand-mark"
+              style="width: 28px; height: 28px; font-size: 16px"
+              >N</span
+            >
+            CommerceOS<span
+              style="
+                font-size: 8px;
+                color: #a1aed1;
+                font-weight: 500;
+                align-self: center;
+              "
+              >DEMO</span
+            >
+          </div>
+          <nav class="admin-menu">
+            <button class="admin-link" data-route="admin/dashboard">
+              <span class="ico">◫</span>Tổng quan</button
+            ><button class="admin-link" data-route="admin/products">
+              <span class="ico">⬡</span>Sản phẩm</button
+            ><button class="admin-link" data-route="admin/orders">
+              <span class="ico">▤</span>Đơn hàng</button
+            ><button class="admin-link" data-route="admin/inventory">
+              <span class="ico">▣</span>Tồn kho</button
+            ><button class="admin-link" data-route="admin/analytics">
+              <span class="ico">▥</span>Báo cáo</button
+            ><button class="admin-link" data-route="admin/customers">
+              <span class="ico">♙</span>Khách hàng</button
+            ><button class="admin-link" data-route="admin/promotions">
+              <span class="ico">◈</span>Ưu đãi</button
+            ><button class="admin-link" data-route="admin/reviews">
+              <span class="ico">★</span>Đánh giá</button
+            ><button class="admin-link" data-route="admin/support">
+              <span class="ico">☏</span>Hỗ trợ</button
+            ><button class="admin-link active" data-route="admin/settings">
+              <span class="ico">⚙</span>Cài đặt</button
+            ><button class="admin-link" data-route="home">
+              <span class="ico">↗</span>Xem cửa hàng
+            </button>
+          </nav>
+          <div class="sidebar-bottom">
+            <div class="admin-user">
+              <span class="admin-avatar">A</span>
+              <div>
+                <b>Admin Demo</b><br /><span>Local-only prototype</span>
+              </div>
+            </div>
+          </div>
+        </aside>
+        <div class="admin-main">
+          <header class="admin-top">
+            <button
+              class="sidebar-toggle"
+              data-action="sidebar"
+              aria-label="Mở menu quản trị"
+            >
+              ☰</button
+            ><label class="admin-top-search"
+              >⌕
+              <input
+                id="admin-global-search"
+                placeholder="Tìm sản phẩm, đơn hàng, khách hàng..."
+                aria-label="Tìm nhanh admin"
+            /></label>
+            <div class="admin-top-right">
+              <span class="demo-pill desktop-only">STATIC DEMO</span
+              ><button
+                class="icon-btn"
+                style="color: #42536c"
+                data-route="home"
+                title="Xem cửa hàng"
+              >
+                ↗</button
+              ><span
+                class="admin-avatar"
+                style="height: 32px; width: 32px; font-size: 12px"
+                >A</span
+              ><b class="desktop-only">Admin</b>
+            </div>
+          </header>
+          <main class="admin-content">
+            <div class="admin-intro">
+              <div>
+                <h1>Cài đặt hệ thống</h1>
+                <p>
+                  Giao diện cấu hình và chuẩn bị tích hợp · dữ liệu minh họa /
+                  lưu cục bộ
+                </p>
+              </div>
+              <span class="demo-pill">ADMIN FRONTEND</span>
+            </div>
+            <div class="admin-panel ux-admin-panel">
+              <h3>Trạng thái các dịch vụ</h3>
+              <div class="admin-table-wrap">
+                <table class="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Dịch vụ</th>
+                      <th>Hiện tại</th>
+                      <th>Muốn chạy production</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Xác thực Google/Facebook</td>
+                      <td>Giao diện demo</td>
+                      <td>OAuth 2.0 + PKCE + callback server</td>
+                    </tr>
+                    <tr>
+                      <td>Email</td>
+                      <td>mailto & thông báo demo</td>
+                      <td>Email API/SMTP worker + rate limit</td>
+                    </tr>
+                    <tr>
+                      <td>VNPay / MoMo</td>
+                      <td>Mô phỏng</td>
+                      <td>Backend IPN + chữ ký + idempotency</td>
+                    </tr>
+                    <tr>
+                      <td>Chat hỗ trợ</td>
+                      <td>Bot luật cố định trong JS</td>
+                      <td>WebSocket hoặc nhà cung cấp livechat</td>
+                    </tr>
+                    <tr>
+                      <td>Kho hàng & người dùng</td>
+                      <td>localStorage</td>
+                      <td>PostgreSQL + transaction / phân quyền</td>
+                    </tr>
+                    <tr>
+                      <td>Ảnh sản phẩm</td>
+                      <td>SVG inline</td>
+                      <td>CDN/WebP/AVIF + lazy load</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <button class="btn btn-quiet" data-ux="clear-demo">
+                Đặt lại dữ liệu demo trên trình duyệt
+              </button>
+            </div>
+          </main>
+        </div>
+      </div>
+      <div id="admin-veil" class="admin-veil hide" data-action="sidebar"></div>
+    </div>
+    <noscript
+      ><p class="container">
+        Đây là phiên bản HTML tĩnh; cần bật JavaScript để dùng giỏ hàng, slider
+        và chat.
+      </p></noscript
+    >
+    <div
+      id="toast-region"
+      class="toast-region"
+      role="status"
+      aria-live="polite"
+    ></div>
+    <script src="assets/js/config/theme.js"></script>
+    <script src="assets/js/config/routes.js"></script>
+    <script src="assets/js/data/catalog.js" defer></script>
+    <script src="assets/js/data/state.js" defer></script>
+    <script src="assets/js/utils/navigation.js" defer></script>
+    <script src="assets/js/ui/image-assets.js" defer></script>
+    <script src="assets/js/ui/layout.js" defer></script>
+    <script src="assets/js/pages/storefront.js" defer></script>
+    <script src="assets/js/pages/admin.js" defer></script>
+    <script src="assets/js/app/app.js" defer></script>
+    <script src="assets/js/app/events.js" defer></script>
+    <script src="assets/js/app/hydrate.js" defer></script>
+    <script src="assets/js/data/demo-content.js" defer></script>
+    <script src="assets/js/pages/account.js" defer></script>
+    <script src="assets/js/pages/community.js" defer></script>
+    <script src="assets/js/pages/support.js" defer></script>
+    <script src="assets/js/pages/payments.js" defer></script>
+    <script src="assets/js/pages/information.js" defer></script>
+    <script src="assets/js/pages/admin-extended.js" defer></script>
+    <script src="assets/js/features/enhancements.js" defer></script>
+    <script src="assets/js/features/chat.js" defer></script>
+    <script src="assets/js/features/theme-and-layout.js" defer></script>
+    <script src="assets/js/features/forms-and-actions.js" defer></script>
+    <script src="assets/js/app/start.js" defer></script>
+  </body>
+</html>

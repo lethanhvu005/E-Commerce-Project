@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="vi" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#030407" />
+    <meta name="description" content="NEXA CommerceOS – gaming gear được thiết kế cho bạn." />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <link rel="stylesheet" href="%PUBLIC_URL%/assets/css/base/tokens-and-reset.css" />
+    <link rel="stylesheet" href="%PUBLIC_URL%/assets/css/components/header-buttons.css" />
+    <link rel="stylesheet" href="%PUBLIC_URL%/assets/css/pages/home-and-products.css" />
+    <link rel="stylesheet" href="%PUBLIC_URL%/assets/css/pages/catalog-and-detail.css" />
+    <link rel="stylesheet" href="%PUBLIC_URL%/assets/css/pages/cart-and-checkout.css" />
+    <link rel="stylesheet" href="%PUBLIC_URL%/assets/css/pages/admin.css" />
+    <link rel="stylesheet" href="%PUBLIC_URL%/assets/css/base/responsive.css" />
+    <link rel="stylesheet" href="%PUBLIC_URL%/assets/css/components/interaction-slider.css" />
+    <link rel="stylesheet" href="%PUBLIC_URL%/assets/css/pages/account-and-content.css" />
+    <link rel="stylesheet" href="%PUBLIC_URL%/assets/css/components/chatbox.css" />
+    <link rel="stylesheet" href="%PUBLIC_URL%/assets/css/themes/light.css" />
+    <link rel="stylesheet" href="%PUBLIC_URL%/assets/css/themes/admin-dark.css" />
+    <link rel="stylesheet" href="%PUBLIC_URL%/assets/css/base/experience-responsive.css" />
+    <link rel="stylesheet" href="%PUBLIC_URL%/assets/css/pages/reviews-discussion.css" />
+    <link rel="stylesheet" href="%PUBLIC_URL%/assets/css/themes/detail-dark.css" />
+    <link rel="stylesheet" href="%PUBLIC_URL%/assets/css/components/product-images.css" />
+    <title>NEXA CommerceOS</title>
+    <script>
+      /* Restore saved theme before React renders to avoid flash */
+      (function() {
+        try {
+          var t = localStorage.getItem("nexa_theme") || "dark";
+          document.documentElement.setAttribute("data-theme", t);
+        } catch(e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <noscript>Bạn cần bật JavaScript để sử dụng NEXA CommerceOS.</noscript>
+    <div id="root"></div>
+  </body>
+</html>

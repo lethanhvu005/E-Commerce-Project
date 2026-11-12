@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#080b16" />
+    <meta
+      name="description"
+      content="NEXA GEAR / CommerceOS — giao diện thương mại điện tử đa trang, frontend tĩnh mô phỏng."
+    />
+    <title>Quản trị orders • NEXA CommerceOS</title>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+  <script src="assets/js/theme.js"></script>
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+
+  <body data-page="admin/orders">
+    <div id="loading" class="loading-bar" aria-hidden="true"></div>
+    <div id="app">
+      <div class="admin-app">
+        <aside class="admin-sidebar" id="admin-sidebar">
+          <div class="admin-logo">
+            <span
+              class="brand-mark"
+              style="width: 28px; height: 28px; font-size: 16px"
+              >N</span
+            >
+            CommerceOS<span
+              style="
+                font-size: 8px;
+                color: #a1aed1;
+                font-weight: 500;
+                align-self: center;
+              "
+              >DEMO</span
+            >
+          </div>
+          <nav class="admin-menu">
+            <button class="admin-link" data-route="admin/dashboard">
+              <span class="ico">◫</span>Tổng quan</button
+            ><button class="admin-link" data-route="admin/products">
+              <span class="ico">⬡</span>Sản phẩm</button
+            ><button class="admin-link active" data-route="admin/orders">
+              <span class="ico">▤</span>Đơn hàng</button
+            ><button class="admin-link" data-route="admin/inventory">
+              <span class="ico">▣</span>Tồn kho</button
+            ><button class="admin-link" data-route="admin/analytics">
+              <span class="ico">▥</span>Báo cáo</button
+            ><button class="admin-link" data-route="admin/customers">
+              <span class="ico">♙</span>Khách hàng</button
+            ><button class="admin-link" data-route="admin/promotions">
+              <span class="ico">◈</span>Ưu đãi</button
+            ><button class="admin-link" data-route="admin/reviews">
+              <span class="ico">★</span>Đánh giá</button
+            ><button class="admin-link" data-route="admin/support">
+              <span class="ico">☏</span>Hỗ trợ</button
+            ><button class="admin-link" data-route="admin/settings">
+              <span class="ico">⚙</span>Cài đặt</button
+            ><button class="admin-link" data-route="home">
+              <span class="ico">↗</span>Xem cửa hàng
+            </button>
+          </nav>
+          <div class="sidebar-bottom">
+            <div class="admin-user">
+              <span class="admin-avatar">A</span>
+              <div>
+                <b>Admin Demo</b><br /><span>Local-only prototype</span>
+              </div>
+            </div>
+          </div>
+        </aside>
+        <div class="admin-main">
+          <header class="admin-top">
+            <button
+              class="sidebar-toggle"
+              data-action="sidebar"
+              aria-label="Mở menu quản trị"
+            >
+              ☰</button
+            ><label class="admin-top-search"
+              >⌕
+              <input
+                id="admin-global-search"
+                placeholder="Tìm sản phẩm, đơn hàng, khách hàng..."
+                aria-label="Tìm nhanh admin"
+            /></label>
+            <div class="admin-top-right">
+              <span class="demo-pill desktop-only">STATIC DEMO</span
+              ><button
+                class="icon-btn"
+                style="color: #42536c"
+                data-route="home"
+                title="Xem cửa hàng"
+              >
+                ↗</button
+              ><span
+                class="admin-avatar"
+                style="height: 32px; width: 32px; font-size: 12px"
+                >A</span
+              ><b class="desktop-only">Admin</b>
+            </div>
+          </header>
+          <main class="admin-content">
+            <div class="admin-intro">
+              <div>
+                <h1>Quản lý đơn hàng</h1>
+                <p>
+                  Tra cứu, theo dõi và cập nhật trạng thái đơn (đơn demo trong
+                  trình duyệt).
+                </p>
+              </div>
+              <span class="admin-select">4 đơn hiển thị</span>
+            </div>
+            <div class="admin-panel">
+              <div class="admin-toolbar">
+                <input
+                  class="field"
+                  id="admin-product-search"
+                  value=""
+                  placeholder="⌕ Tìm mã đơn, khách hàng..."
+                /><select class="select" name="orderFilter">
+                  <option selected>Tất cả</option>
+                  <option>Chờ xác nhận</option>
+                  <option>Đã xác nhận</option>
+                  <option>Đang xử lý</option>
+                  <option>Đã giao</option>
+                  <option>Đã hủy</option>
+                </select>
+              </div>
+              <div class="admin-table-wrap">
+                <table class="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Mã đơn</th>
+                      <th>Khách hàng</th>
+                      <th>Ngày tạo</th>
+                      <th>Số SP</th>
+                      <th>Tổng tiền</th>
+                      <th>Trạng thái</th>
+                      <th>Cập nhật</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><strong>#NX-1001</strong></td>
+                      <td>Nguyễn Văn An</td>
+                      <td>15/10/2026</td>
+                      <td>1</td>
+                      <td><strong>2.490.000 ₫</strong></td>
+                      <td><span class="pill green">Đã giao</span></td>
+                      <td>
+                        <span style="font-size: 10px; color: #8190a8"
+                          >Dữ liệu mẫu</span
+                        >
+                      </td>
+                    </tr>
+                    <tr>
+                      <td><strong>#NX-1002</strong></td>
+                      <td>Trần Thị Mai</td>
+                      <td>16/10/2026</td>
+                      <td>1</td>
+                      <td><strong>4.990.000 ₫</strong></td>
+                      <td><span class="pill yellow">Đang xử lý</span></td>
+                      <td>
+                        <span style="font-size: 10px; color: #8190a8"
+                          >Dữ liệu mẫu</span
+                        >
+                      </td>
+                    </tr>
+                    <tr>
+                      <td><strong>#NX-1003</strong></td>
+                      <td>Lê Minh Hoàng</td>
+                      <td>17/10/2026</td>
+                      <td>1</td>
+                      <td><strong>2.890.000 ₫</strong></td>
+                      <td><span class="pill blue">Đã xác nhận</span></td>
+                      <td>
+                        <span style="font-size: 10px; color: #8190a8"
+                          >Dữ liệu mẫu</span
+                        >
+                      </td>
+                    </tr>
+                    <tr>
+                      <td><strong>#NX-1004</strong></td>
+                      <td>Phạm Thu Hà</td>
+                      <td>17/10/2026</td>
+                      <td>1</td>
+                      <td><strong>2.690.000 ₫</strong></td>
+                      <td><span class="pill yellow">Đang xử lý</span></td>
+                      <td>
+                        <span style="font-size: 10px; color: #8190a8"
+                          >Dữ liệu mẫu</span
+                        >
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="demo-notice">
+                Ở sản phẩm production, việc thay đổi trạng thái phải được kiểm
+                tra trên server theo state machine, phân quyền theo vai trò và
+                ghi audit log.
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+      <div id="admin-veil" class="admin-veil hide" data-action="sidebar"></div>
+    </div>
+    <noscript
+      ><p class="container">
+        Đây là phiên bản HTML tĩnh; cần bật JavaScript để dùng giỏ hàng, slider
+        và chat.
+      </p></noscript
+    >
+    <div
+      id="toast-region"
+      class="toast-region"
+      role="status"
+      aria-live="polite"
+    ></div>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+  <script src="assets/js/app.js" defer></script>
+</body>
+</html>

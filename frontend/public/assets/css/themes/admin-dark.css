@@ -1,0 +1,87 @@
+/* NEXA design system — 11-dark-admin.css; thứ tự file giữ cascade gốc. */
+/* Dark admin uses accessible contrast and minimizes overly vivid dashboard surfaces. */
+
+html[data-theme=dark] .admin-app {
+  background: #0b1121;
+  color: #eaf1ff;
+}
+
+html[data-theme=dark] .admin-main {
+  background: #101827;
+  color: #eff4ff;
+}
+
+html[data-theme=dark] .admin-top {
+  background: #151f33;
+  border-color: #29364f;
+  color: #f1f6ff;
+}
+
+html[data-theme=dark] .admin-content {
+  background: #101827;
+  color: #eff4ff;
+}
+
+html[data-theme=dark] .admin-intro h1 {
+  color: #f2f6ff;
+}
+
+html[data-theme=dark] .admin-intro p {
+  color: #99aecb;
+}
+
+html[data-theme=dark] .admin-panel,html[data-theme=dark] .kpi {
+  background: #1c283b;
+  border-color: #31405b;
+  color: #e9f1ff;
+}
+
+html[data-theme=dark] .admin-panel h2,html[data-theme=dark] .admin-panel h3,html[data-theme=dark] .admin-panel strong,html[data-theme=dark] .kpi strong {
+  color: #e8efff;
+}
+
+html[data-theme=dark] .admin-table th {
+  background: #18243a;
+  color: #bdcbe6;
+}
+
+html[data-theme=dark] .admin-table td {
+  color: #cbd6ed;
+  border-color: #344258;
+}
+
+html[data-theme=dark] .admin-table tr:hover td {
+  background: #24364b;
+}
+
+html[data-theme=dark] .admin-top-search {
+  background: #202b42;
+  color: #c1cde5;
+  border-color: #364766;
+}
+
+html[data-theme=dark] .admin-top-search input {
+  color: #f0f5ff;
+}
+
+html[data-theme=dark] .admin-content .field,html[data-theme=dark] .admin-content .select {
+  background: #152338;
+  border-color: #344562;
+  color: #e9f1ff;
+}
+
+html[data-theme=dark] .ux-admin-panel h3 {
+  color: #e7edfd;
+}
+
+html[data-theme=dark] .ux-admin-panel .ux-note {
+  color: #a9b8d4 !important;
+}
+
+html[data-theme=dark] .admin-tab {
+  color: #d0d9ec;
+}
+
+html[data-theme=dark] .admin-top-right .ux-theme-toggle {
+  color: #adbcda;
+}

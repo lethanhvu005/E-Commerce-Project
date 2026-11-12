@@ -1,0 +1,501 @@
+/* NEXA design system — 12-experience-responsive.css; thứ tự file giữ cascade gốc. */
+@media (max-width:900px) {
+  .ux-voucher-grid {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+  .ux-auth,.ux-two {
+    grid-template-columns: 1fr;
+  }
+  .ux-auth-promo {
+    min-height: 220px;
+  }
+  .ux-hero-orbit {
+    font-size: 230px;
+    bottom: -80px;
+  }
+}
+
+@media (max-width:760px) {
+  .ux-menu-toggle {
+    display: block;
+  }
+  .ux-mobile-menu {
+    grid-template-columns: repeat(3,1fr);
+  }
+  .ux-slider-controls {
+    bottom: 8px;
+    right: 12px;
+  }
+  .ux-page {
+    padding-bottom: 40px;
+  }
+  .ux-hero {
+    min-height: 175px;
+    padding: 28px 21px;
+    margin-top: 14px;
+  }
+  .ux-hero h1 {
+    font-size: 36px;
+  }
+  .ux-detail-reviews {
+    padding: 10px 14px 40px;
+  }
+  .ux-chat {
+    right: 12px;
+    bottom: 82px;
+  }
+  .ux-chat-panel {
+    height: min(480px,calc(100dvh - 170px));
+  }
+  .ux-chat-launch {
+    padding: 10px 12px;
+  }
+  .ux-chat-launch strong {
+    display: none;
+  }
+}
+
+@media (max-width:570px) {
+  .ux-theme-toggle {
+    width: 52px;
+    height: 30px;
+  }
+  .ux-theme-toggle span {
+    width: 20px;
+    height: 20px;
+  }
+  .ux-menu-toggle {
+    font-size: 15px;
+    padding: 6px 7px;
+  }
+  .ux-social {
+    grid-template-columns: 1fr;
+  }
+  .ux-voucher-grid {
+    grid-template-columns: 1fr;
+  }
+  .ux-hero-orbit {
+    right: -30px;
+    opacity: .4;
+  }
+  .ux-auth-promo {
+    min-height: 180px;
+  }
+  .ux-auth-promo h2 {
+    font-size: 28px;
+  }
+  .ux-card {
+    padding: 19px;
+  }
+  .ux-slider-controls {
+    bottom: 7px;
+    left: auto;
+    right: 9px;
+  }
+  .ux-page {
+    padding-bottom: 25px;
+  }
+  .ux-payment-actions {
+    flex-direction: column;
+  }
+  .ux-payment-actions .btn {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .ux-slider-controls,.ux-card,.btn,.product-card {
+    transition: none !important;
+  }
+}
+
+/* Keep account forms visible sooner by reducing only their introductory banner. */
+body[data-page="login"] .ux-page,
+body[data-page="register"] .ux-page {
+  padding-bottom: 32px;
+}
+
+body[data-page="login"] .ux-page > .ux-hero,
+body[data-page="register"] .ux-page > .ux-hero {
+  min-height: 96px;
+  margin: 8px 0;
+  padding: 8px clamp(22px, 4vw, 52px);
+}
+
+body[data-page="login"] .ux-page > .ux-hero h1,
+body[data-page="register"] .ux-page > .ux-hero h1 {
+  margin: 3px 0 4px;
+  font-size: clamp(28px, 2.8vw, 36px);
+}
+
+body[data-page="login"] .ux-page > .ux-hero p,
+body[data-page="register"] .ux-page > .ux-hero p {
+  font-size: 11px;
+}
+
+body[data-page="login"] .ux-page > .ux-hero .ux-hero-orbit,
+body[data-page="register"] .ux-page > .ux-hero .ux-hero-orbit {
+  right: 3%;
+  bottom: -118px;
+  font-size: 250px;
+}
+
+@media (max-width:760px) {
+  body[data-page="login"] .ux-page > .ux-hero,
+  body[data-page="register"] .ux-page > .ux-hero {
+    min-height: 96px;
+    margin: 8px 0;
+    padding: 10px 18px;
+  }
+
+  body[data-page="login"] .ux-page > .ux-hero h1,
+  body[data-page="register"] .ux-page > .ux-hero h1 {
+    font-size: 30px;
+  }
+}
+
+/* Keep the campaign copy, artwork and slider rail clear on tablet and mobile. */
+@media (min-width:601px) and (max-width:760px) {
+  html[data-theme] .gear-hero .slider-viewport>.gear-slide {
+    height:650px;
+    min-height:650px;
+    max-height:none;
+    overflow:hidden;
+  }
+  html[data-theme] .gear-hero .gear-slide-copy {
+    position:relative;
+    top:auto;
+    left:auto;
+    width:100%;
+    height:auto;
+    min-width:0;
+    display:flex;
+    align-items:flex-start;
+    justify-content:flex-start;
+    padding:24px 24px 0;
+    z-index:3;
+  }
+  html[data-theme] .gear-hero .gear-slide h1 {
+    width:100%;
+    max-width:100%;
+    font-size:clamp(40px,7vw,50px);
+    line-height:1.02;
+    letter-spacing:-.8px;
+    margin:12px 0;
+  }
+  html[data-theme] .gear-hero .hero-benefit {
+    max-width:100%;
+    font-size:13px;
+    line-height:1.65;
+  }
+  html[data-theme] .gear-hero .hero-buy {
+    width:100%;
+    max-width:100%;
+    flex-wrap:wrap;
+    gap:16px;
+    margin-top:16px;
+  }
+  html[data-theme] .gear-hero .hero-buy .btn-primary {
+    min-width:min(220px,100%);
+    max-width:100%;
+    min-height:50px;
+    padding:12px 20px;
+  }
+  html[data-theme] .gear-hero .hero-story {
+    min-width:0;
+    gap:9px;
+  }
+  html[data-theme] .gear-hero .gear-slide-copy>.campaign-index {
+    position:static;
+    top:auto;
+    right:auto;
+    bottom:auto;
+    left:auto;
+    margin:14px 0 0;
+    white-space:nowrap;
+  }
+  html[data-theme] .gear-hero .gear-slide .gear-stage {
+    inset:400px 0 34px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+  }
+  html[data-theme] .gear-hero .gear-slide .hero-product-image {
+    width:100%;
+    height:100%;
+    max-width:100%;
+    max-height:100%;
+    object-fit:contain;
+    object-position:center;
+    transform:none;
+  }
+}
+
+@media (max-width:900px) {
+  html[data-theme] .gear-hero .slider-dock {
+    position:relative;
+    top:auto;
+    right:auto;
+    bottom:auto;
+    left:auto;
+    width:100%;
+    max-width:100%;
+    margin:26px auto 4px;
+    transform:none;
+    justify-content:center;
+    background:transparent;
+    z-index:5;
+  }
+  html[data-theme] .gear-hero .hero-buy {
+    flex-wrap:wrap;
+    max-width:100%;
+  }
+  html[data-theme] .gear-hero .hero-buy .btn-primary {
+    max-width:100%;
+  }
+}
+
+@media (min-width:901px) {
+  html[data-theme] .gear-hero .slider-dock {
+    position:absolute;
+    right:auto;
+    bottom:-6px;
+    left:50%;
+    margin:0;
+    transform:translateX(-50%);
+    background:transparent;
+    z-index:5;
+    opacity:.72;
+  }
+}
+
+@media (max-width:600px) {
+  html[data-theme] .gear-hero .gear-slide-copy>.campaign-index {
+    top:615px;
+    right:auto;
+    bottom:auto;
+    left:3px;
+  }
+}
+
+@media (max-width:350px) {
+  html[data-theme] .gear-hero .gear-slide-copy>.campaign-index {
+    top:575px;
+  }
+}
+
+/* Keep small labels readable and visible at every theme and viewport. */
+html[data-theme] .gear-hero .gear-slide-copy>.gear-kicker { font-size:10px; }
+html[data-theme] .gear-hero .campaign-caption { font-size:9px; }
+html[data-theme] .gear-hero .hero-story { font-size:10px; }
+html[data-theme] .gear-hero .campaign-index { font-size:10px; }
+.gear-footer .gear-colophon { font-size:10px; }
+.gear-card :is(a,button):focus-visible { outline-offset:-3px; }
+.gear-card:focus-within { outline:2px solid var(--accent); outline-offset:3px; }
+@media (hover:none) { html[data-theme] .gear-hero .slider-dock { opacity:.95; } }
+@media (max-width:600px) {
+  html[data-theme] .gear-hero .gear-slide-copy>.gear-kicker { font-size:10px; }
+  html[data-theme] .gear-hero .hero-story { font-size:10px; }
+  html[data-theme] .gear-hero .campaign-caption { font-size:9px; }
+  html[data-theme] .gear-hero .campaign-note { display:block; right:10px; bottom:84px; top:auto; max-width:118px; font-size:10px; }
+}
+
+/* Preserve the campaign note while keeping it off the product focal point. */
+@media (max-width:900px) {
+  html[data-theme] .gear-hero .hero-buy .btn-primary { font-size:11px; }
+  html[data-theme] .gear-hero .campaign-note {
+    top:55%;
+    right:12px;
+    bottom:auto;
+    max-width:145px;
+    padding:8px 10px;
+    border:1px solid var(--edge);
+    border-radius:4px;
+    background:color-mix(in srgb,var(--bg) 88%,transparent);
+    backdrop-filter:blur(8px);
+    font-size:11px;
+    line-height:1.55;
+    letter-spacing:.04em;
+  }
+  html[data-theme] .gear-hero .gear-slide-copy>.gear-kicker,
+  html[data-theme] .gear-hero .campaign-caption,
+  html[data-theme] .gear-hero .campaign-index,
+  html[data-theme] .gear-hero .hero-story { font-size:11px; }
+}
+
+@media (min-width:901px) and (max-width:1100px) {
+  html[data-theme] .gear-hero .campaign-note { bottom:auto; }
+  html[data-theme] .gear-hero .campaign-caption,
+  html[data-theme] .gear-hero .hero-story { font-size:11px; }
+}
+
+@media (max-width:600px) {
+  html[data-theme] .gear-hero .gear-slide .gear-stage { top:385px; }
+  html[data-theme] .gear-hero .campaign-note { top:50%; }
+  html[data-theme] .gear-hero .gear-slide-copy>.gear-kicker { font-size:11px; }
+  html[data-theme] .gear-hero .hero-benefit { font-size:12px; }
+  html[data-theme] .gear-hero .hero-buy .btn-primary {
+    min-height:44px;
+    padding:10px 12px;
+    font-size:11px;
+    letter-spacing:.35px;
+  }
+  html[data-theme] .gear-hero .campaign-caption { font-size:10px; }
+  html[data-theme] .gear-hero .campaign-index { top:615px; font-size:11px; }
+  html[data-theme] .gear-rating { font-size:11px; }
+  html[data-theme] .gear-product-meta p { font-size:11px; }
+  html[data-theme] .gear-add { font-size:12px; }
+  html[data-theme] .home-demo-note { font-size:11px; }
+  html[data-theme] .gear-footer .gear-colophon { font-size:11px; }
+}
+
+@media (max-width:350px) {
+  html[data-theme] .gear-hero .gear-slide { height:650px; }
+}
+
+@media (min-width:901px) {
+  html[data-theme] .gear-hero .gear-slide-copy>.campaign-index {
+    position:absolute;
+    top:auto;
+    bottom:60px;
+    margin:0;
+  }
+}
+
+body {
+  font-size: 19px;
+}
+
+body :is(
+  small,
+  .topbar,
+  .crumb,
+  .pd-breadcrumb,
+  .pd-demo-note,
+  .pd-stock,
+  .pd-variant,
+  .pd-specs dt,
+  .gear-kicker,
+  .gear-context,
+  .category-index,
+  .gear-category small,
+  .gear-tabs button,
+  .gear-rating,
+  .gear-product-meta p,
+  .gear-price del,
+  .text-link,
+  .summary-row,
+  .cart-line small,
+  .remove,
+  .checkout-steps,
+  .field-label,
+  .ux-note,
+  .campaign-note,
+  .campaign-caption,
+  .hero-benefit,
+  .hero-story,
+  .gear-footer .gear-colophon
+) {
+  font-size: 16px !important;
+}
+
+body .gear-product-meta .gear-kicker {
+  font-size: 13px !important;
+}
+
+body .gear-product-meta.gear-product-meta h3 {
+  font-size: 19px !important;
+}
+
+body .gear-product-meta .gear-rating {
+  font-size: 15px !important;
+}
+
+body .gear-product-meta.gear-product-meta p {
+  font-size: 15px !important;
+}
+
+body .gear-product-meta .gear-price {
+  font-size: 22px !important;
+}
+
+body .gear-product-meta .gear-add {
+  min-height: 52px;
+  padding: 8px 14px;
+  font-size: 16px !important;
+}
+
+body .pd-breadcrumb,
+body .pd-stock,
+body .pd-variant,
+body .pd-demo-note {
+  font-size: 14px !important;
+}
+
+body .pd-stock small {
+  font-size: 13px !important;
+}
+
+body .pd-label,
+body .pd-art-caption {
+  font-size: 12px !important;
+}
+
+@media (min-width:901px) and (max-height:740px) {
+  html[data-theme] .gear-hero .gear-slide-copy>.campaign-index {
+    bottom:44px;
+  }
+}
+
+@media (min-width:1101px) and (max-height:740px) {
+  html[data-theme] .gear-hero .gear-slide-copy>.campaign-index {
+    bottom:40px;
+  }
+}
+
+@media (max-width:600px) {
+  body .gear-product-meta .gear-kicker {
+    font-size:11px !important;
+  }
+
+  body .gear-product-meta.gear-product-meta h3 {
+    font-size:16px !important;
+  }
+
+  body .gear-product-meta .gear-rating {
+    font-size:13px !important;
+  }
+
+  body .gear-product-meta.gear-product-meta p {
+    font-size:13px !important;
+  }
+
+  body .gear-product-meta .gear-price {
+    font-size:18px !important;
+  }
+
+  body .gear-product-meta .gear-add {
+    min-height:46px;
+    padding:7px 9px;
+    font-size:14px !important;
+  }
+}
+
+@media (max-width:350px) {
+  body .gear-product-meta.gear-product-meta h3 {
+    font-size:15px !important;
+  }
+
+  body .gear-product-meta .gear-rating {
+    font-size:12px !important;
+  }
+
+  body .gear-product-meta .gear-price {
+    font-size:16px !important;
+  }
+
+  body .gear-product-meta .gear-add {
+    font-size:13px !important;
+  }
+}

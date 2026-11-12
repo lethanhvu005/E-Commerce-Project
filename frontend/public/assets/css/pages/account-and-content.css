@@ -1,0 +1,645 @@
+/* NEXA design system — 08-account-and-content.css; thứ tự file giữ cascade gốc. */
+.ux-page {
+  padding-bottom: 64px;
+}
+
+.ux-hero {
+  --ux-hero-bg: linear-gradient(115deg,#07101f 4%,#0e2347 84%);
+  --ux-hero-ink: #f4f7ff;
+  --ux-hero-accent: #9cc6ff;
+  --ux-hero-copy: #c2d2eb;
+  --ux-hero-kicker: #8ec0ff;
+  --ux-hero-orbit: #ffffff0a;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  background: var(--ux-hero-bg);
+  color: var(--ux-hero-ink);
+  border: 1px solid #1e3354;
+  margin: 28px 0 24px;
+  padding: 42px clamp(22px,5vw,68px);
+  border-radius: 18px;
+  min-height: 205px;
+}
+
+.ux-hero:after {
+  content: '';
+  position: absolute;
+  right: 18%;
+  top: -90px;
+  width: 300px;
+  height: 300px;
+  background: #1558c92e;
+  filter: blur(80px);
+  border-radius: 50%;
+  z-index: -1;
+}
+
+.ux-hero h1 {
+  font-family: var(--serif);
+  font-size: clamp(36px,4.5vw,64px);
+  line-height: 1.05;
+  letter-spacing: -.03em;
+  margin: 11px 0 14px;
+  font-weight: 500;
+}
+
+.ux-hero h1 em {
+  font-style: italic;
+  color: var(--ux-hero-accent);
+}
+
+.ux-hero p {
+  max-width: 590px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--ux-hero-copy);
+  margin: 0;
+}
+
+.ux-kicker {
+  display: inline-block;
+  font-size: 10px;
+  letter-spacing: .17em;
+  font-weight: 750;
+  color: var(--ux-hero-kicker);
+}
+
+.ux-hero-orbit {
+  color: var(--ux-hero-orbit);
+  position: absolute;
+  right: 2%;
+  bottom: -120px;
+  font-size: 360px;
+  font-weight: 1000;
+  letter-spacing: -.16em;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.ux-card {
+  background: #fff;
+  color: #17243a;
+  border: 1px solid #dbe4f2;
+  border-radius: 16px;
+  padding: clamp(20px,3.2vw,32px);
+  box-shadow: 0 8px 26px #12223d0a;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+.ux-card h2,.ux-card h3 {
+  color: #16233b;
+  line-height: 1.22;
+  letter-spacing: -.03em;
+  margin: 0 0 18px;
+}
+
+.ux-card h2 {
+  font-size: 24px;
+}
+
+.ux-card h3 {
+  font-size: 18.5px;
+}
+
+.ux-card p {
+  color: #5a6b85;
+  line-height: 1.75;
+}
+
+.ux-card label {
+  font-size: 12px;
+  font-weight: 700;
+  display: block;
+  margin: 16px 0 5px;
+  color: #2f3f5c;
+}
+
+.ux-card .field {
+  display: block;
+  width: 100%;
+  margin-top: 7px;
+  background: #f8faff;
+  color: #1d2c47;
+  border: 1px solid #d5e0f0;
+  border-radius: 10px;
+  min-height: 45px;
+  padding: 11px 13px;
+  resize: vertical;
+  transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+}
+
+.ux-card .field:focus {
+  outline: none;
+  background: #fff;
+  border-color: #2b6fe0;
+  box-shadow: 0 0 0 3px #1558c91f;
+}
+
+.ux-card .btn {
+  margin-top: 12px;
+}
+
+.ux-card .btn-violet {
+  color: #fff;
+}
+
+.ux-two {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,.95fr);
+  gap: 22px;
+  margin-top: 20px;
+}
+
+.ux-auth {
+  display: grid;
+  grid-template-columns: minmax(0,.95fr) minmax(0,1.05fr);
+  gap: 22px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.ux-auth-promo {
+  --auth-promo-bg: radial-gradient(circle at 80% 15%,#1558c945 0,transparent 52%),linear-gradient(140deg,#081121,#102344);
+  --auth-promo-ink: #f4f7ff;
+  --auth-promo-copy: #c6d5ed;
+  --auth-promo-accent: #9cc6ff;
+  background: var(--auth-promo-bg);
+  color: var(--auth-promo-ink);
+  border-color: #22385c;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 435px;
+}
+
+.ux-auth-promo h2 {
+  font-size: clamp(30px,4vw,50px);
+  line-height: 1.06;
+  color: var(--auth-promo-ink);
+}
+
+.ux-auth-promo p,.ux-auth-promo li {
+  color: var(--auth-promo-copy);
+}
+
+.ux-icon {
+  font-size: 70px;
+  color: var(--auth-promo-accent);
+}
+
+.ux-benefits {
+  padding-left: 19px;
+  line-height: 2.25;
+  font-size: 13px;
+}
+
+.ux-social {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ux-social-button {
+  border: 1px solid #dce3ef;
+  background: white;
+  border-radius: 10px;
+  padding: 12px 7px;
+  color: #24314b;
+  font-size: 11px;
+  font-weight: 850;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.google-g {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+
+.facebook-f {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+
+.ux-separator {
+  border-bottom: 1px solid #e7eaf1;
+  position: relative;
+  margin: 24px 0;
+  text-align: center;
+}
+
+.ux-separator span {
+  position: relative;
+  background: #fff;
+  padding: 0 12px;
+  top: 9px;
+  color: #7b89a0;
+  font-size: 11px;
+}
+
+.ux-link {
+  color: #1558c9;
+  font-weight: 800;
+  text-decoration: underline;
+}
+
+.ux-note {
+  font-size: 11px !important;
+  color: #7d899d !important;
+  margin: 16px 0;
+}
+
+.ux-demonote {
+  font-size: 11px;
+  color: #71819a;
+  text-align: center;
+  padding: 26px 12px;
+  line-height: 1.5;
+}
+
+.ux-check {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+}
+
+.ux-check input {
+  margin-top: 2px;
+  accent-color: #1558c9;
+}
+
+.ux-profile-icon {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg,#1558c9,#2b76eb);
+  color: white;
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 17px;
+}
+
+.ux-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e7ebf3;
+  align-items: center;
+  font-size: 12px;
+}
+
+.ux-meta span {
+  color: #64748c;
+}
+
+.ux-meta strong {
+  color: #25344d;
+  text-align: right;
+}
+
+.ux-action-list {
+  display: grid;
+  gap: 8px;
+}
+
+.ux-action-list a {
+  border: 1px solid #dce5f2;
+  border-radius: 10px;
+  padding: 13px 15px;
+  display: flex;
+  justify-content: space-between;
+  color: #243552;
+  font-size: 12.5px;
+  font-weight: 700;
+  transition: border-color .18s ease, background-color .18s ease, transform .18s cubic-bezier(.22,1,.36,1);
+}
+
+.ux-action-list a:hover {
+  border-color: #6c9ee8;
+  background: #f2f7ff;
+  transform: translateX(2px);
+}
+
+.user-stars {
+  color: #f5a623;
+  letter-spacing: 3px;
+  font-size: 16px;
+}
+
+.ux-counter {
+  display: inline-block;
+  background: #eaf2ff;
+  color: #1558c9;
+  font-size: 11px;
+  font-weight: 700;
+  vertical-align: middle;
+  padding: 5px 10px;
+  border-radius: 20px;
+}
+
+.ux-review-stack {
+  display: grid;
+  gap: 13px;
+}
+
+.ux-review {
+  padding: 18px 0;
+  border-bottom: 1px solid #e8edf3;
+}
+
+.ux-review-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ux-review-head small {
+  color: #8895a5;
+}
+
+.ux-review p {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  color: #536179;
+}
+
+.ux-verified {
+  display: inline-block;
+  margin-left: 12px;
+  font-size: 9px;
+  color: #158e63;
+  font-weight: 700;
+}
+
+.ux-detail-reviews {
+  padding: 15px 27px 65px;
+}
+
+.ux-detail-reviews .sec-head h2 {
+  color: #fff;
+}
+
+.ux-detail-reviews .sec-head p {
+  color: #8e9db8;
+}
+
+.ux-detail-reviews .ux-two {
+  margin-top: 20px;
+}
+
+.ux-voucher-grid {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 17px;
+}
+
+.ux-voucher {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 240px;
+  padding: 28px;
+  color: white;
+  border-radius: 16px;
+  background: radial-gradient(circle at 95% 25%,#1558c966,transparent 65%),linear-gradient(135deg,#0d1930,#091224);
+  border: 1px dashed #3d639e;
+  transition: transform .22s cubic-bezier(.22,1,.36,1), border-color .2s ease;
+}
+
+.ux-voucher:hover {
+  transform: translateY(-2px);
+  border-color: #6b9be3;
+}
+
+.ux-voucher:nth-child(2) {
+  background: radial-gradient(circle at 90% 10%,#107e9c70,transparent 70%),linear-gradient(135deg,#0b172e,#12273d);
+}
+
+.ux-voucher:nth-child(3) {
+  background: radial-gradient(circle at 95% 18%,#2459b875,transparent 75%),linear-gradient(135deg,#0e1a33,#162647);
+}
+
+.ux-voucher h2 {
+  font-size: 26px;
+  line-height: 1.1;
+  margin: 14px 0 0;
+}
+
+.ux-voucher p {
+  color: #c9d4eb;
+  font-size: 12px;
+}
+
+.ux-voucher code {
+  letter-spacing: .1em;
+  font-size: 12px;
+  background: #ffffff14;
+  border: 1px solid #ffffff2b;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.ux-voucher .btn {
+  margin-top: auto;
+}
+
+.ux-contact-tile {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 0;
+  border-bottom: 1px solid #e7ecf3;
+}
+
+.ux-contact-tile>span {
+  display: grid;
+  place-items: center;
+  color: #1558c9;
+  background: #eaf2ff;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.ux-contact-tile p {
+  margin: 2px 0 0;
+  font-size: 12px;
+}
+
+.ux-faq {
+  max-width: 920px;
+  margin: auto;
+}
+
+.ux-faq-item {
+  background: white;
+  border: 1px solid #dce5f2;
+  color: #20314c;
+  border-radius: 14px;
+  padding: 20px 24px;
+  margin-bottom: 12px;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+
+.ux-faq-item:hover {
+  border-color: #a9c4eb;
+}
+
+.ux-faq-item[open] {
+  border-color: #6b9be3;
+  box-shadow: 0 8px 24px #15356610;
+}
+
+.ux-faq-item summary {
+  cursor: pointer;
+  font-weight: 750;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  list-style: none;
+  font-size: 15px;
+  transition: color .16s ease;
+}
+
+.ux-faq-item[open] summary {
+  color: #1558c9;
+}
+
+.ux-faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.ux-faq-item p {
+  line-height: 1.75;
+  color: #5a6b85;
+  font-size: 13.5px;
+  margin-top: 14px;
+  animation: mega-reveal .22s cubic-bezier(.22,1,.36,1) both;
+}
+
+.ux-shipping-item {
+  padding: 14px 0;
+  border-bottom: 1px solid #e8edf4;
+}
+
+.ux-shipping-item strong {
+  color: #1558c9;
+  letter-spacing: .05em;
+}
+
+.ux-shipping-item p {
+  margin: 5px 0;
+}
+
+.ux-tracking-result {
+  margin-top: 24px;
+  border-top: 1px solid #e1e7f0;
+  padding-top: 16px;
+}
+
+.ux-timeline {
+  margin: 22px 0 0 8px;
+  border-left: 2px solid #d8dff1;
+  padding-left: 21px;
+  display: grid;
+  gap: 20px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #a2aec0;
+}
+
+.ux-timeline .done {
+  color: #1b9679;
+}
+
+.ux-empty {
+  background: #fff4f3;
+  padding: 17px;
+  border-radius: 9px;
+  margin: 20px 0;
+  color: #bd4260;
+}
+
+.ux-payment-card {
+  max-width: 650px;
+  margin: 0 auto;
+}
+
+.ux-payment-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  align-items: center;
+  padding: 0 0 18px;
+  border-bottom: 1px solid #e8edf4;
+  margin-bottom: 25px;
+}
+
+.ux-payment-logo {
+  font-size: 24px;
+  font-weight: 950;
+  color: #143883;
+}
+
+.ux-payment-logo small {
+  font-size: 9px;
+  display: block;
+  color: #8d9bb0;
+  letter-spacing: .13em;
+}
+
+.ux-payment-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 25px;
+}
+
+.ux-admin-panel {
+  padding: 23px;
+}
+
+.ux-admin-panel h3 {
+  color: #24344a;
+  margin: 0 0 14px;
+  font-size: 15px;
+}
+
+.ux-admin-panel .ux-two {
+  margin-top: 28px;
+}
+
+.ux-admin-panel .ux-note {
+  padding: 14px 0;
+}
+
+.ux-admin-panel .ux-card {
+  box-shadow: none;
+}
+
+.ux-checkout-hint {
+  font-size: 11px;
+  color: #61718a;
+  margin: 12px 0 0;
+}
+
+/* Chat is always a separate interaction layer, not part of each page's HTML markup. */

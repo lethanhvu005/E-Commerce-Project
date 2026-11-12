@@ -1,0 +1,4 @@
+/* Trang thanh toán mô phỏng | NEXA / CommerceOS static demo. */
+const pendingOrder=()=>{let id='';try{id=sessionStorage.getItem('nexa-pending-payment')||''}catch{}return state.orders.find(o=>o.id===id)||[...state.orders].reverse().find(o=>['momo','vnpay'].includes(o.pay))};
+const payment=()=>{let o=pendingOrder();return page('PAYMENT / GATEWAY','Complete your<br><em>checkout.</em>','',`${card(`<div class="ux-payment-head"><div class="ux-payment-logo">${o?.pay==='momo'?'MOMO':'VNPAY'}</div></div><h2>Xác nhận thanh toán</h2>${info('Đơn hàng',esc(o?.id||'Không có đơn chờ thanh toán'))}${info('Số tiền',o?money(o.total):'—')}${info('Phương thức',o?.pay==='momo'?'Ví MoMo':'VNPAY')}<div class="ux-payment-actions"><button class="btn btn-violet" data-ux="payment-ok" ${o?'':'disabled'}>Xác nhận thanh toán ✓</button><button class="btn btn-quiet" data-ux="payment-cancel">Hủy thanh toán</button></div>`,'ux-payment-card')}`)};
+
