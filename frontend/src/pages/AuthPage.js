@@ -8,83 +8,199 @@ export default function AuthPage({ mode = "login" }) {
   const { login, register } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [form, setForm] = useState({ email: "", password: "", first_name: "", last_name: "" });
-  const [busy, setBusy] = useState(false);
+
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+    first_name: "",
+    last_name: "",
+  });
+
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  const update = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
-  const submit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setBusy(true);
+    setSubmitting(true);
     setError(null);
+
     try {
-      if (isRegister) await register(form);
-      else await login({ email: form.email, password: form.password });
+      if (isRegister) {
+        await register({
+          email: form.email.trim(),
+          password: form.password,
+          first_name: form.first_name.trim(),
+          last_name: form.last_name.trim(),
+        });
+      } else {
+        await login({
+          email: form.email.trim(),
+          password: form.password,
+        });
+      }
+
+      // Redirect to origin page or homepage
       const target = location.state?.from;
       navigate(target ? `${target.pathname || "/"}${target.search || ""}` : "/", { replace: true });
-    } catch (e) { setError(e); }
-    finally { setBusy(false); }
+    } catch (err) {
+      setError(err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <div className="auth-page">
-      {/* Left art panel */}
-      <div className="auth-art">
-        <span className="eyebrow">NEXA MEMBER</span>
-        <h1>Gear tốt hơn.<br />Trải nghiệm liền mạch hơn.</h1>
-        <p>Đăng nhập để đồng bộ giỏ hàng, yêu thích và theo dõi đơn hàng.</p>
-      </div>
+    <div className="container ux-page">
+      {/* Hero header matching login.html / register.html */}
+      <section className="ux-hero">
+        <div>
+          <span className="ux-kicker">
+            {isRegister ? "ACCOUNT / REGISTER" : "ACCOUNT / SIGN IN"}
+          </span>
+          <h1>
+            {isRegister ? (
+              <>Gia nhập <em>NEXA.</em></>
+            ) : (
+              <>Chào mừng <em>trở lại.</em></>
+            )}
+          </h1>
+          <p>
+            {isRegister
+              ? "Một tài khoản, toàn bộ trải nghiệm công nghệ yêu thích."
+              : "Quản lý đơn hàng, wishlist và trải nghiệm NEXA theo cách của bạn."}
+          </p>
+        </div>
+        <span className="ux-hero-orbit" aria-hidden="true">N</span>
+      </section>
 
-      {/* Right form card */}
-      <form className="auth-card" onSubmit={submit}>
-        <span className="eyebrow">{isRegister ? "TẠO TÀI KHOẢN" : "CHÀO MỪNG TRỞ LẠI"}</span>
-        <h2>{isRegister ? "Gia nhập NEXA" : "Đăng nhập"}</h2>
+      {/* Main Auth Container matching ux-auth layout */}
+      <div className="ux-auth">
+        {/* Left Form Card */}
+        <div className="ux-card">
+          <h2>{isRegister ? "Tạo tài khoản" : "Đăng nhập"}</h2>
 
-        {isRegister && (
-          <div className="form-row">
-            <label>
-              Họ
-              <input name="last_name" value={form.last_name} onChange={update} required />
-            </label>
-            <label>
-              Tên
-              <input name="first_name" value={form.first_name} onChange={update} required />
-            </label>
+          {/* Social login buttons visual */}
+          <div className="ux-social">
+            <button type="button" className="ux-social-button" onClick={() => setError(new Error("Đăng nhập bằng Google đang hoàn thiện kết nối OAuth."))}>
+              <svg className="google-g" viewBox="0 0 24 24" width="18" height="18">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+              </svg>
+              <span>Google</span>
+            </button>
+            <button type="button" className="ux-social-button" onClick={() => setError(new Error("Đăng nhập bằng Facebook đang hoàn thiện kết nối OAuth."))}>
+              <svg className="facebook-f" viewBox="0 0 24 24" width="18" height="18" fill="#1877F2">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+              <span>Facebook</span>
+            </button>
           </div>
-        )}
 
-        <label>
-          Email
-          <input name="email" type="email" value={form.email} onChange={update} required autoComplete="email" />
-        </label>
+          <div className="ux-separator">
+            <span>hoặc tiếp tục với email</span>
+          </div>
 
-        <label>
-          Mật khẩu
-          <input
-            name="password"
-            type="password"
-            value={form.password}
-            onChange={update}
-            required
-            minLength={8}
-            autoComplete={isRegister ? "new-password" : "current-password"}
-          />
-        </label>
+          <form onSubmit={handleSubmit}>
+            {isRegister && (
+              <div className="form-grid">
+                <div>
+                  <label htmlFor="reg-last">Họ</label>
+                  <input
+                    id="reg-last"
+                    className="field"
+                    name="last_name"
+                    required
+                    value={form.last_name}
+                    onChange={handleChange}
+                    placeholder="Nguyễn"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="reg-first">Tên</label>
+                  <input
+                    id="reg-first"
+                    className="field"
+                    name="first_name"
+                    required
+                    value={form.first_name}
+                    onChange={handleChange}
+                    placeholder="Văn An"
+                  />
+                </div>
+              </div>
+            )}
 
-        {error && <ErrorBox error={error} />}
+            <label htmlFor="auth-email">Địa chỉ Email</label>
+            <input
+              id="auth-email"
+              className="field"
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              value={form.email}
+              onChange={handleChange}
+              placeholder="example@domain.com"
+            />
 
-        <button className="btn btn-primary full-button" disabled={busy}>
-          {busy ? "Đang xử lý..." : isRegister ? "Tạo tài khoản" : "Đăng nhập"}
-        </button>
+            <label htmlFor="auth-password">Mật khẩu</label>
+            <input
+              id="auth-password"
+              className="field"
+              name="password"
+              type="password"
+              required
+              minLength={8}
+              autoComplete={isRegister ? "new-password" : "current-password"}
+              value={form.password}
+              onChange={handleChange}
+              placeholder="Tối thiểu 8 ký tự..."
+            />
 
-        <p>
-          {isRegister ? "Đã có tài khoản?" : "Chưa có tài khoản?"}{" "}
-          <Link to={isRegister ? "/login" : "/register"}>
-            {isRegister ? "Đăng nhập" : "Đăng ký ngay"}
-          </Link>
-        </p>
-      </form>
+            {error && (
+              <div style={{ marginTop: "14px" }}>
+                <ErrorBox error={error} />
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="btn btn-violet full"
+              disabled={submitting}
+              style={{ width: "100%", marginTop: "18px", padding: "14px", fontSize: "14px" }}
+            >
+              {submitting ? "Đang xử lý..." : isRegister ? "Tạo tài khoản ↗" : "Đăng nhập ↗"}
+            </button>
+
+            <p style={{ textAlign: "center", marginTop: "16px", color: "var(--muted)", fontSize: "12.5px" }}>
+              {isRegister ? "Đã có tài khoản? " : "Chưa có tài khoản? "}
+              <Link className="ux-link" to={isRegister ? "/login" : "/register"}>
+                {isRegister ? "Đăng nhập" : "Đăng ký ngay"}
+              </Link>
+            </p>
+          </form>
+        </div>
+
+        {/* Right Promo Card matching ux-auth-promo */}
+        <div className="ux-card ux-auth-promo">
+          <div className="ux-icon">✦</div>
+          <h2>ONE ACCOUNT.<br />ALL YOUR GEAR.</h2>
+          <p>
+            Xem lịch sử mua sắm, lưu sản phẩm yêu thích, quản lý địa chỉ và nhận mã giảm giá trong một không gian.
+          </p>
+          <ul className="ux-benefits">
+            <li>Trải nghiệm mượt mà trên mọi thiết bị</li>
+            <li>Thông báo trạng thái đơn hàng theo thời gian thực</li>
+            <li>Đổi trả và bảo hành chính hãng dễ dàng</li>
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }

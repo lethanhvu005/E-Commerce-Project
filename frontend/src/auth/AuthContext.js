@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { api, clearTokens, getTokens, saveTokens } from "../api/client";
+import { authService, clearTokens, getTokens, saveTokens } from "../api/client";
 
 const AuthContext = createContext(null);
 
@@ -8,16 +8,17 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(Boolean(getTokens()?.access));
 
   const loadUser = useCallback(async () => {
-    if (!getTokens()?.access) {
+    const tokens = getTokens();
+    if (!tokens?.access) {
       setUser(null);
       setLoading(false);
       return null;
     }
     try {
-      const profile = await api.get("/accounts/me/");
+      const profile = await authService.getProfile();
       setUser(profile);
       return profile;
-    } catch {
+    } catch (err) {
       clearTokens();
       setUser(null);
       return null;
@@ -26,34 +27,48 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  useEffect(() => { loadUser(); }, [loadUser]);
+  useEffect(() => {
+    loadUser();
+  }, [loadUser]);
 
   const login = async (credentials) => {
-    const tokens = await api.post("/auth/login/", credentials);
+    const tokens = await authService.login(credentials);
     saveTokens(tokens);
     return loadUser();
   };
 
   const register = async (payload) => {
-    await api.post("/auth/register/", payload);
+    await authService.register(payload);
     return login({ email: payload.email, password: payload.password });
   };
 
   const logout = async () => {
     const tokens = getTokens();
     try {
-      if (tokens?.refresh) await api.post("/auth/logout/", { refresh: tokens.refresh });
+      if (tokens?.refresh) {
+        await authService.logout(tokens.refresh);
+      }
+    } catch {
+      // Ignore backend revocation error if token already expired/invalid
     } finally {
       clearTokens();
       setUser(null);
     }
   };
 
-  const value = { user, loading, login, register, logout, reloadUser: loadUser };
+  const value = {
+    user,
+    loading,
+    login,
+    register,
+    logout,
+    reloadUser: loadUser,
+    isAuthenticated: Boolean(user),
+  };
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   return useContext(AuthContext);
 }
-
