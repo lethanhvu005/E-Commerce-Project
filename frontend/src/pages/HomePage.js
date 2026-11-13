@@ -162,7 +162,7 @@ export default function HomePage() {
       catalogService.getCategories(),
       catalogService.getBrands(),
       catalogService.getCollections(),
-      catalogService.getProducts({ page_size: 24, ordering: "-created_at" }),
+      catalogService.getProducts({ page_size: 20, ordering: "-created_at" }),
     ])
       .then(([banners, categories, brands, collections, products]) =>
         setData({
@@ -187,7 +187,7 @@ export default function HomePage() {
     return () => window.clearInterval(timer);
   }, [paused, data.banners]);
 
-  const HOME_PRODUCTS_PER_VIEW = 24;
+  const HOME_PRODUCTS_PER_VIEW = 20;
 
   const filteredProducts = useMemo(() => {
     if (!data.products) return null;
@@ -579,7 +579,7 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* Featured Products Grid (4 rows x 6 products = 24 products) */}
+        {/* Featured Products Grid (4 rows x 5 products = 20 products) */}
         <section className="home-section" id="featured">
           <div className="gear-section-head">
             <div>
@@ -647,7 +647,7 @@ export default function HomePage() {
           {!visibleProducts && !error ? (
             <Loading label="Đang tải sản phẩm..." />
           ) : visibleProducts?.length ? (
-            <div className="gear-product-grid home-grid-6 nexa-stagger-grid">
+            <div className="gear-product-grid home-grid-5 home-grid-6 nexa-stagger-grid">
               {visibleProducts.map((product) => (
                 <ProductCard
                   key={product._renderKey || product.id}

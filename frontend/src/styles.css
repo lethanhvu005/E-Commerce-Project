@@ -623,10 +623,11 @@ html[data-theme="light"] .gear-card.nexa-card-3d:hover {
   opacity: 0.72;
 }
 
-/* Home 6-product grid (4 rows x 6 items = 24 products on desktop) & pager */
+/* Home 5x4 product grid (5 items per row x 4 rows = 20 products on desktop) & pager */
+.gear-product-grid.home-grid-5,
 .gear-product-grid.home-grid-6 {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 14px;
 }
 
 .gear-product-grid.home-grid-6 .gear-card {
@@ -634,22 +635,22 @@ html[data-theme="light"] .gear-card.nexa-card-3d:hover {
 }
 
 .gear-product-grid.home-grid-6 .gear-product-photo {
-  height: 144px;
-  padding: 12px;
+  height: 156px;
+  padding: 14px;
 }
 
 .gear-product-grid.home-grid-6 .gear-badge {
-  top: 8px;
-  left: 8px;
-  padding: 3px 7px;
-  font-size: 9px;
+  top: 9px;
+  left: 9px;
+  padding: 3px 8px;
+  font-size: 9.5px;
 }
 
 .gear-product-grid.home-grid-6 .gear-favorite {
-  top: 8px;
-  right: 8px;
-  width: 28px;
-  height: 28px;
+  top: 9px;
+  right: 9px;
+  width: 30px;
+  height: 30px;
 }
 
 .gear-product-grid.home-grid-6 .gear-favorite svg {
@@ -671,7 +672,7 @@ html[data-theme="light"] .gear-card.nexa-card-3d:hover {
 }
 
 .gear-product-grid.home-grid-6 .gear-product-meta {
-  padding: 10px 10px 11px !important;
+  padding: 12px 12px 13px !important;
 }
 
 .gear-product-grid.home-grid-6 .gear-meta-toprow {
@@ -680,7 +681,7 @@ html[data-theme="light"] .gear-card.nexa-card-3d:hover {
 }
 
 .gear-product-grid.home-grid-6 .gear-product-meta .gear-kicker {
-  font-size: 8.5px !important;
+  font-size: 9px !important;
   letter-spacing: 0.02em !important;
 }
 
@@ -690,12 +691,12 @@ html[data-theme="light"] .gear-card.nexa-card-3d:hover {
 }
 
 .gear-product-grid.home-grid-6 .gear-product-meta h3 {
-  font-size: 13px !important;
+  font-size: 14px !important;
   font-weight: 700 !important;
   line-height: 1.35 !important;
   height: 1.35em;
   min-height: 1.35em;
-  margin: 5px 0 !important;
+  margin: 6px 0 !important;
   display: block;
   white-space: nowrap;
   overflow: hidden;
@@ -703,16 +704,16 @@ html[data-theme="light"] .gear-card.nexa-card-3d:hover {
 }
 
 .gear-product-grid.home-grid-6 .gear-product-meta p {
-  font-size: 10.5px !important;
-  gap: 5px;
-  height: 24px;
-  min-height: 24px;
+  font-size: 11px !important;
+  gap: 6px;
+  height: 25px;
+  min-height: 25px;
   line-height: 1.25;
 }
 
 .gear-product-grid.home-grid-6 .gear-feature-icon {
-  width: 22px;
-  height: 22px;
+  width: 23px;
+  height: 23px;
   border-radius: 6px;
 }
 
@@ -722,10 +723,10 @@ html[data-theme="light"] .gear-card.nexa-card-3d:hover {
 }
 
 .gear-product-grid.home-grid-6 .gear-price {
-  margin: 7px 0 9px !important;
-  min-height: 20px;
-  font-size: 13px !important;
-  gap: 4px !important;
+  margin: 8px 0 10px !important;
+  min-height: 21px;
+  font-size: 14px !important;
+  gap: 5px !important;
   display: flex !important;
   align-items: baseline !important;
   flex-wrap: wrap !important;
@@ -734,30 +735,30 @@ html[data-theme="light"] .gear-card.nexa-card-3d:hover {
 }
 
 .gear-product-grid.home-grid-6 .gear-price > span {
-  font-size: 13px !important;
+  font-size: 14px !important;
   font-weight: 800 !important;
-  letter-spacing: -0.025em !important;
+  letter-spacing: -0.02em !important;
   white-space: nowrap !important;
 }
 
 .gear-product-grid.home-grid-6 .gear-price del {
-  font-size: 10px !important;
+  font-size: 10.5px !important;
   font-weight: 500 !important;
-  letter-spacing: -0.015em !important;
+  letter-spacing: -0.01em !important;
   white-space: nowrap !important;
   opacity: 0.72;
 }
 
 .gear-product-grid.home-grid-6 .nexa-stock-dot {
-  font-size: 8px !important;
-  padding: 2px 5px;
+  font-size: 8.5px !important;
+  padding: 2px 6px;
 }
 
 .gear-product-grid.home-grid-6 .gear-add {
-  min-height: 34px !important;
-  padding: 5px 8px !important;
-  font-size: 11px !important;
-  gap: 5px;
+  min-height: 36px !important;
+  padding: 6px 10px !important;
+  font-size: 11.5px !important;
+  gap: 6px;
   border-radius: 8px;
 }
 
@@ -1711,8 +1712,9 @@ html[data-theme="dark"] .nexa-chip {
 }
 
 @media (max-width: 1150px) {
+  .gear-product-grid.home-grid-5,
   .gear-product-grid.home-grid-6 {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 }
 
@@ -1730,8 +1732,9 @@ html[data-theme="dark"] .nexa-chip {
 }
 
 @media (max-width: 768px) {
+  .gear-product-grid.home-grid-5,
   .gear-product-grid.home-grid-6 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
 
