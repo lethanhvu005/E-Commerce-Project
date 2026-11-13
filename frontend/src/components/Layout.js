@@ -1,19 +1,22 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { cartService, catalogService, wishlistService } from "../api/client";
 
 function NexaLogoMark() {
+  const uid = useId();
+  const logoGradId = `nexaLogoGrad-${uid}`;
+  const wingGradId = `nexaWingGrad-${uid}`;
   return (
     <span className="gear-mark nexa-logo-mark" aria-hidden="true">
       <svg viewBox="0 0 38 38" width="24" height="24" fill="none">
         <defs>
-          <linearGradient id="nexaLogoGrad" x1="4" y1="4" x2="34" y2="34" gradientUnits="userSpaceOnUse">
+          <linearGradient id={logoGradId} x1="4" y1="4" x2="34" y2="34" gradientUnits="userSpaceOnUse">
             <stop offset="0%" stopColor="#6eb4ff" />
             <stop offset="50%" stopColor="#2868e8" />
             <stop offset="100%" stopColor="#43e6e3" />
           </linearGradient>
-          <linearGradient id="nexaWingGrad" x1="8" y1="8" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+          <linearGradient id={wingGradId} x1="8" y1="8" x2="30" y2="30" gradientUnits="userSpaceOnUse">
             <stop offset="0%" stopColor="#ffffff" />
             <stop offset="100%" stopColor="#9cc6ff" />
           </linearGradient>
@@ -21,14 +24,14 @@ function NexaLogoMark() {
         {/* Outer precision hex-shield */}
         <path
           d="M19 2.5L33.5 9.8V28.2L19 35.5L4.5 28.2V9.8L19 2.5Z"
-          stroke="url(#nexaLogoGrad)"
+          stroke={`url(#${logoGradId})`}
           strokeWidth="1.75"
           fill="rgba(21, 88, 201, 0.16)"
         />
         {/* Dynamic N geometric wing */}
         <path
           d="M11.5 26.5V11.5L16.2 11.5L22.8 20.6V11.5H26.5V26.5H21.8L15.2 17.4V26.5H11.5Z"
-          fill="url(#nexaWingGrad)"
+          fill={`url(#${wingGradId})`}
         />
         {/* Cyber cyan accent slash */}
         <path

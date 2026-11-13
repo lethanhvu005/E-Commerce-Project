@@ -162,7 +162,7 @@ export default function HomePage() {
       catalogService.getCategories(),
       catalogService.getBrands(),
       catalogService.getCollections(),
-      catalogService.getProducts({ page_size: 20, ordering: "-created_at" }),
+      catalogService.getProducts({ page_size: 48, ordering: "-created_at" }),
     ])
       .then(([banners, categories, brands, collections, products]) =>
         setData({
@@ -191,16 +191,9 @@ export default function HomePage() {
 
   const filteredProducts = useMemo(() => {
     if (!data.products) return null;
-    const base = activeCategory
+    return activeCategory
       ? data.products.filter((item) => item.category?.slug === activeCategory)
       : data.products;
-    if (!activeCategory && base.length > 0 && base.length < HOME_PRODUCTS_PER_VIEW) {
-      return Array.from({ length: HOME_PRODUCTS_PER_VIEW }, (_, idx) => {
-        const source = base[idx % base.length];
-        return idx < base.length ? source : { ...source, _renderKey: `${source.id}-dup-${idx}` };
-      });
-    }
-    return base;
   }, [activeCategory, data.products]);
 
   const totalProductPages = useMemo(() => {
@@ -282,6 +275,17 @@ export default function HomePage() {
     setHeroTilt({ tx: 0, ty: 0, rx: 0, ry: 0 });
   };
 
+  const handleHeroKeyDown = (e) => {
+    if (bannerCount < 2) return;
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      setSlide((s) => (s - 1 + bannerCount) % bannerCount);
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      setSlide((s) => (s + 1) % bannerCount);
+    }
+  };
+
   return (
     <>
       <Toast message={toastMsg} onClose={() => setToastMsg("")} />
@@ -301,6 +305,7 @@ export default function HomePage() {
         aria-roledescription="carousel"
         aria-label="Sản phẩm được giới thiệu"
         tabIndex="0"
+        onKeyDown={handleHeroKeyDown}
         onMouseMove={handleHeroMouseMove}
         onMouseLeave={handleHeroMouseLeave}
         style={{
@@ -626,7 +631,7 @@ export default function HomePage() {
                   setProductPage(0);
                 }}
               >
-                Tất cả ({Math.max(data.products?.length || 0, visibleProducts?.length || 0)})
+                Tất cả ({data.products?.length || 0})
               </button>
               {data.categories.slice(0, 6).map((category) => (
                 <button
@@ -647,10 +652,10 @@ export default function HomePage() {
           {!visibleProducts && !error ? (
             <Loading label="Đang tải sản phẩm..." />
           ) : visibleProducts?.length ? (
-            <div className="gear-product-grid home-grid-5 home-grid-6 nexa-stagger-grid">
+            <div className="gear-product-grid home-grid-5 nexa-stagger-grid">
               {visibleProducts.map((product) => (
                 <ProductCard
-                  key={product._renderKey || product.id}
+                  key={product.id}
                   product={product}
                   isFavorite={wishlistIds.has(product.id)}
                   onFav={handleWishlist}
