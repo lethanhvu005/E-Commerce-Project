@@ -59,6 +59,8 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    permissions = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
@@ -69,13 +71,20 @@ class UserSerializer(serializers.ModelSerializer):
             "phone",
             "email_verified_at",
             "date_joined",
+            "is_staff",
+            "permissions",
         ]
         read_only_fields = [
             "id",
             "email",
             "email_verified_at",
             "date_joined",
+            "is_staff",
+            "permissions",
         ]
+
+    def get_permissions(self, user):
+        return sorted(user.get_all_permissions()) if user.is_staff else []
 
     def to_internal_value(self, data):
         allowed_fields = {"first_name", "last_name", "phone"}

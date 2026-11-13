@@ -70,6 +70,9 @@ def request_hash(data):
 
 @transaction.atomic
 def create_order(user, data):
+    # Serialize checkout attempts for one account. This closes both races:
+    # retries with the same key and different keys targeting the same active cart.
+    type(user).objects.select_for_update().only('pk').get(pk=user.pk)
     key = data["checkout_key"]
     digest = request_hash(data)
     existing = Order.objects.filter(user=user, checkout_key=key).first()

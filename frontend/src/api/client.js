@@ -235,6 +235,7 @@ export const communityService = {
 };
 
 export const adminService = {
+  getDashboard: () => api.get("/admin/dashboard/"),
   getInventoryBalances: () => api.get("/admin/inventory/"),
   adjustInventory: (payload) => api.post("/admin/inventory/", payload),
   getInventoryMovements: () => api.get("/admin/inventory/movements/"),

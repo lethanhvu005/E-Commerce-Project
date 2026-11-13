@@ -1,4 +1,5 @@
 from django.contrib.auth import authenticate
+from django.core.cache import cache
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 from rest_framework import status
@@ -27,6 +28,9 @@ class AccountModelTests(TestCase):
 
 class RegisterApiTests(APITestCase):
     url = "/api/auth/register/"
+
+    def setUp(self):
+        cache.clear()
 
     def test_register_creates_customer_and_does_not_return_password(self):
         response = self.client.post(
@@ -115,6 +119,7 @@ class RegisterApiTests(APITestCase):
 
 class AccountAuthApiTests(APITestCase):
     def setUp(self):
+        cache.clear()
         self.user = User.objects.create_user("buyer@example.test", "Buyer!Password123")
 
     def authenticate(self, user=None):

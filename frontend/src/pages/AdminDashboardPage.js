@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { adminService, catalogService, orderService } from "../api/client";
+import { adminService } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { ErrorBox, Loading } from "../components/Feedback";
 
@@ -10,8 +10,10 @@ export default function AdminDashboardPage() {
 
   const [stats, setStats] = useState({
     productsCount: 0,
-    inventoryBalancesCount: 0,
     ordersCount: 0,
+    customersCount: 0,
+    lowStockCount: 0,
+    revenue: "0",
     recentAuditLogs: [],
   });
   const [loading, setLoading] = useState(true);
@@ -26,29 +28,27 @@ export default function AdminDashboardPage() {
     const fetchStats = async () => {
       try {
         setError("");
-        const [prodRes, invRes, orderRes, auditRes] = await Promise.all([
-          catalogService.getProducts({ page_size: 1 }),
-          adminService.getInventoryBalances(),
-          orderService.getOrders({ page_size: 1 }),
+        const [dashboard, auditRes] = await Promise.all([
+          adminService.getDashboard(),
           adminService.getAuditLogs(),
         ]);
-
-        const pCount = prodRes.count ?? (Array.isArray(prodRes.results) ? prodRes.results.length : 0);
-        const invList = Array.isArray(invRes) ? invRes : invRes.results || [];
-        const oCount = orderRes.count ?? (Array.isArray(orderRes.results) ? orderRes.results.length : 0);
-        const auditList = Array.isArray(auditRes) ? auditRes : auditRes.results || [];
+        const auditList = Array.isArray(auditRes)
+          ? auditRes
+          : auditRes.results || [];
 
         setStats({
-          productsCount: pCount,
-          inventoryBalancesCount: invList.length,
-          ordersCount: oCount,
+          productsCount: dashboard.products_count,
+          ordersCount: dashboard.orders_count,
+          customersCount: dashboard.customers_count,
+          lowStockCount: dashboard.low_stock_count,
+          revenue: dashboard.revenue,
           recentAuditLogs: auditList.slice(0, 5),
         });
       } catch (err) {
         setError(
           err.status === 403
             ? "Tài khoản hiện tại không có quyền truy cập khu vực quản trị."
-            : err.message
+            : err.message,
         );
       } finally {
         setLoading(false);
@@ -60,12 +60,26 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="container" style={{ padding: "30px 0 80px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: "16px", marginBottom: "24px" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          flexWrap: "wrap",
+          gap: "16px",
+          marginBottom: "24px",
+        }}
+      >
         <div>
-          <span className="ux-kicker" style={{ color: "var(--action)" }}>COMMERCEOS / ADMIN</span>
-          <h1 className="page-title" style={{ margin: "4px 0" }}>Tổng quan Quản trị</h1>
+          <span className="ux-kicker" style={{ color: "var(--action)" }}>
+            COMMERCEOS / ADMIN
+          </span>
+          <h1 className="page-title" style={{ margin: "4px 0" }}>
+            Tổng quan Quản trị
+          </h1>
           <p style={{ color: "var(--muted)", fontSize: "13px", margin: 0 }}>
-            Hệ thống quản lý thời gian thực kết nối trực tiếp cơ sở dữ liệu PostgreSQL.
+            Hệ thống quản lý thời gian thực kết nối trực tiếp cơ sở dữ liệu
+            PostgreSQL.
           </p>
         </div>
 
@@ -94,7 +108,7 @@ export default function AdminDashboardPage() {
             </div>
             <div className="kpi">
               <small>Bản ghi tồn kho SKU</small>
-              <strong>{stats.inventoryBalancesCount}</strong>
+              <strong>{stats.lowStockCount}</strong>
               <span className="change">Cập nhật thời gian thực</span>
               <span className="kpi-icon green">▣</span>
             </div>
@@ -109,7 +123,9 @@ export default function AdminDashboardPage() {
           <div className="ux-two">
             <section className="ux-card">
               <h2>Lối tắt quản lý</h2>
-              <p style={{ marginBottom: "16px" }}>Truy cập nhanh các phân hệ nghiệp vụ hệ thống:</p>
+              <p style={{ marginBottom: "16px" }}>
+                Truy cập nhanh các phân hệ nghiệp vụ hệ thống:
+              </p>
               <div style={{ display: "grid", gap: "12px" }}>
                 <Link
                   to="/admin/inventory"
@@ -126,8 +142,15 @@ export default function AdminDashboardPage() {
                 >
                   <div>
                     <strong>Quản lý tồn kho & Điều chỉnh Stock</strong>
-                    <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: "4px" }}>
-                      Xem On-Hand, Reserved, Available; tạo phiếu điều chỉnh stock qua API.
+                    <div
+                      style={{
+                        fontSize: "12px",
+                        color: "var(--muted)",
+                        marginTop: "4px",
+                      }}
+                    >
+                      Xem On-Hand, Reserved, Available; tạo phiếu điều chỉnh
+                      stock qua API.
                     </div>
                   </div>
                   <span style={{ fontSize: "18px" }}>→</span>
@@ -147,7 +170,13 @@ export default function AdminDashboardPage() {
                 >
                   <div>
                     <strong>Quản lý đơn đặt hàng</strong>
-                    <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: "4px" }}>
+                    <div
+                      style={{
+                        fontSize: "12px",
+                        color: "var(--muted)",
+                        marginTop: "4px",
+                      }}
+                    >
                       Xem danh sách đơn, chi tiết đơn hàng và lịch sử timeline.
                     </div>
                   </div>
@@ -168,7 +197,13 @@ export default function AdminDashboardPage() {
                 >
                   <div>
                     <strong>Danh mục & Sản phẩm</strong>
-                    <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: "4px" }}>
+                    <div
+                      style={{
+                        fontSize: "12px",
+                        color: "var(--muted)",
+                        marginTop: "4px",
+                      }}
+                    >
                       Duyệt tất cả sản phẩm, bộ lọc ngành hàng và thương hiệu.
                     </div>
                   </div>
@@ -180,7 +215,9 @@ export default function AdminDashboardPage() {
             <section className="ux-card">
               <h2>Nhật ký vận hành gần nhất</h2>
               {stats.recentAuditLogs.length === 0 ? (
-                <p style={{ color: "var(--muted)" }}>Chưa có bản ghi nhật ký vận hành nào.</p>
+                <p style={{ color: "var(--muted)" }}>
+                  Chưa có bản ghi nhật ký vận hành nào.
+                </p>
               ) : (
                 <div style={{ display: "grid", gap: "10px" }}>
                   {stats.recentAuditLogs.map((log) => (
@@ -193,12 +230,23 @@ export default function AdminDashboardPage() {
                         fontSize: "13px",
                       }}
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: "4px",
+                        }}
+                      >
                         <strong>{log.action}</strong>
-                        <span style={{ color: "var(--muted)", fontSize: "11px" }}>{log.created_at?.slice(0, 16)}</span>
+                        <span
+                          style={{ color: "var(--muted)", fontSize: "11px" }}
+                        >
+                          {log.created_at?.slice(0, 16)}
+                        </span>
                       </div>
                       <div style={{ color: "var(--muted)", fontSize: "12px" }}>
-                        Bởi: {log.actor_email || "Hệ thống"} · Đối tượng: {log.entity_type} #{log.entity_id}
+                        Bởi: {log.actor_email || "Hệ thống"} · Đối tượng:{" "}
+                        {log.entity_type} #{log.entity_id}
                       </div>
                     </div>
                   ))}

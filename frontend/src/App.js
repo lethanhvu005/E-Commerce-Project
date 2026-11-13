@@ -29,6 +29,7 @@ import NotFoundPage from "./pages/NotFoundPage";
 import "./styles.css";
 
 const protectedPage = (element) => <ProtectedRoute>{element}</ProtectedRoute>;
+const adminPage = (element) => <ProtectedRoute requireStaff>{element}</ProtectedRoute>;
 
 export default function App() {
   return (
@@ -70,9 +71,9 @@ export default function App() {
             <Route path="privacy" element={<PrivacyPage />} />
 
             {/* Staff / Admin */}
-            <Route path="admin" element={protectedPage(<AdminDashboardPage />)} />
-            <Route path="admin/dashboard" element={protectedPage(<AdminDashboardPage />)} />
-            <Route path="admin/inventory" element={protectedPage(<AdminInventoryPage />)} />
+            <Route path="admin" element={adminPage(<AdminDashboardPage />)} />
+            <Route path="admin/dashboard" element={adminPage(<AdminDashboardPage />)} />
+            <Route path="admin/inventory" element={adminPage(<AdminInventoryPage />)} />
 
             {/* Fallback */}
             <Route path="*" element={<NotFoundPage />} />

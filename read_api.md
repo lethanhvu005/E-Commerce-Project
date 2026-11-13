@@ -803,6 +803,25 @@ Quyền: `operations.view_auditlog`. Trả tối đa 100 log mới nhất:
 }
 ```
 
+### `GET /api/admin/dashboard/`
+
+Quyền: tài khoản phải là staff và có đủ `orders.view_order`, `catalog.view_product`, `inventory.view_inventorybalance`, `accounts.view_user`.
+
+Trả số liệu tổng hợp toàn hệ thống từ database, không suy luận từ một trang kết quả phân trang:
+
+```json
+{
+  "revenue": "12500000",
+  "revenue_definition": "Tổng payment có status=succeeded; không tính pending, cancelled, failed hoặc refunded.",
+  "orders_count": 42,
+  "products_count": 12,
+  "customers_count": 20,
+  "low_stock_count": 3,
+  "orders_by_status": [{"status": "pending", "count": 2}],
+  "recent_orders": []
+}
+```
+
 ## 9. Status code thường gặp
 
 | Status | Ý nghĩa |
