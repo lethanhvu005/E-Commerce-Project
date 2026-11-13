@@ -57,7 +57,7 @@ export default function ProductCard({ product, isFavorite = false, onFav, onAdd 
       )}
 
       <Link className="gear-product-photo" to={link} aria-label={`Xem ${product.name}`}>
-        <img className="nexa-product-img" src={imgSrc} loading="lazy" decoding="async" alt={product.name} />
+        {imgSrc ? <img className="nexa-product-img" src={imgSrc} loading="lazy" decoding="async" alt={product.name} /> : <span className="image-empty">Chưa có ảnh</span>}
       </Link>
 
       <div className="gear-product-meta">
@@ -69,13 +69,6 @@ export default function ProductCard({ product, isFavorite = false, onFav, onAdd 
           <Link to={link}>{product.short_name || product.name}</Link>
         </h3>
 
-        <div className="gear-rating" role="img" aria-label="4.8 trên 5 sao">
-          <span className="gear-stars" style={{ "--rating-fill": "96%" }} aria-hidden="true">
-            ★★★★★
-          </span>
-          <span>4.8 <i aria-hidden="true">·</i> NEXA</span>
-        </div>
-
         <p>
           <span className="gear-feature-icon" aria-hidden="true">
             <GearIcon name={catCode} />
@@ -84,7 +77,9 @@ export default function ProductCard({ product, isFavorite = false, onFav, onAdd 
         </p>
 
         <div className="gear-price">
-          {money(product.min_price || product.price || 0)}
+          {product.min_price != null || product.price != null
+            ? money(product.min_price ?? product.price)
+            : "Chưa có giá"}
           {product.compare_at_price && <del>{money(product.compare_at_price)}</del>}
         </div>
 

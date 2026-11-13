@@ -300,17 +300,17 @@ export function TrackingPage() {
 
     try {
       const [orderRes, histRes] = await Promise.all([
-        orderService.getOrder(trimmed),
-        orderService.getOrderHistory(trimmed).catch(() => ({ data: [] }))
+        orderService.getOrderDetail(trimmed),
+        orderService.getOrderHistory(trimmed).catch(() => [])
       ]);
-      setOrderData(orderRes.data);
-      const hList = Array.isArray(histRes.data)
-        ? histRes.data
-        : histRes.data?.results || [];
+      setOrderData(orderRes);
+      const hList = Array.isArray(histRes)
+        ? histRes
+        : histRes?.results || [];
       setHistoryData(hList);
     } catch (err) {
       setError(
-        err.response?.status === 404
+        err.status === 404
           ? `Không tìm thấy đơn hàng "${trimmed}". Vui lòng kiểm tra lại mã UUID của đơn.`
           : "Không thể tra cứu đơn hàng lúc này. Vui lòng thử lại sau."
       );

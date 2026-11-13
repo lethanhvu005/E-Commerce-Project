@@ -94,14 +94,15 @@ async function refreshAccessToken() {
 
 // Main fetch function with single-retry on 401
 export async function apiFetch(path, options = {}, retry = true) {
+  const { skipAuth = false, ...fetchOptions } = options;
   const tokens = getTokens();
-  const headers = new Headers(options.headers || {});
+  const headers = new Headers(fetchOptions.headers || {});
 
-  if (options.body && !(options.body instanceof FormData)) {
+  if (fetchOptions.body && !(fetchOptions.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
 
-  if (tokens?.access) {
+  if (!skipAuth && tokens?.access) {
     headers.set("Authorization", `Bearer ${tokens.access}`);
   }
 
@@ -109,7 +110,7 @@ export async function apiFetch(path, options = {}, retry = true) {
 
   let response;
   try {
-    response = await fetch(normalizedPath, { ...options, headers });
+    response = await fetch(normalizedPath, { ...fetchOptions, headers });
   } catch (netErr) {
     const error = new Error("Không thể kết nối đến máy chủ backend (127.0.0.1:8000). Vui lòng kiểm tra backend server.");
     error.status = 0;
@@ -117,7 +118,7 @@ export async function apiFetch(path, options = {}, retry = true) {
   }
 
   // Handle 401 Unauthorized by refreshing token
-  if (response.status === 401 && retry && tokens?.refresh) {
+  if (!skipAuth && response.status === 401 && retry && tokens?.refresh) {
     const nextAccess = await refreshAccessToken();
     if (nextAccess) {
       return apiFetch(path, options, false);
@@ -144,6 +145,7 @@ export async function apiFetch(path, options = {}, retry = true) {
 // Core API Methods
 export const api = {
   get: (path) => apiFetch(path),
+  publicGet: (path) => apiFetch(path, { skipAuth: true }),
   post: (path, body) => apiFetch(path, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
   patch: (path, body) => apiFetch(path, { method: "PATCH", body: body ? JSON.stringify(body) : undefined }),
   delete: (path, body) => apiFetch(path, {
@@ -167,20 +169,20 @@ export const authService = {
 };
 
 export const catalogService = {
-  getHomeBanners: () => api.get("/home-banners/"),
-  getCategories: () => api.get("/categories/"),
-  getBrands: () => api.get("/brands/"),
-  getCollections: () => api.get("/collections/"),
-  getCollectionProducts: (slug) => api.get(`/collections/${slug}/products/`),
+  getHomeBanners: () => api.publicGet("/home-banners/"),
+  getCategories: () => api.publicGet("/categories/"),
+  getBrands: () => api.publicGet("/brands/"),
+  getCollections: () => api.publicGet("/collections/"),
+  getCollectionProducts: (slug) => api.publicGet(`/collections/${slug}/products/`),
   getProducts: (params = {}) => {
     const qs = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== "") qs.set(k, v);
     });
-    return api.get(`/products/?${qs.toString()}`);
+    return api.publicGet(`/products/?${qs.toString()}`);
   },
-  getProductDetail: (slug) => api.get(`/products/${slug}/`),
-  getProductVariants: (slug) => api.get(`/products/${slug}/variants/`),
+  getProductDetail: (slug) => api.publicGet(`/products/${slug}/`),
+  getProductVariants: (slug) => api.publicGet(`/products/${slug}/variants/`),
 };
 
 export const cartService = {
@@ -190,6 +192,7 @@ export const cartService = {
   removeItem: (itemId) => api.delete(`/cart/items/${itemId}/`),
   applyVoucher: (code) => api.post("/cart/voucher/", { code }),
   removeVoucher: () => api.delete("/cart/voucher/"),
+  clearCart: () => api.delete("/cart/items/"),
 };
 
 export const wishlistService = {
@@ -199,10 +202,17 @@ export const wishlistService = {
 };
 
 export const orderService = {
-  getShippingMethods: () => api.get("/shipping-methods/"),
+  getShippingMethods: () => api.publicGet("/shipping-methods/"),
   checkoutPreview: (payload) => api.post("/checkout/preview/", payload),
   createOrder: (payload) => api.post("/orders/", payload),
-  getOrders: () => api.get("/orders/"),
+  getOrders: (params = {}) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") qs.set(key, value);
+    });
+    const query = qs.toString();
+    return api.get(`/orders/${query ? `?${query}` : ""}`);
+  },
   getOrderDetail: (publicId) => api.get(`/orders/${publicId}/`),
   getOrderHistory: (publicId) => api.get(`/orders/${publicId}/history/`),
   cancelOrder: (publicId, reason) => api.post(`/orders/${publicId}/cancel/`, { reason }),
@@ -210,15 +220,17 @@ export const orderService = {
 };
 
 export const promotionService = {
-  getVouchers: () => api.get("/vouchers/"),
+  getVouchers: () => api.publicGet("/vouchers/"),
 };
 
 export const communityService = {
-  getProductReviews: (slug) => api.get(`/products/${slug}/reviews/`),
+  getProductReviews: (slug) => api.publicGet(`/products/${slug}/reviews/`),
   createProductReview: (slug, data) => api.post(`/products/${slug}/reviews/`, data),
-  getProductQuestions: (slug) => api.get(`/products/${slug}/questions/`),
+  updateReview: (reviewId, data) => api.patch(`/reviews/${reviewId}/`, data),
+  deleteReview: (reviewId) => api.delete(`/reviews/${reviewId}/`),
+  getProductQuestions: (slug) => api.publicGet(`/products/${slug}/questions/`),
   createProductQuestion: (slug, data) => api.post(`/products/${slug}/questions/`, data),
-  getQuestionAnswers: (questionId) => api.get(`/questions/${questionId}/answers/`),
+  getQuestionAnswers: (questionId) => api.publicGet(`/questions/${questionId}/answers/`),
   createQuestionAnswer: (questionId, data) => api.post(`/questions/${questionId}/answers/`, data),
 };
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { adminService, catalogService, orderService } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { Loading } from "../components/Feedback";
+import { ErrorBox, Loading } from "../components/Feedback";
 
 export default function AdminDashboardPage() {
   const { user } = useAuth();
@@ -15,6 +15,7 @@ export default function AdminDashboardPage() {
     recentAuditLogs: [],
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!user) {
@@ -24,11 +25,12 @@ export default function AdminDashboardPage() {
 
     const fetchStats = async () => {
       try {
+        setError("");
         const [prodRes, invRes, orderRes, auditRes] = await Promise.all([
-          catalogService.getProducts({ page_size: 1 }).catch(() => ({ count: 0 })),
-          adminService.getInventoryBalances().catch(() => []),
-          orderService.getOrders({ page_size: 1 }).catch(() => ({ count: 0 })),
-          adminService.getAuditLogs().catch(() => []),
+          catalogService.getProducts({ page_size: 1 }),
+          adminService.getInventoryBalances(),
+          orderService.getOrders({ page_size: 1 }),
+          adminService.getAuditLogs(),
         ]);
 
         const pCount = prodRes.count ?? (Array.isArray(prodRes.results) ? prodRes.results.length : 0);
@@ -43,7 +45,11 @@ export default function AdminDashboardPage() {
           recentAuditLogs: auditList.slice(0, 5),
         });
       } catch (err) {
-        console.error("Failed to load admin stats", err);
+        setError(
+          err.status === 403
+            ? "Tài khoản hiện tại không có quyền truy cập khu vực quản trị."
+            : err.message
+        );
       } finally {
         setLoading(false);
       }
@@ -75,6 +81,8 @@ export default function AdminDashboardPage() {
 
       {loading ? (
         <Loading label="Đang nạp dữ liệu quản trị..." />
+      ) : error ? (
+        <ErrorBox message={error} />
       ) : (
         <>
           <div className="admin-kpis" style={{ marginBottom: "32px" }}>

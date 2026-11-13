@@ -416,9 +416,11 @@ export default function ProductDetailPage() {
               </button>
             </div>
 
-            <p className="pd-demo-note" style={{ color: "var(--muted)", margin: "16px 0 0" }}>
-              Bảo hành chính hãng {product.warranty_months || 12} tháng. Đổi mới trong 30 ngày nếu lỗi từ nhà sản xuất.
-            </p>
+            {product.warranty_months ? (
+              <p className="pd-demo-note" style={{ color: "var(--muted)", margin: "16px 0 0" }}>
+                Bảo hành chính hãng {product.warranty_months} tháng.
+              </p>
+            ) : null}
 
             {/* Specifications Card */}
             {product.specifications && typeof product.specifications === "object" && (

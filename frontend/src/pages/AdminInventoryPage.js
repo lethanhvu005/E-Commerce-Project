@@ -94,7 +94,9 @@ export default function AdminInventoryPage() {
   const totalOnHand = balances.reduce((sum, b) => sum + (Number(b.on_hand) || 0), 0);
   const totalReserved = balances.reduce((sum, b) => sum + (Number(b.reserved) || 0), 0);
   const totalAvailable = balances.reduce((sum, b) => sum + (Number(b.available) || 0), 0);
-  const lowStockCount = balances.filter((b) => (b.available || 0) <= (b.low_stock_threshold || 5)).length;
+  const lowStockCount = balances.filter(
+    (b) => b.low_stock_threshold != null && Number(b.available) <= Number(b.low_stock_threshold)
+  ).length;
 
   return (
     <div className="container" style={{ padding: "30px 0 80px" }}>
@@ -207,7 +209,7 @@ export default function AdminInventoryPage() {
                     <td style={{ padding: "12px 10px", fontWeight: 700 }}>{b.on_hand}</td>
                     <td style={{ padding: "12px 10px", color: "#c97714" }}>{b.reserved}</td>
                     <td style={{ padding: "12px 10px" }}>
-                      <span style={{ fontWeight: 800, color: b.available <= (b.low_stock_threshold || 5) ? "#d43b62" : "var(--action)" }}>
+                      <span style={{ fontWeight: 800, color: b.low_stock_threshold != null && Number(b.available) <= Number(b.low_stock_threshold) ? "#d43b62" : "var(--action)" }}>
                         {b.available}
                       </span>
                     </td>
