@@ -199,7 +199,7 @@ export default function CheckoutPage() {
         </span>
       </nav>
 
-      {error && <ErrorBox error={error} />}
+      {error && <ErrorBox error={error} variant="inline" />}
 
       <div
         className="checkout-grid"

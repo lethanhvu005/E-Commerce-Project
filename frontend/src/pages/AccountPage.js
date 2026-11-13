@@ -157,7 +157,7 @@ export default function AccountPage() {
         <span className="ux-hero-orbit" aria-hidden="true">N</span>
       </section>
 
-      {error && <ErrorBox error={error} />}
+      {error && <ErrorBox error={error} variant="inline" />}
 
       {/* Two Column Section matching profile.html */}
       <div className="ux-two">

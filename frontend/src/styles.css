@@ -1754,123 +1754,144 @@ html[data-theme="light"] .nexa-error-banner {
 }
 
 /* Compact Auth Page Layout (.nexa-auth-page) so full Login/Register frame fits in viewport */
-.nexa-auth-page.ux-page {
-  padding-top: 6px !important;
-  padding-bottom: 24px !important;
+html[data-theme] .main-with-mobile .nexa-auth-page.ux-page {
+  padding-top: 6px;
+  padding-bottom: 24px;
 }
 
-.nexa-auth-hero.ux-hero {
-  max-width: 1020px !important;
-  margin: 10px auto 14px !important;
-  padding: 14px 26px !important;
-  min-height: 0 !important;
-  border-radius: 14px !important;
+html[data-theme] .main-with-mobile .nexa-auth-hero.ux-hero {
+  max-width: 1020px;
+  margin: 10px auto 14px;
+  padding: 14px 26px;
+  min-height: 0;
+  border-radius: 14px;
 }
 
-.nexa-auth-hero.ux-hero .ux-kicker {
-  font-size: 9.5px !important;
+html[data-theme] .main-with-mobile .nexa-auth-hero.ux-hero .ux-kicker {
+  font-size: 9.5px;
 }
 
-.nexa-auth-hero.ux-hero h1 {
-  font-size: clamp(22px, 2.3vw, 28px) !important;
-  margin: 3px 0 4px !important;
-  line-height: 1.15 !important;
+html[data-theme] .main-with-mobile .nexa-auth-hero.ux-hero h1 {
+  font-size: clamp(22px, 2.3vw, 28px);
+  margin: 3px 0 4px;
+  line-height: 1.15;
 }
 
-.nexa-auth-hero.ux-hero p {
-  font-size: 12.5px !important;
-  line-height: 1.45 !important;
+html[data-theme] .main-with-mobile .nexa-auth-hero.ux-hero p {
+  font-size: 12.5px;
+  line-height: 1.45;
 }
 
-.nexa-auth-hero.ux-hero .ux-hero-orbit {
-  font-size: 160px !important;
-  bottom: -48px !important;
+html[data-theme] .main-with-mobile .nexa-auth-hero.ux-hero .ux-hero-orbit {
+  font-size: 160px;
+  bottom: -48px;
 }
 
-.nexa-auth-page .ux-auth {
-  max-width: 1020px !important;
-  gap: 16px !important;
-  align-items: stretch !important;
+html[data-theme] .main-with-mobile .nexa-auth-page .ux-auth {
+  max-width: 1020px;
+  gap: 16px;
+  align-items: stretch;
 }
 
-.nexa-auth-page .ux-card {
-  padding: 20px 24px !important;
-  border-radius: 14px !important;
+html[data-theme] .main-with-mobile .nexa-auth-page .ux-card {
+  padding: 20px 24px;
+  border-radius: 14px;
 }
 
-.nexa-auth-page .ux-card h2 {
-  font-size: 20px !important;
-  margin: 0 0 12px !important;
+html[data-theme] .main-with-mobile .nexa-auth-page .ux-card h2 {
+  font-size: 20px;
+  margin: 0 0 12px;
 }
 
-.nexa-auth-page .ux-social-button {
-  padding: 9px 8px !important;
-  font-size: 11.5px !important;
+html[data-theme] .main-with-mobile .nexa-auth-page .ux-social-button {
+  padding: 9px 8px;
+  font-size: 11.5px;
 }
 
-.nexa-auth-page .ux-separator {
-  margin: 14px 0 !important;
+html[data-theme] .main-with-mobile .nexa-auth-page .ux-separator {
+  margin: 14px 0;
 }
 
-.nexa-auth-page .ux-card label {
-  margin: 10px 0 4px !important;
-  font-size: 11.5px !important;
+html[data-theme] .main-with-mobile .nexa-auth-page .ux-card label {
+  margin: 10px 0 4px;
+  font-size: 11.5px;
 }
 
-.nexa-auth-page .ux-card .field {
-  min-height: 39px !important;
-  padding: 8px 12px !important;
-  margin-top: 4px !important;
-  font-size: 13px !important;
+html[data-theme] .main-with-mobile .nexa-auth-page .ux-card .field {
+  min-height: 39px;
+  padding: 8px 12px;
+  margin-top: 4px;
+  font-size: 13px;
 }
 
-.nexa-auth-page .form-grid {
+html[data-theme] .main-with-mobile .nexa-auth-page .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
 
-.nexa-auth-submit {
+html[data-theme] .main-with-mobile .nexa-auth-page .ux-card .nexa-auth-submit {
   width: 100%;
-  margin-top: 12px !important;
-  padding: 11px 14px !important;
-  font-size: 13.5px !important;
+  margin-top: 12px;
+  padding: 11px 14px;
+  font-size: 13.5px;
 }
 
-.nexa-auth-switch {
+html[data-theme] .main-with-mobile .nexa-auth-page .ux-card .nexa-auth-switch {
   text-align: center;
-  margin: 12px 0 0 !important;
+  margin: 12px 0 0;
   color: var(--muted);
-  font-size: 12px !important;
+  font-size: 12px;
 }
 
-.nexa-auth-page .ux-auth-promo {
-  min-height: 0 !important;
-  padding: 22px 26px !important;
+html[data-theme] .main-with-mobile .nexa-auth-page .ux-auth-promo {
+  min-height: 0;
+  padding: 22px 26px;
 }
 
-.nexa-auth-page .ux-auth-promo .ux-icon {
-  font-size: 40px !important;
+html[data-theme] .main-with-mobile .nexa-auth-page .ux-auth-promo .ux-icon {
+  font-size: 40px;
   line-height: 1;
   margin-bottom: 8px;
 }
 
-.nexa-auth-page .ux-auth-promo h2 {
-  font-size: clamp(22px, 2.4vw, 30px) !important;
-  line-height: 1.15 !important;
-  margin-bottom: 10px !important;
+html[data-theme] .main-with-mobile .nexa-auth-page .ux-auth-promo h2 {
+  font-size: clamp(22px, 2.4vw, 30px);
+  line-height: 1.15;
+  margin-bottom: 10px;
 }
 
-.nexa-auth-page .ux-auth-promo p {
-  font-size: 13px !important;
-  line-height: 1.55 !important;
-  margin-bottom: 10px !important;
+html[data-theme] .main-with-mobile .nexa-auth-page .ux-auth-promo p {
+  font-size: 13px;
+  line-height: 1.55;
+  margin-bottom: 10px;
 }
 
-.nexa-auth-page .ux-benefits {
-  line-height: 1.85 !important;
-  font-size: 12.5px !important;
+html[data-theme] .main-with-mobile .nexa-auth-page .ux-benefits {
+  line-height: 1.85;
+  font-size: 12.5px;
   margin: 0;
+}
+
+@media (max-width: 900px) {
+  html[data-theme] .main-with-mobile .nexa-auth-hero.ux-hero {
+    padding: 12px 18px;
+    margin: 8px auto 10px;
+  }
+
+  html[data-theme] .main-with-mobile .nexa-auth-hero.ux-hero p {
+    display: none;
+  }
+
+  html[data-theme] .main-with-mobile .nexa-auth-page .ux-auth-promo {
+    display: none;
+  }
+}
+
+@media (max-width: 570px) {
+  html[data-theme] .main-with-mobile .nexa-auth-page .form-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 1150px) {

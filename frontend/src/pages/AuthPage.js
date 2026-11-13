@@ -163,7 +163,7 @@ export default function AuthPage({ mode = "login" }) {
               placeholder="Tối thiểu 8 ký tự..."
             />
 
-            {error && <ErrorBox error={error} />}
+            {error && <ErrorBox error={error} variant="inline" />}
 
             <button
               type="submit"
