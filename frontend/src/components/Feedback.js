@@ -1,3 +1,6 @@
+import { useEffect } from "react";
+import { createPortal } from "react-dom";
+
 export function Loading({ label = "Đang tải dữ liệu từ máy chủ..." }) {
   return (
     <div className="empty" style={{ margin: "30px 0" }}>
@@ -62,17 +65,28 @@ export function ErrorBox({ error, onRetry }) {
 }
 
 export function Toast({ message, type = "info", onClose }) {
+  useEffect(() => {
+    if (!message || !onClose) return undefined;
+    const timer = window.setTimeout(() => {
+      onClose();
+    }, 3600);
+    return () => window.clearTimeout(timer);
+  }, [message, onClose]);
+
   if (!message) return null;
-  return (
-    <div className="toast-region">
+
+  const content = (
+    <div className="toast-region" role="status" aria-live="polite">
       <div className={`toast ${type === "warn" ? "warn" : ""}`}>
         <span>{message}</span>
         {onClose && (
-          <button className="toast-action" onClick={onClose}>
+          <button type="button" className="toast-action" onClick={onClose}>
             Đóng
           </button>
         )}
       </div>
     </div>
   );
+
+  return typeof document !== "undefined" ? createPortal(content, document.body) : content;
 }

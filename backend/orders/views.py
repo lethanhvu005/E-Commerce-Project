@@ -30,7 +30,11 @@ def checkout_preview(request):
 @permission_classes([IsAuthenticated])
 def orders(request):
     if request.method == "GET":
-        queryset = Order.objects.filter(user=request.user).prefetch_related("items").order_by("-created_at", "-id")
+        queryset = (
+            Order.objects.filter(user=request.user)
+            .prefetch_related("items__variant__product__images", "items__variant__product__category")
+            .order_by("-created_at", "-id")
+        )
         requested_status = request.query_params.get("status")
         if requested_status:
             queryset = queryset.filter(status=requested_status)
@@ -55,7 +59,10 @@ def orders(request):
 @permission_classes([IsAuthenticated])
 def order_detail(request, public_id):
     order = get_object_or_404(
-        Order.objects.prefetch_related("items").select_related("delivery_address"),
+        Order.objects.prefetch_related(
+            "items__variant__product__images",
+            "items__variant__product__category",
+        ).select_related("delivery_address"),
         public_id=public_id, user=request.user,
     )
     return Response(OrderSerializer(order).data)

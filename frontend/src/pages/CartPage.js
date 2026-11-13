@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useOutletContext } from "react-router-dom";
 import { cartService } from "../api/client";
-import { money, productImage } from "../api/format";
+import { fallbackProductImage, money, productImage } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import { ErrorBox, Loading, Toast } from "../components/Feedback";
 
@@ -191,8 +191,12 @@ export default function CartPage() {
                     to={item.product_slug ? `/products/${item.product_slug}` : "/products"}
                   >
                     <img
-                      src={productImage({ cover_image: item.cover_image, category: item.category })}
+                      src={productImage(item)}
                       alt={item.product_name}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = fallbackProductImage(item);
+                      }}
                     />
                   </Link>
 

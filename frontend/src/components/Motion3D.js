@@ -1,6 +1,7 @@
 import { createElement, useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
-import { money, productImage } from "../api/format";
+import { fallbackProductImage, money, productImage } from "../api/format";
 
 /**
  * High-performance 3D Perspective Tilt Container.
@@ -176,10 +177,10 @@ export function QuickViewModal({ product, isOpen, onClose, onAdd, onFav, isFavor
   const price = product.min_price ?? product.price;
   const stock = product.available_stock ?? 10;
 
-  return (
+  const modalNode = (
     <div className="nexa-qv-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label={`Xem nhanh ${product.name}`}>
       <div className="nexa-qv-modal" onClick={(e) => e.stopPropagation()}>
-        <button className="nexa-qv-close" onClick={onClose} aria-label="Đóng cửa sổ xem nhanh">
+        <button type="button" className="nexa-qv-close" onClick={onClose} aria-label="Đóng cửa sổ xem nhanh">
           ×
         </button>
 
@@ -189,7 +190,15 @@ export function QuickViewModal({ product, isOpen, onClose, onAdd, onFav, isFavor
             <div className="nexa-qv-orbit nexa-qv-orbit-2" aria-hidden="true" />
             <div className="nexa-qv-glow" style={{ "--glow-color": product.accent_color || "#4868ff" }} aria-hidden="true" />
             {imgSrc ? (
-              <img className="nexa-qv-img" src={imgSrc} alt={product.name} />
+              <img
+                className="nexa-qv-img"
+                src={imgSrc}
+                alt={product.name}
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = fallbackProductImage(product);
+                }}
+              />
             ) : (
               <span className="image-empty">Chưa có ảnh</span>
             )}
@@ -266,4 +275,6 @@ export function QuickViewModal({ product, isOpen, onClose, onAdd, onFav, isFavor
       </div>
     </div>
   );
+
+  return typeof document !== "undefined" ? createPortal(modalNode, document.body) : modalNode;
 }

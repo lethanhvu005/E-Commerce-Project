@@ -49,7 +49,7 @@ export default function OrdersPage() {
       return;
     }
     loadOrders();
-  }, [user]);
+  }, [user, navigate]);
 
   // Filter orders by status
   const filteredOrders = orders.filter((o) => {

@@ -1,7 +1,44 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { cartService, catalogService, wishlistService } from "../api/client";
+
+function NexaLogoMark() {
+  return (
+    <span className="gear-mark nexa-logo-mark" aria-hidden="true">
+      <svg viewBox="0 0 38 38" width="24" height="24" fill="none">
+        <defs>
+          <linearGradient id="nexaLogoGrad" x1="4" y1="4" x2="34" y2="34" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#6eb4ff" />
+            <stop offset="50%" stopColor="#2868e8" />
+            <stop offset="100%" stopColor="#43e6e3" />
+          </linearGradient>
+          <linearGradient id="nexaWingGrad" x1="8" y1="8" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="100%" stopColor="#9cc6ff" />
+          </linearGradient>
+        </defs>
+        {/* Outer precision hex-shield */}
+        <path
+          d="M19 2.5L33.5 9.8V28.2L19 35.5L4.5 28.2V9.8L19 2.5Z"
+          stroke="url(#nexaLogoGrad)"
+          strokeWidth="1.75"
+          fill="rgba(21, 88, 201, 0.16)"
+        />
+        {/* Dynamic N geometric wing */}
+        <path
+          d="M11.5 26.5V11.5L16.2 11.5L22.8 20.6V11.5H26.5V26.5H21.8L15.2 17.4V26.5H11.5Z"
+          fill="url(#nexaWingGrad)"
+        />
+        {/* Cyber cyan accent slash */}
+        <path
+          d="M24.2 8.2L29.2 11.1L26.5 13.2L24.2 8.2Z"
+          fill="#43e6e3"
+        />
+      </svg>
+    </span>
+  );
+}
 
 function Icon({ name, className }) {
   const paths = {
@@ -141,8 +178,27 @@ export default function Layout() {
     const onScroll = () => {
       setShowBackTop(window.scrollY > 420);
     };
+    const onDocClick = (e) => {
+      if (megaRef.current && megaRef.current.hasAttribute("open")) {
+        if (!megaRef.current.contains(e.target) || e.target.closest(".mega-panel a")) {
+          megaRef.current.removeAttribute("open");
+        }
+      }
+    };
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (megaRef.current) megaRef.current.removeAttribute("open");
+        setMenuOpen(false);
+      }
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    document.addEventListener("click", onDocClick);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      document.removeEventListener("click", onDocClick);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, []);
 
   const refreshCartCount = useCallback(async () => {
@@ -178,12 +234,31 @@ export default function Layout() {
     refreshWishlist();
   }, [refreshCartCount, refreshWishlist]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (megaRef.current) {
       megaRef.current.removeAttribute("open");
     }
     setMenuOpen(false);
-  }, [location.pathname, location.search]);
+
+    if (location.hash) {
+      const targetId = location.hash.replace(/^#/, "");
+      const targetEl = document.getElementById(targetId);
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+    }
+
+    const root = document.documentElement;
+    const prevBehavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    window.scrollTo(0, 0);
+    root.scrollTop = 0;
+    document.body.scrollTop = 0;
+    requestAnimationFrame(() => {
+      root.style.scrollBehavior = prevBehavior;
+    });
+  }, [location.pathname, location.search, location.hash, location.key]);
 
   const submitSearch = (e) => {
     e.preventDefault();
@@ -264,12 +339,13 @@ export default function Layout() {
             <Icon name="menu" />
           </button>
 
-          <Link className="gear-brand" to="/" aria-label="NEXA GEAR — Trang chủ">
-            <span className="gear-mark nexa-mark-3d" aria-hidden="true">
-              N
-            </span>
-            <span>
-              NEXA<small>ELEVATE YOUR PLAY</small>
+          <Link className="gear-brand nexa-brand-redesign" to="/" aria-label="NEXA GEAR — Trang chủ">
+            <NexaLogoMark />
+            <span className="nexa-brand-text">
+              <strong className="nexa-wordmark">
+                NEXA<i className="nexa-wordmark-dot" />
+              </strong>
+              <small>GAMING GEAR</small>
             </span>
           </Link>
 
@@ -292,8 +368,8 @@ export default function Layout() {
                   <div className="mega-catalog">
                     <div className="mega-heading">
                       <div>
-                        <span className="gear-kicker">KHÁM PHÁ HỆ SINH THÁI NEXA</span>
-                        <strong>Chọn thiết bị theo phong cách chiến đấu của bạn.</strong>
+                        <span className="gear-kicker">DANH MỤC SẢN PHẨM</span>
+                        <strong>Thiết bị chính hãng cho góc máy của bạn</strong>
                       </div>
                       <Link to="/products">
                         Tất cả sản phẩm <span aria-hidden="true">↗</span>
@@ -603,6 +679,8 @@ export default function Layout() {
       >
         <Outlet
           context={{
+            theme,
+            setTheme,
             cartCount,
             setCartCount,
             refreshCartCount,
@@ -642,18 +720,19 @@ export default function Layout() {
 
           <div className="gear-footer-grid">
             <div>
-              <Link className="gear-brand" to="/" aria-label="NEXA GEAR — Trang chủ">
-                <span className="gear-mark" aria-hidden="true">
-                  N
-                </span>
-                <span>
-                  NEXA<small>ELEVATE YOUR PLAY</small>
+              <Link className="gear-brand nexa-brand-redesign" to="/" aria-label="NEXA GEAR — Trang chủ">
+                <NexaLogoMark />
+                <span className="nexa-brand-text">
+                  <strong className="nexa-wordmark">
+                    NEXA<i className="nexa-wordmark-dot" />
+                  </strong>
+                  <small>GAMING GEAR</small>
                 </span>
               </Link>
               <p>
-                Bàn phím cơ, chuột gaming và âm thanh chuẩn eSports.
+                Chuyên bàn phím cơ, chuột gaming, tai nghe và phụ kiện chính hãng.
                 <br />
-                Chọn thiết bị theo cách bạn làm chủ cuộc chơi.
+                Bảo hành 24 tháng, giao nhanh toàn quốc.
               </p>
             </div>
 

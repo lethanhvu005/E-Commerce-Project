@@ -50,7 +50,11 @@ def add_item(user, variant_id, quantity):
 
 
 def cart_totals(cart):
-    items = list(cart.items.select_related("variant__product").order_by("id"))
+    items = list(
+        cart.items.select_related("variant__product__category", "variant__product__brand")
+        .prefetch_related("variant__product__images")
+        .order_by("id")
+    )
     subtotal = sum((item.variant.price * item.quantity for item in items), Decimal("0"))
     discount = Decimal("0")
     if cart.voucher_id:

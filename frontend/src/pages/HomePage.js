@@ -1,18 +1,96 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useOutletContext } from "react-router-dom";
 import { cartService, catalogService, wishlistService } from "../api/client";
-import { assetUrl, categoryImage, money, productImage } from "../api/format";
+import { assetUrl, categoryImage, fallbackProductImage, money, productImage } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import ProductCard from "../components/ProductCard";
-import { Interactive3DStage, QuickViewModal, Tilt3DCard } from "../components/Motion3D";
+import { QuickViewModal, Tilt3DCard } from "../components/Motion3D";
 import { Empty, ErrorBox, Loading, Toast } from "../components/Feedback";
 
 function ArrowIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+    <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M5 12h14m-6-6 6 6-6 6" />
     </svg>
   );
+}
+
+function HeroWaves({ index }) {
+  return (
+    <svg
+      className="hero-waves"
+      viewBox="0 0 1440 620"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <defs>
+        <linearGradient id={`wave-ink-${index}`} x1="0" y1="0" x2="1" y2=".3">
+          <stop offset="0" stopColor="var(--wave-deep)" stopOpacity="0" />
+          <stop offset=".43" stopColor="var(--wave-blue)" />
+          <stop offset=".65" stopColor="var(--wave-ice)" />
+          <stop offset="1" stopColor="var(--wave-blue)" stopOpacity=".1" />
+        </linearGradient>
+        <linearGradient id={`wave-fill-${index}`} x1="0" y1="0" x2=".5" y2="1">
+          <stop stopColor="var(--wave-blue)" stopOpacity=".2" />
+          <stop offset="1" stopColor="var(--wave-deep)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <g fill={`url(#wave-fill-${index})`}>
+        <path d="M140 475C390 610 415 275 710 355S1100 590 1440 280L1440 465C1120 680 970 455 700 430S345 655 140 475Z" />
+        <path d="M290 260C490 60 560 440 780 210S1090 100 1340 65C1140 285 950 115 770 320S470 250 290 260Z" />
+        <path d="M550 560C800 360 945 650 1300 390L1440 485C1190 685 950 550 760 585Z" />
+      </g>
+      <g fill="none" stroke={`url(#wave-ink-${index})`}>
+        <path
+          className="wave-aura"
+          d="M100 470C390 610 415 275 710 355S1100 590 1440 280M290 260C490 60 560 440 780 210S1090 100 1340 65M550 560C800 360 945 650 1300 390"
+        />
+        <path
+          className="wave-edge"
+          d="M100 470C390 610 415 275 710 355S1100 590 1440 280M290 260C490 60 560 440 780 210S1090 100 1340 65M550 560C800 360 945 650 1300 390"
+        />
+      </g>
+    </svg>
+  );
+}
+
+function getCampaignMeta(banner, index) {
+  const key = `${banner?.desktop_image_key || ""} ${banner?.link_path || ""} ${banner?.title || ""}`.toLowerCase();
+  const rawDark = assetUrl(banner?.desktop_image_key);
+  const rawLight = assetUrl(banner?.mobile_image_key);
+
+  if (key.includes("keys") || key.includes("ban-phim") || key.includes("phím") || index === 1) {
+    return {
+      campaignClass: "campaign-keys",
+      darkImg: rawDark && !rawDark.includes("-day") ? rawDark : "/assets/images/campaign/cobalt-keys-lettered.png",
+      lightImg: rawLight && rawLight.includes("-day") ? rawLight : "/assets/images/campaign/cobalt-keys-day.png",
+      eyebrow: "DÀNH CHO NHỮNG ĐIỀU BẠN TẠO NÊN",
+      indexLabel: "BỘ SƯU TẬP BÀN PHÍM",
+      noteLines: ["Thiết kế tinh gọn.", "Cảm hứng bất tận."],
+      alt: "Ảnh ý tưởng bàn phím giữa những cánh hoa xanh cobalt",
+    };
+  }
+  if (key.includes("motion") || key.includes("chuot") || key.includes("chuyển động") || index === 2) {
+    return {
+      campaignClass: "campaign-motion",
+      darkImg: rawDark && !rawDark.includes("-day") ? rawDark : "/assets/images/campaign/cobalt-motion.png",
+      lightImg: rawLight && rawLight.includes("-day") ? rawLight : "/assets/images/campaign/cobalt-motion-day.png",
+      eyebrow: "CÔNG NGHỆ HÒA VÀO NHỊP SỐNG",
+      indexLabel: "BỘ SƯU TẬP CHUỘT",
+      noteLines: ["Chuyển động tự nhiên.", "Trải nghiệm liền mạch."],
+      alt: "Ảnh ý tưởng chuột giữa những cánh hoa xanh cobalt",
+    };
+  }
+  return {
+    campaignClass: "campaign-sound",
+    darkImg: rawDark && !rawDark.includes("-day") ? rawDark : "/assets/images/campaign/cobalt-sound-wide.png",
+    lightImg: rawLight && rawLight.includes("-day") ? rawLight : "/assets/images/campaign/cobalt-sound-wide-day.png",
+    eyebrow: "ÂM THANH ĐỒNG HÀNH CÙNG BẠN",
+    indexLabel: "BỘ SƯU TẬP TAI NGHE",
+    noteLines: ["Chạm vào âm nhạc.", "Chạm đến cảm xúc."],
+    alt: "Ảnh ý tưởng tai nghe giữa những cánh hoa xanh cobalt",
+  };
 }
 
 function splitTitle(title = "") {
@@ -20,33 +98,38 @@ function splitTitle(title = "") {
   const accentLength = words.length > 3 ? 2 : 1;
   const accent = words.slice(0, accentLength).join(" ");
   const rest = words.slice(accentLength);
-  const midpoint = Math.ceil(rest.length / 2);
+  const midpoint = Math.floor(rest.length / 2) || 1;
+  const line1 = rest.slice(0, midpoint).join(" ");
+  let line2 = rest.slice(midpoint).join(" ");
+  if (line2 && !line2.endsWith(".")) {
+    line2 = `${line2}.`;
+  }
   return {
     accent,
-    lines: [rest.slice(0, midpoint).join(" "), rest.slice(midpoint).join(" ")].filter(Boolean),
+    lines: [line1, line2].filter(Boolean),
   };
 }
 
 const TRUST_PILLARS = [
   {
     icon: "⚡",
-    title: "Giao hỏa tốc nội thành",
-    desc: "Nhận gear siêu tốc trong 2–4h, đóng gói chống sốc 3 lớp.",
+    title: "Giao nhanh nội thành 2–4h",
+    desc: "Đóng gói chống sốc 3 lớp, nhận hàng ngay trong ngày.",
   },
   {
     icon: "🛡️",
-    title: "Bảo hành chính hãng 24T",
-    desc: "1 đổi 1 trong 30 ngày đầu nếu phát sinh lỗi nhà sản xuất.",
+    title: "Bảo hành chính hãng 24 tháng",
+    desc: "Hỗ trợ 1 đổi 1 trong 30 ngày đầu nếu có lỗi phần cứng.",
   },
   {
-    icon: "🎛️",
-    title: "Chuẩn eSports Pro-Grade",
-    desc: "Tuyển chọn switch, sensor và âm thanh độ trễ bằng 0.",
+    icon: "🎧",
+    title: "Trải nghiệm & Tư vấn thực tế",
+    desc: "Đội ngũ kỹ thuật hỗ trợ chọn switch, form chuột và âm thanh phù hợp.",
   },
   {
-    icon: "💎",
-    title: "Ưu đãi & Voucher thực",
-    desc: "Áp mã giảm giá trực tiếp từ hệ thống trên từng đơn hàng.",
+    icon: "🏷️",
+    title: "Ưu đãi thành viên & Voucher",
+    desc: "Áp mã giảm giá trực tiếp khi thanh toán, tích điểm mọi đơn hàng.",
   },
 ];
 
@@ -54,7 +137,7 @@ export default function HomePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const outlet = useOutletContext() || {};
-  const { wishlistIds = new Set(), refreshWishlist, refreshCartCount } = outlet;
+  const { theme = "dark", wishlistIds = new Set(), refreshWishlist, refreshCartCount } = outlet;
 
   const [data, setData] = useState({
     banners: null,
@@ -66,9 +149,11 @@ export default function HomePage() {
   const [slide, setSlide] = useState(0);
   const [paused, setPaused] = useState(false);
   const [activeCategory, setActiveCategory] = useState("");
+  const [productPage, setProductPage] = useState(0);
   const [error, setError] = useState(null);
   const [toastMsg, setToastMsg] = useState("");
   const [quickViewProduct, setQuickViewProduct] = useState(null);
+  const [heroTilt, setHeroTilt] = useState({ tx: 0, ty: 0, rx: 0, ry: 0 });
 
   const loadHome = useCallback(() => {
     setError(null);
@@ -77,7 +162,7 @@ export default function HomePage() {
       catalogService.getCategories(),
       catalogService.getBrands(),
       catalogService.getCollections(),
-      catalogService.getProducts({ page_size: 12, ordering: "-created_at" }),
+      catalogService.getProducts({ page_size: 24, ordering: "-created_at" }),
     ])
       .then(([banners, categories, brands, collections, products]) =>
         setData({
@@ -102,13 +187,33 @@ export default function HomePage() {
     return () => window.clearInterval(timer);
   }, [paused, data.banners]);
 
-  const visibleProducts = useMemo(() => {
+  const HOME_PRODUCTS_PER_VIEW = 24;
+
+  const filteredProducts = useMemo(() => {
     if (!data.products) return null;
-    const filtered = activeCategory
+    const base = activeCategory
       ? data.products.filter((item) => item.category?.slug === activeCategory)
       : data.products;
-    return filtered.slice(0, 8);
+    if (!activeCategory && base.length > 0 && base.length < HOME_PRODUCTS_PER_VIEW) {
+      return Array.from({ length: HOME_PRODUCTS_PER_VIEW }, (_, idx) => {
+        const source = base[idx % base.length];
+        return idx < base.length ? source : { ...source, _renderKey: `${source.id}-dup-${idx}` };
+      });
+    }
+    return base;
   }, [activeCategory, data.products]);
+
+  const totalProductPages = useMemo(() => {
+    if (!filteredProducts || filteredProducts.length === 0) return 1;
+    return Math.ceil(filteredProducts.length / HOME_PRODUCTS_PER_VIEW);
+  }, [filteredProducts]);
+
+  const visibleProducts = useMemo(() => {
+    if (!filteredProducts) return null;
+    const safePage = Math.min(productPage, Math.max(0, totalProductPages - 1));
+    const start = safePage * HOME_PRODUCTS_PER_VIEW;
+    return filteredProducts.slice(start, start + HOME_PRODUCTS_PER_VIEW);
+  }, [filteredProducts, productPage, totalProductPages]);
 
   const spotlightProduct = useMemo(() => {
     if (!data.products || data.products.length === 0) return null;
@@ -161,6 +266,22 @@ export default function HomePage() {
 
   const bannerCount = data.banners?.length || 0;
 
+  const handleHeroMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const nx = (e.clientX - rect.left) / rect.width - 0.5;
+    const ny = (e.clientY - rect.top) / rect.height - 0.5;
+    setHeroTilt({
+      tx: Number((nx * -22).toFixed(2)),
+      ty: Number((ny * -14).toFixed(2)),
+      rx: Number((ny * -5).toFixed(2)),
+      ry: Number((nx * 7).toFixed(2)),
+    });
+  };
+
+  const handleHeroMouseLeave = () => {
+    setHeroTilt({ tx: 0, ty: 0, rx: 0, ry: 0 });
+  };
+
   return (
     <>
       <Toast message={toastMsg} onClose={() => setToastMsg("")} />
@@ -174,15 +295,24 @@ export default function HomePage() {
         isFavorite={quickViewProduct ? wishlistIds.has(quickViewProduct.id) : false}
       />
 
-      {/* 3D Interactive Hero Carousel */}
+      {/* Hero Carousel with 3D spatial transition & Dark/Light daytime support */}
       <section
-        className="gear-hero container nexa-hero-3d-wrap"
+        className="gear-hero container nexa-hero-cinematic"
         aria-roledescription="carousel"
         aria-label="Sản phẩm được giới thiệu"
+        tabIndex="0"
+        onMouseMove={handleHeroMouseMove}
+        onMouseLeave={handleHeroMouseLeave}
+        style={{
+          "--hero-tx": `${heroTilt.tx}px`,
+          "--hero-ty": `${heroTilt.ty}px`,
+          "--hero-rx": `${heroTilt.rx}deg`,
+          "--hero-ry": `${heroTilt.ry}deg`,
+        }}
       >
         {!data.banners && !error && (
           <div className="legacy-hero-state">
-            <Loading label="Đang tải không gian 3D..." />
+            <Loading label="Đang tải không gian trưng bày..." />
           </div>
         )}
         {data.banners?.length === 0 && (
@@ -195,47 +325,45 @@ export default function HomePage() {
         )}
         {bannerCount > 0 && (
           <>
-            <Interactive3DStage className="slider-viewport" intensity={15}>
-              {/* 3D Ambient Rings & Grid Floor */}
-              <div className="nexa-hero-ambient" aria-hidden="true">
-                <span className="nexa-orbit-ring ring-1" />
-                <span className="nexa-orbit-ring ring-2" />
-                <span className="nexa-hero-spotlight" />
-              </div>
-
+            <div className="slider-viewport nexa-slider-stage">
               {data.banners.map((banner, index) => {
+                const meta = getCampaignMeta(banner, index);
                 const title = splitTitle(banner.title);
-                const desktopImage = assetUrl(banner.desktop_image_key);
+                const activeImageSrc = theme === "light" ? meta.lightImg : meta.darkImg;
                 const isActive = index === slide;
+                const prevIndex = (slide - 1 + bannerCount) % bannerCount;
+                const stateClass = isActive
+                  ? "is-active"
+                  : index === prevIndex
+                  ? "is-prev"
+                  : "is-next";
                 return (
                   <div
-                    className={`gear-slide ${isActive ? "is-active-slide" : ""}`}
-                    key={banner.id}
-                    hidden={!isActive}
+                    className={`gear-slide ${meta.campaignClass} ${stateClass}`}
+                    data-slide-panel={index}
+                    key={banner.id || index}
+                    aria-hidden={!isActive}
                   >
-                    <div className="gear-stage nexa-3d-stage-object">
-                      {desktopImage ? (
-                        <picture>
-                          <source
-                            media="(max-width: 600px)"
-                            srcSet={assetUrl(banner.mobile_image_key) || desktopImage}
-                          />
-                          <img
-                            className="hero-product-image nexa-hero-3d-img"
-                            src={desktopImage}
-                            alt={banner.title}
-                          />
-                        </picture>
-                      ) : (
-                        <span className="image-empty hero-image-empty">Chưa có ảnh banner</span>
-                      )}
-                      <span className="campaign-caption">NEXA 3D / HARDWARE LAB</span>
+                    <HeroWaves index={index} />
+                    <div className="gear-stage">
+                      <span className="nexa-stage-aura" aria-hidden="true" />
+                      <img
+                        className="hero-product-image"
+                        src={activeImageSrc}
+                        data-dark-src={meta.darkImg}
+                        data-light-src={meta.lightImg}
+                        width="1536"
+                        height="1024"
+                        alt={meta.alt || banner.title}
+                        fetchPriority={index === 0 ? "high" : undefined}
+                        loading={index === 0 ? undefined : "lazy"}
+                        decoding="async"
+                      />
+                      <span className="campaign-caption">NEXA / ẢNH Ý TƯỞNG</span>
                     </div>
 
-                    <div className="gear-slide-copy nexa-3d-copy-layer">
-                      <span className="gear-kicker">
-                        <i className="nexa-pulse-dot" aria-hidden="true" /> NEXA GEAR / DESIGNED FOR YOU
-                      </span>
+                    <div className="gear-slide-copy">
+                      <span className="gear-kicker">{meta.eyebrow}</span>
                       <h1>
                         <em>{title.accent}</em>
                         {title.lines.map((line) => (
@@ -245,73 +373,79 @@ export default function HomePage() {
                       <p className="hero-benefit">{banner.subtitle}</p>
                       <div className="hero-buy">
                         <Link
-                          className="btn btn-primary nexa-btn-3d"
+                          className="btn btn-primary"
                           to={banner.link_path || "/products"}
+                          tabIndex={isActive ? 0 : -1}
                         >
                           Khám phá ngay <ArrowIcon />
                         </Link>
-                        <Link className="hero-story" to="/products">
-                          <span>3D</span>
-                          <div>
-                            <b>Trải nghiệm</b>
-                            <br />
-                            Bộ sưu tập
-                          </div>
-                        </Link>
                       </div>
                       <div className="campaign-index">
-                        <span>{String(index + 1).padStart(2, "0")}</span> /{" "}
-                        {String(bannerCount).padStart(2, "0")} · NEXA COLLECTION
+                        <span>{String(index + 1).padStart(2, "0")}</span> / {meta.indexLabel}
                       </div>
+                    </div>
+
+                    <div className="campaign-note">
+                      {meta.noteLines[0]}
+                      <br />
+                      {meta.noteLines[1]}
+                      <i />
                     </div>
                   </div>
                 );
               })}
+            </div>
 
-              {/* Quick Prev/Next Controls */}
-              {bannerCount > 1 && (
-                <div className="nexa-hero-arrows">
-                  <button
-                    type="button"
-                    className="nexa-hero-arrow"
-                    onClick={() => setSlide((s) => (s - 1 + bannerCount) % bannerCount)}
-                    aria-label="Banner trước"
-                  >
-                    ‹
-                  </button>
-                  <button
-                    type="button"
-                    className="nexa-hero-arrow"
-                    onClick={() => setSlide((s) => (s + 1) % bannerCount)}
-                    aria-label="Banner tiếp theo"
-                  >
-                    ›
-                  </button>
-                </div>
-              )}
-            </Interactive3DStage>
+            {bannerCount > 1 && (
+              <div className="nexa-hero-nav-arrows" aria-label="Điều khiển chuyển slide">
+                <button
+                  type="button"
+                  className="nexa-hero-nav-btn prev"
+                  onClick={() => setSlide((s) => (s - 1 + bannerCount) % bannerCount)}
+                  aria-label="Slide trước"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  className="nexa-hero-nav-btn next"
+                  onClick={() => setSlide((s) => (s + 1) % bannerCount)}
+                  aria-label="Slide tiếp theo"
+                >
+                  ›
+                </button>
+              </div>
+            )}
 
             <div className="slider-dock">
+              <div className="slide-index slider-sr-only" aria-live="off" aria-atomic="true">
+                <span id="slide-number">{String(slide + 1).padStart(2, "0")}</span> /{" "}
+                {String(bannerCount).padStart(2, "0")}
+              </div>
               <div className="slider-dots">
                 {data.banners.map((banner, index) => (
                   <button
-                    key={banner.id}
+                    key={banner.id || index}
+                    type="button"
                     className={slide === index ? "active" : ""}
                     onClick={() => setSlide(index)}
                     aria-label={banner.title}
+                    aria-pressed={slide === index}
                   >
                     <span>
-                      <i />
+                      <i className={paused ? "is-paused" : ""} />
                     </span>
                   </button>
                 ))}
               </div>
               <button
+                type="button"
                 className="slider-play"
                 onClick={() => setPaused(!paused)}
                 aria-label={paused ? "Chạy slider" : "Tạm dừng slider"}
+                aria-pressed={paused}
               >
-                <span>{paused ? "▷" : "Ⅱ"}</span>
+                <span aria-hidden="true">{paused ? "▷" : "Ⅱ"}</span>
               </button>
             </div>
           </>
@@ -340,12 +474,12 @@ export default function HomePage() {
           ))}
         </section>
 
-        {/* Categories 3D Grid */}
+        {/* Categories Grid */}
         <section className="home-section" id="categories">
           <div className="gear-section-head">
             <div>
-              <span className="gear-kicker">DANH MỤC THIẾT BỊ 3D</span>
-              <h2>Chọn loại sản phẩm</h2>
+              <span className="gear-kicker">DANH MỤC SẢN PHẨM</span>
+              <h2>Khám phá theo thiết bị</h2>
             </div>
             <Link to="/products">Xem toàn bộ danh mục ↗</Link>
           </div>
@@ -389,8 +523,8 @@ export default function HomePage() {
         <section className="home-section gear-brand-section">
           <div className="gear-section-head">
             <div>
-              <span className="gear-kicker">ĐỐI TÁC CHÍNH HÃNG</span>
-              <h2>Thương hiệu Gaming Gear</h2>
+              <span className="gear-kicker">THƯƠNG HIỆU CHÍNH HÃNG</span>
+              <h2>Đối tác phân phối chính thức</h2>
             </div>
           </div>
           {!data.brands && !error ? (
@@ -420,8 +554,8 @@ export default function HomePage() {
           <section className="home-section">
             <div className="gear-section-head">
               <div>
-                <span className="gear-kicker">BỘ SƯU TẬP CHỌN LỌC</span>
-                <h2>Chọn theo cảm hứng setup.</h2>
+                <span className="gear-kicker">BỘ SƯU TẬP</span>
+                <h2>Gợi ý theo góc máy</h2>
               </div>
             </div>
             <div className="nexa-collection-pills">
@@ -445,14 +579,41 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* Featured Products Grid */}
+        {/* Featured Products Grid (4 rows x 6 products = 24 products) */}
         <section className="home-section" id="featured">
           <div className="gear-section-head">
             <div>
               <span className="gear-kicker">SẢN PHẨM NỔI BẬT</span>
-              <h2>Mỗi món, một lý do chọn.</h2>
+              <h2>Thiết bị được ưa chuộng</h2>
             </div>
-            <Link to="/products">Toàn bộ sản phẩm ↗</Link>
+            <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+              {totalProductPages > 1 && (
+                <div className="nexa-home-pager" role="group" aria-label="Chuyển trang sản phẩm nổi bật">
+                  <button
+                    type="button"
+                    className="nexa-pager-btn"
+                    disabled={productPage <= 0}
+                    onClick={() => setProductPage((p) => Math.max(0, p - 1))}
+                    aria-label="Trang trước"
+                  >
+                    ‹
+                  </button>
+                  <span className="nexa-pager-count">
+                    {productPage + 1} / {totalProductPages}
+                  </span>
+                  <button
+                    type="button"
+                    className="nexa-pager-btn"
+                    disabled={productPage >= totalProductPages - 1}
+                    onClick={() => setProductPage((p) => Math.min(totalProductPages - 1, p + 1))}
+                    aria-label="Trang tiếp theo"
+                  >
+                    ›
+                  </button>
+                </div>
+              )}
+              <Link to="/products">Toàn bộ sản phẩm ↗</Link>
+            </div>
           </div>
 
           {data.categories?.length > 0 && (
@@ -460,15 +621,21 @@ export default function HomePage() {
               <button
                 type="button"
                 className={!activeCategory ? "active" : ""}
-                onClick={() => setActiveCategory("")}
+                onClick={() => {
+                  setActiveCategory("");
+                  setProductPage(0);
+                }}
               >
-                Tất cả ({data.products?.length || 0})
+                Tất cả ({Math.max(data.products?.length || 0, visibleProducts?.length || 0)})
               </button>
               {data.categories.slice(0, 6).map((category) => (
                 <button
                   type="button"
                   className={activeCategory === category.slug ? "active" : ""}
-                  onClick={() => setActiveCategory(category.slug)}
+                  onClick={() => {
+                    setActiveCategory(category.slug);
+                    setProductPage(0);
+                  }}
                   key={category.id}
                 >
                   {category.name}
@@ -480,10 +647,10 @@ export default function HomePage() {
           {!visibleProducts && !error ? (
             <Loading label="Đang tải sản phẩm..." />
           ) : visibleProducts?.length ? (
-            <div className="gear-product-grid nexa-stagger-grid">
+            <div className="gear-product-grid home-grid-6 nexa-stagger-grid">
               {visibleProducts.map((product) => (
                 <ProductCard
-                  key={product.id}
+                  key={product._renderKey || product.id}
                   product={product}
                   isFavorite={wishlistIds.has(product.id)}
                   onFav={handleWishlist}
@@ -497,39 +664,46 @@ export default function HomePage() {
               title="Chưa có sản phẩm trong danh mục này"
               text="Hãy chọn danh mục khác hoặc xem toàn bộ sản phẩm."
               actionText="Xem tất cả"
-              onAction={() => setActiveCategory("")}
+              onAction={() => {
+                setActiveCategory("");
+                setProductPage(0);
+              }}
             />
           )}
         </section>
 
-        {/* 3D Editorial Spotlight Showcase */}
+        {/* Editorial Spotlight Showcase */}
         {spotlightProduct && (
           <Tilt3DCard as="section" className="gear-editorial nexa-editorial-3d" intensity={6} scale={1.008}>
             <div className="editorial-copy">
-              <span className="gear-kicker">NEXA SIGNATURE / EDITOR’S PICK</span>
-              <h2>Hiệu năng định hình lại chuẩn mực bàn máy.</h2>
+              <span className="gear-kicker">TIÊU ĐIỂM TRONG TUẦN</span>
+              <h2>Thiết kế tối ưu cho hiệu suất thực tế</h2>
               <p>
                 {spotlightProduct.summary ||
-                  "Thiết kế tối ưu công thái học kết hợp công nghệ phản hồi tức thì, mang lại cảm giác gõ và điều khiển hoàn hảo trong từng khoảnh khắc."}
+                  "Hoàn thiện tỉ mỉ từ cảm giác bấm, độ ổn định kết nối không dây cho đến độ bền lâu dài cho nhu cầu làm việc và giải trí mỗi ngày."}
               </p>
               <div className="editorial-links">
                 <Link to={`/products/${spotlightProduct.slug}`}>
-                  Khám phá {spotlightProduct.short_name || spotlightProduct.name} <span>↗</span>
+                  Xem chi tiết {spotlightProduct.short_name || spotlightProduct.name} <span>↗</span>
                 </Link>
                 <Link to="/products">
-                  Xem toàn bộ bảng cấu hình <span>↗</span>
+                  Xem toàn bộ danh mục <span>↗</span>
                 </Link>
               </div>
             </div>
 
             <Link className="editorial-product" to={`/products/${spotlightProduct.slug}`}>
               <span className="gear-kicker">
-                {spotlightProduct.brand?.name || "NEXA"} / {spotlightProduct.category?.name || "FLAGSHIP"}
+                {spotlightProduct.brand?.name || "NEXA"} / {spotlightProduct.category?.name || "GAMING GEAR"}
               </span>
               <img
                 className="nexa-3d-float-img"
                 src={productImage(spotlightProduct)}
                 alt={spotlightProduct.name}
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = fallbackProductImage(spotlightProduct);
+                }}
               />
               <span>
                 <strong>{spotlightProduct.name}</strong>
@@ -544,14 +718,21 @@ export default function HomePage() {
           <section className="home-section" aria-label="Sản phẩm mới lên kệ">
             <div className="gear-section-head">
               <div>
-                <span className="gear-kicker">VỪA CẬP BẾN</span>
-                <h2>Mới lên kệ tuần này</h2>
+                <span className="gear-kicker">SẢN PHẨM MỚI</span>
+                <h2>Vừa lên kệ</h2>
               </div>
             </div>
             <div className="gear-new-list">
               {newestThree.map((item) => (
                 <Link className="gear-new-item" to={`/products/${item.slug}`} key={item.id}>
-                  <img src={productImage(item)} alt={item.name} />
+                  <img
+                    src={productImage(item)}
+                    alt={item.name}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = fallbackProductImage(item);
+                    }}
+                  />
                   <div>
                     <small>
                       {item.brand?.name || "NEXA"} · {item.category?.name}

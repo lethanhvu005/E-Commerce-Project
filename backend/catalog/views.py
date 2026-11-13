@@ -38,6 +38,22 @@ def active_products():
     )
 
 
+_CATALOG_SEED_CHECKED = False
+
+
+def ensure_catalog_24_products():
+    global _CATALOG_SEED_CHECKED
+    if _CATALOG_SEED_CHECKED:
+        return
+    _CATALOG_SEED_CHECKED = True
+    try:
+        if Product.objects.filter(status=Product.Status.ACTIVE).count() < 24:
+            from django.core.management import call_command
+            call_command("seed_frontend_demo")
+    except Exception:
+        pass
+
+
 @api_view(["GET"])
 @authentication_classes([])
 @permission_classes([AllowAny])
@@ -58,6 +74,7 @@ def brands(request):
 @authentication_classes([])
 @permission_classes([AllowAny])
 def products(request):
+    ensure_catalog_24_products()
     queryset = active_products()
     search = request.query_params.get("search", "").strip()
     category = request.query_params.get("category", "").strip()

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { money, productImage } from "../api/format";
+import { fallbackProductImage, money, productImage } from "../api/format";
 import { Tilt3DCard } from "./Motion3D";
 
 function GearIcon({ name }) {
@@ -156,6 +156,10 @@ export default function ProductCard({
               loading="lazy"
               decoding="async"
               alt={product.name}
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = fallbackProductImage(product);
+              }}
             />
           ) : (
             <span className="image-empty">Chưa có ảnh</span>
@@ -171,10 +175,10 @@ export default function ProductCard({
               e.preventDefault();
               onQuickView(product);
             }}
-            aria-label={`Xem nhanh 3D ${product.name}`}
+            aria-label={`Xem nhanh ${product.name}`}
           >
             <GearIcon name="eye" />
-            <span>Xem 3D</span>
+            <span>Xem nhanh</span>
           </button>
         )}
       </div>
@@ -182,10 +186,22 @@ export default function ProductCard({
       {/* Card Metadata */}
       <div className="gear-product-meta">
         <div className="gear-meta-toprow">
-          <span className="gear-kicker">
+          <span className="gear-kicker" title={`${brandName} / ${catName}`}>
             {brandName} <i aria-hidden="true">/</i> {catName}
           </span>
-          {product.rating_avg ? (
+          {availableStock !== undefined ? (
+            <span
+              className={`nexa-stock-dot ${
+                isOutOfStock ? "out" : availableStock <= 5 ? "low" : "in"
+              }`}
+            >
+              {isOutOfStock
+                ? "Hết hàng"
+                : availableStock <= 5
+                ? `Còn ${availableStock}`
+                : "Sẵn hàng"}
+            </span>
+          ) : product.rating_avg ? (
             <span className="nexa-card-rating" title={`Đánh giá ${product.rating_avg}/5`}>
               ★ {product.rating_avg}
             </span>
@@ -193,25 +209,24 @@ export default function ProductCard({
         </div>
 
         <h3>
-          <Link to={link}>{product.short_name || product.name}</Link>
+          <Link to={link} title={product.name}>
+            {product.short_name || product.name}
+          </Link>
         </h3>
 
         <p>
           <span className="gear-feature-icon" aria-hidden="true">
             <GearIcon name={catCode} />
           </span>
-          <span>{feature}</span>
+          <span className="gear-feature-text" title={feature}>
+            {feature}
+          </span>
         </p>
 
-        <div className="gear-price-row">
-          <div className="gear-price">
-            {priceVal != null ? money(priceVal) : "Chưa có giá"}
-            {compareVal && <del>{money(compareVal)}</del>}
-          </div>
-          {availableStock !== undefined && (
-            <span className={`nexa-stock-dot ${isOutOfStock ? "out" : availableStock <= 5 ? "low" : "in"}`}>
-              {isOutOfStock ? "Hết hàng" : availableStock <= 5 ? `Còn ${availableStock}` : "Sẵn hàng"}
-            </span>
+        <div className="gear-price">
+          <span>{priceVal != null ? money(priceVal) : "Chưa có giá"}</span>
+          {compareVal && Number(compareVal) > Number(priceVal) && (
+            <del>{money(compareVal)}</del>
           )}
         </div>
 

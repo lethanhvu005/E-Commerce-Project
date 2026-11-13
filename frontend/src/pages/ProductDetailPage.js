@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { cartService, catalogService, communityService, wishlistService } from "../api/client";
-import { assetUrl, money, productImage } from "../api/format";
+import { assetUrl, fallbackProductImage, money, productImage } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import ProductCard from "../components/ProductCard";
 import { Interactive3DStage } from "../components/Motion3D";
@@ -300,7 +300,7 @@ export default function ProductDetailPage() {
                 className={`nexa-3d-mode-btn ${activeView === "spin3d" ? "active" : ""}`}
                 onClick={() => setActiveView(activeView === "spin3d" ? "full" : "spin3d")}
               >
-                cube 3D {activeView === "spin3d" ? "Đang bật (Kéo để xoay)" : "Xoay 3D"}
+                ◇ 3D {activeView === "spin3d" ? "Đang bật (Kéo để xoay)" : "Xoay 3D"}
               </button>
               <button
                 type="button"
@@ -358,7 +358,15 @@ export default function ProductDetailPage() {
                   : undefined
               }
             >
-              <img src={activeImage} alt={product.name} draggable={false} />
+              <img
+                src={activeImage}
+                alt={product.name}
+                draggable={false}
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = fallbackProductImage(product);
+                }}
+              />
             </div>
 
             {activeView === "spin3d" && (
@@ -678,10 +686,22 @@ export default function ProductDetailPage() {
                   }}
                   onAdd={async (p) => {
                     if (!user) return navigate("/login");
-                    if (p.default_variant_id) {
-                      await cartService.addItem(p.default_variant_id, 1);
-                      setToastMsg(`Đã thêm ${p.name} vào giỏ hàng!`);
-                      if (refreshCartCount) refreshCartCount();
+                    try {
+                      let vId = p.default_variant_id;
+                      if (!vId) {
+                        const detail = await catalogService.getProductDetail(p.slug);
+                        const v =
+                          (detail.variants || []).find((item) => item.available > 0) ||
+                          detail.variants?.[0];
+                        vId = v?.id;
+                      }
+                      if (vId) {
+                        await cartService.addItem(vId, 1);
+                        setToastMsg(`Đã thêm ${p.name} vào giỏ hàng!`);
+                        if (refreshCartCount) refreshCartCount();
+                      }
+                    } catch (err) {
+                      setToastMsg(err.message || "Không thể thêm vào giỏ hàng.");
                     }
                   }}
                 />

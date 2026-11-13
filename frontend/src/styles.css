@@ -4,18 +4,383 @@
    floating hardware physics, and clean dark/light theme adaptability.
    ========================================================================== */
 
-/* Theme visibility helpers */
+/* Theme visibility helpers & Native Vietnamese Geometric Typography */
+:root {
+  --font-sans: "Plus Jakarta Sans", "Be Vietnam Pro", "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --serif: "Plus Jakarta Sans", "Be Vietnam Pro", "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+html {
+  scroll-behavior: auto;
+  font-family: var(--font-sans);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Fix Vietnamese diacritic rendering on all headings & display text */
+h1,
+h2,
+h3,
+h4,
+.page-title,
+.gear-section-head h2,
+.editorial-copy h2,
+.footer-statement span,
+.pd-copy h1,
+.auth-aside h1,
+.auth-card h2,
+.banner h2 {
+  font-family: "Plus Jakarta Sans", "Be Vietnam Pro", "Manrope", sans-serif !important;
+  font-style: normal !important;
+  letter-spacing: -0.025em !important;
+}
+
+.gear-section-head h2 {
+  font-size: clamp(22px, 2.2vw, 30px) !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+}
+
+.gear-kicker {
+  font-family: "Be Vietnam Pro", "Plus Jakarta Sans", sans-serif !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+}
+
+.gear-hero h1 {
+  font-family: "Plus Jakarta Sans", "Be Vietnam Pro", sans-serif !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.03em !important;
+  line-height: 1.12 !important;
+}
+
+.gear-hero h1 em {
+  font-family: "Plus Jakarta Sans", "Be Vietnam Pro", sans-serif !important;
+  font-style: normal !important;
+  font-weight: 800 !important;
+  background: linear-gradient(95deg, #9cc6ff 0%, #58a6ff 52%, #43e6e3 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+}
+
+html[data-theme="light"] .gear-hero h1 em {
+  background: linear-gradient(95deg, #1558c9 0%, #2572e8 55%, #0984e3 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+}
+
+/* Comfortable horizontal margins on both sides of the screen for content below Hero */
+@media (min-width: 1100px) {
+  .home-body.container,
+  .light-area > .container,
+  .main-with-mobile > .container:not(.gear-hero) {
+    width: min(1220px, 84vw) !important;
+    max-width: 1220px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+}
+
+/* Redesigned NEXA Brand Logo */
+.nexa-brand-redesign {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 11px !important;
+  text-decoration: none;
+}
+
+.nexa-logo-mark {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 11px !important;
+  display: grid !important;
+  place-items: center !important;
+  background: linear-gradient(145deg, rgba(16, 32, 64, 0.95), rgba(8, 15, 32, 0.98)) !important;
+  border: 1px solid rgba(110, 180, 255, 0.35) !important;
+  box-shadow:
+    0 6px 18px rgba(21, 88, 201, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.32s ease, border-color 0.32s ease !important;
+}
+
+html[data-theme="light"] .nexa-logo-mark {
+  background: linear-gradient(145deg, #0d2149, #15459b) !important;
+  border-color: rgba(21, 88, 201, 0.45) !important;
+  box-shadow: 0 6px 16px rgba(21, 88, 201, 0.25) !important;
+}
+
+.nexa-brand-redesign:hover .nexa-logo-mark {
+  transform: translateY(-1px) scale(1.06) rotate(-3deg);
+  border-color: #43e6e3 !important;
+  box-shadow: 0 10px 24px rgba(39, 113, 230, 0.52) !important;
+}
+
+.nexa-brand-text {
+  display: flex !important;
+  flex-direction: column !important;
+  line-height: 1.05 !important;
+}
+
+.nexa-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: "Plus Jakarta Sans", "Be Vietnam Pro", sans-serif !important;
+  font-size: 19px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em !important;
+  color: var(--ink);
+}
+
+.nexa-wordmark-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #43e6e3;
+  box-shadow: 0 0 8px #43e6e3;
+}
+
+.nexa-brand-text small {
+  font-family: "Be Vietnam Pro", "Plus Jakarta Sans", sans-serif !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.22em !important;
+  color: var(--muted) !important;
+  margin-top: 3px !important;
+}
+
 html[data-theme="light"] .hero-image-dark { opacity: 0; }
 html[data-theme="dark"] .hero-image-light { opacity: 0; }
 
-/* Slider viewport */
+/* ==========================================================================
+   CINEMATIC 3-SLIDER HERO TRANSITION (.nexa-slider-stage)
+   ========================================================================== */
 .slider-viewport {
   position: relative;
   overflow: hidden;
-  border-radius: 20px;
 }
-.slider-viewport [hidden] {
-  display: none !important;
+
+.slider-viewport.nexa-slider-stage {
+  display: grid;
+  grid-template-columns: 100%;
+  perspective: 1400px;
+}
+
+.slider-viewport.nexa-slider-stage > .gear-slide {
+  grid-area: 1 / 1;
+  width: 100%;
+  transition:
+    opacity 0.72s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.82s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.72s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0.72s;
+  will-change: opacity, transform, filter;
+}
+
+.slider-viewport.nexa-slider-stage > .gear-slide.is-active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  z-index: 2;
+  transform: translate3d(0, 0, 0) scale(1);
+  filter: blur(0px);
+}
+
+.slider-viewport.nexa-slider-stage > .gear-slide.is-prev {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 1;
+  transform: translate3d(-48px, 0, -80px) scale(0.96);
+  filter: blur(6px);
+}
+
+.slider-viewport.nexa-slider-stage > .gear-slide.is-next {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 1;
+  transform: translate3d(48px, 0, -80px) scale(0.96);
+  filter: blur(6px);
+}
+
+/* 3D Hardware Stage Sweep & Interactive Parallax */
+@keyframes heroProductFloat {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -10px, 0) scale(1.018);
+  }
+}
+
+.nexa-slider-stage .gear-slide .gear-stage {
+  transition:
+    transform 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nexa-slider-stage .gear-slide.is-prev .gear-stage {
+  opacity: 0;
+  transform: perspective(1200px) translate3d(-90px, 16px, -110px) rotateY(14deg) scale(0.88);
+}
+
+.nexa-slider-stage .gear-slide.is-next .gear-stage {
+  opacity: 0;
+  transform: perspective(1200px) translate3d(90px, -14px, -110px) rotateY(-14deg) scale(0.88);
+}
+
+.nexa-slider-stage .gear-slide.is-active .gear-stage {
+  opacity: 1;
+  transform: perspective(1200px)
+    translate3d(var(--hero-tx, 0px), var(--hero-ty, 0px), 0)
+    rotateX(var(--hero-rx, 0deg))
+    rotateY(var(--hero-ry, 0deg))
+    scale(1);
+}
+
+.nexa-slider-stage .gear-slide.is-active .hero-product-image {
+  animation: heroProductFloat 6.2s ease-in-out infinite;
+}
+
+.nexa-stage-aura {
+  position: absolute;
+  inset: 12% 16%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(46, 125, 255, 0.26) 0%, rgba(67, 230, 227, 0.08) 45%, transparent 72%);
+  filter: blur(34px);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transform: scale(0.75);
+  transition: opacity 0.9s ease 0.12s, transform 1s cubic-bezier(0.16, 1, 0.3, 1) 0.12s;
+}
+
+.nexa-slider-stage .gear-slide.is-active .nexa-stage-aura {
+  opacity: 1;
+  transform: scale(1.08);
+}
+
+/* Wave Ribbon Motion */
+.nexa-slider-stage .gear-slide .hero-waves {
+  transition: transform 1.1s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.85s ease;
+}
+
+.nexa-slider-stage .gear-slide:not(.is-active) .hero-waves {
+  opacity: 0;
+  transform: scale(1.06) translateX(28px);
+}
+
+.nexa-slider-stage .gear-slide.is-active .hero-waves {
+  opacity: 1;
+  transform: scale(1) translate3d(calc(var(--hero-tx, 0px) * -0.35), calc(var(--hero-ty, 0px) * -0.35), 0);
+}
+
+/* Staggered Kinetic Text Reveal on Slide Change */
+.nexa-slider-stage .gear-slide .gear-slide-copy > *,
+.nexa-slider-stage .gear-slide .campaign-note {
+  transition:
+    opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.68s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nexa-slider-stage .gear-slide:not(.is-active) .gear-slide-copy > *,
+.nexa-slider-stage .gear-slide:not(.is-active) .campaign-note {
+  opacity: 0;
+  transform: translateY(24px);
+}
+
+.nexa-slider-stage .gear-slide.is-active .gear-slide-copy > .gear-kicker {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.08s;
+}
+
+.nexa-slider-stage .gear-slide.is-active .gear-slide-copy > h1 {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.16s;
+}
+
+.nexa-slider-stage .gear-slide.is-active .gear-slide-copy > .hero-benefit {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.24s;
+}
+
+.nexa-slider-stage .gear-slide.is-active .gear-slide-copy > .hero-buy {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.32s;
+}
+
+.nexa-slider-stage .gear-slide.is-active .gear-slide-copy > .campaign-index,
+.nexa-slider-stage .gear-slide.is-active .campaign-note {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.38s;
+}
+
+/* Hero Prev/Next Glass Navigation Buttons */
+.nexa-hero-nav-arrows {
+  position: absolute;
+  right: 28px;
+  bottom: 24px;
+  z-index: 8;
+  display: flex;
+  gap: 8px;
+}
+
+.nexa-hero-nav-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(156, 198, 255, 0.28);
+  background: rgba(8, 16, 34, 0.62);
+  color: #eef5ff;
+  font-size: 20px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  backdrop-filter: blur(10px);
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.2s ease, border-color 0.2s ease;
+}
+
+html[data-theme="light"] .nexa-hero-nav-btn {
+  background: rgba(255, 255, 255, 0.78);
+  color: #102347;
+  border-color: rgba(21, 88, 201, 0.25);
+}
+
+.nexa-hero-nav-btn:hover {
+  background: var(--action);
+  color: #fff;
+  border-color: #6eb4ff;
+  transform: translateY(-2px) scale(1.06);
+}
+
+/* Active Dot Progress Fill Animation */
+@keyframes heroDotProgress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.slider-dots button.active span i {
+  transform-origin: left center;
+  animation: heroDotProgress 6.5s linear forwards;
+}
+
+.slider-dots button.active span i.is-paused {
+  animation-play-state: paused;
 }
 
 /* Main container minimum height */
@@ -187,28 +552,260 @@ html[data-theme="light"] .gear-card.nexa-card-3d:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  min-height: 20px;
+  width: 100%;
+  min-width: 0;
+}
+
+.gear-product-meta .gear-kicker {
+  display: block;
+  width: auto;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .nexa-card-rating {
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
   color: #f5b324;
   background: rgba(245, 179, 36, 0.12);
   padding: 2px 7px;
   border-radius: 999px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
-.gear-price-row {
+.gear-product-meta p {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 8px;
-  margin: 12px 0 14px;
+  height: 32px;
+  min-height: 32px;
+  margin: 0;
+  overflow: hidden;
 }
 
-.gear-price-row .gear-price {
-  margin: 0;
+.gear-feature-text {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gear-card .gear-price {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 6px !important;
+  flex-wrap: wrap !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  min-height: 24px;
+  margin: 10px 0 12px !important;
+  font-size: 16.5px !important;
+  line-height: 1.25 !important;
+}
+
+.gear-card .gear-price > span {
+  white-space: nowrap !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.gear-card .gear-price del {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  white-space: nowrap !important;
+  opacity: 0.72;
+}
+
+/* Home 6-product grid (4 rows x 6 items = 24 products on desktop) & pager */
+.gear-product-grid.home-grid-6 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.gear-product-grid.home-grid-6 .gear-card {
+  border-radius: 14px;
+}
+
+.gear-product-grid.home-grid-6 .gear-product-photo {
+  height: 144px;
+  padding: 12px;
+}
+
+.gear-product-grid.home-grid-6 .gear-badge {
+  top: 8px;
+  left: 8px;
+  padding: 3px 7px;
+  font-size: 9px;
+}
+
+.gear-product-grid.home-grid-6 .gear-favorite {
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+}
+
+.gear-product-grid.home-grid-6 .gear-favorite svg {
+  width: 14px;
+  height: 14px;
+}
+
+.gear-product-grid.home-grid-6 .nexa-quickview-trigger {
+  bottom: 8px;
+  right: 8px;
+  padding: 4px 8px;
+  font-size: 9.5px;
+  gap: 4px;
+}
+
+.gear-product-grid.home-grid-6 .nexa-quickview-trigger svg {
+  width: 12px;
+  height: 12px;
+}
+
+.gear-product-grid.home-grid-6 .gear-product-meta {
+  padding: 10px 10px 11px !important;
+}
+
+.gear-product-grid.home-grid-6 .gear-meta-toprow {
+  min-height: 18px;
+  gap: 4px;
+}
+
+.gear-product-grid.home-grid-6 .gear-product-meta .gear-kicker {
+  font-size: 8.5px !important;
+  letter-spacing: 0.02em !important;
+}
+
+.gear-product-grid.home-grid-6 .nexa-card-rating {
+  font-size: 9.5px !important;
+  padding: 1px 5px;
+}
+
+.gear-product-grid.home-grid-6 .gear-product-meta h3 {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  line-height: 1.35 !important;
+  height: 1.35em;
+  min-height: 1.35em;
+  margin: 5px 0 !important;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gear-product-grid.home-grid-6 .gear-product-meta p {
+  font-size: 10.5px !important;
+  gap: 5px;
+  height: 24px;
+  min-height: 24px;
+  line-height: 1.25;
+}
+
+.gear-product-grid.home-grid-6 .gear-feature-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+}
+
+.gear-product-grid.home-grid-6 .gear-feature-icon svg {
+  width: 12px;
+  height: 12px;
+}
+
+.gear-product-grid.home-grid-6 .gear-price {
+  margin: 7px 0 9px !important;
+  min-height: 20px;
+  font-size: 13px !important;
+  gap: 4px !important;
+  display: flex !important;
+  align-items: baseline !important;
+  flex-wrap: wrap !important;
+  white-space: normal !important;
+  overflow: visible !important;
+}
+
+.gear-product-grid.home-grid-6 .gear-price > span {
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.025em !important;
+  white-space: nowrap !important;
+}
+
+.gear-product-grid.home-grid-6 .gear-price del {
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.015em !important;
+  white-space: nowrap !important;
+  opacity: 0.72;
+}
+
+.gear-product-grid.home-grid-6 .nexa-stock-dot {
+  font-size: 8px !important;
+  padding: 2px 5px;
+}
+
+.gear-product-grid.home-grid-6 .gear-add {
+  min-height: 34px !important;
+  padding: 5px 8px !important;
+  font-size: 11px !important;
+  gap: 5px;
+  border-radius: 8px;
+}
+
+.gear-product-grid.home-grid-6 .gear-add-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.gear-product-grid.home-grid-6 .gear-add-icon svg {
+  width: 12px;
+  height: 12px;
+}
+
+.nexa-home-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: var(--bg2);
+  border: 1px solid var(--edge);
+}
+
+.nexa-pager-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.nexa-pager-btn:hover:not(:disabled) {
+  background: var(--action);
+  color: #fff;
+}
+
+.nexa-pager-count {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--muted);
+  padding: 0 4px;
+  font-variant-numeric: tabular-nums;
 }
 
 .nexa-stock-dot {
@@ -1104,6 +1701,21 @@ html[data-theme="dark"] .nexa-chip {
   display: none;
 }
 
+/* Top-right Toast Region so action feedback appears at the top of the screen */
+.toast-region {
+  position: fixed !important;
+  top: 84px !important;
+  right: 24px !important;
+  bottom: auto !important;
+  z-index: 160 !important;
+}
+
+@media (max-width: 1150px) {
+  .gear-product-grid.home-grid-6 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 1024px) {
   .nexa-trust-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1114,6 +1726,12 @@ html[data-theme="dark"] .nexa-chip {
   }
   .nexa-cart-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .gear-product-grid.home-grid-6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

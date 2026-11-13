@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { orderService } from "../api/client";
-import { dateTime, money } from "../api/format";
+import { dateTime, fallbackProductImage, money, productImage } from "../api/format";
 import { ErrorBox, Loading, Toast } from "../components/Feedback";
 
 export default function OrderDetailPage() {
@@ -16,7 +16,7 @@ export default function OrderDetailPage() {
   const [error, setError] = useState(null);
   const [toastMsg, setToastMsg] = useState("");
 
-  const loadOrderDetail = async () => {
+  const loadOrderDetail = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -31,11 +31,11 @@ export default function OrderDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     loadOrderDetail();
-  }, [id]);
+  }, [loadOrderDetail]);
 
   // Handle Cancel Order
   const handleCancelOrder = async (e) => {
@@ -117,7 +117,20 @@ export default function OrderDetailPage() {
             <h3>Sản phẩm đã đặt ({items.length})</h3>
             <div className="cart-lines">
               {items.map((item) => (
-                <article className="cart-line" key={item.id} style={{ gridTemplateColumns: "1fr auto" }}>
+                <article className="cart-line" key={item.id}>
+                  <Link
+                    className="cart-image"
+                    to={item.product_slug ? `/products/${item.product_slug}` : "/products"}
+                  >
+                    <img
+                      src={productImage(item)}
+                      alt={item.product_name_snapshot || item.product_name}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = fallbackProductImage(item);
+                      }}
+                    />
+                  </Link>
                   <div>
                     <strong>{item.product_name_snapshot || item.product_name}</strong>
                     <div style={{ color: "#7c8ba1", fontSize: "12px", marginTop: "2px" }}>

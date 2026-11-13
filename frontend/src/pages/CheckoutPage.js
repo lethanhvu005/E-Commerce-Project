@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext } from "react-router-dom";
 import { authService, cartService, orderService } from "../api/client";
-import { money, productImage } from "../api/format";
+import { fallbackProductImage, money, productImage } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import { Empty, ErrorBox, Loading, Toast } from "../components/Feedback";
 
@@ -42,7 +42,7 @@ export default function CheckoutPage() {
   const [toastMsg, setToastMsg] = useState("");
 
   // Load Cart, Addresses, Shipping Methods
-  const initCheckout = async () => {
+  const initCheckout = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -72,7 +72,7 @@ export default function CheckoutPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
 
   useEffect(() => {
     if (!user) {
@@ -80,7 +80,7 @@ export default function CheckoutPage() {
       return;
     }
     initCheckout();
-  }, [user]);
+  }, [user, navigate, initCheckout]);
 
   // Call Checkout Preview whenever address, method, or note changes
   useEffect(() => {
@@ -389,7 +389,14 @@ export default function CheckoutPage() {
             {items.map((item) => (
               <div key={item.id} style={{ display: "flex", gap: "10px", alignItems: "center", padding: "8px 0" }}>
                 <div className="cart-image" style={{ width: "52px", height: "46px", flexShrink: 0 }}>
-                  <img src={productImage({ cover_image: item.cover_image, category: item.category })} alt={item.product_name} />
+                  <img
+                    src={productImage(item)}
+                    alt={item.product_name}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = fallbackProductImage(item);
+                    }}
+                  />
                 </div>
                 <div style={{ flex: 1, minWidth: 0, fontSize: "12px" }}>
                   <b style={{ display: "block", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>

@@ -63,7 +63,7 @@ export default function AdminInventoryPage() {
       return;
     }
     loadAdminData();
-  }, [user]);
+  }, [user, navigate]);
 
   // Handle inventory adjustment submission
   const handleAdjustStock = async (e) => {

@@ -64,7 +64,7 @@ export default function AccountPage() {
       return;
     }
     loadAddresses();
-  }, [user]);
+  }, [user, navigate]);
 
   // Handle Profile Update
   const handleUpdateProfile = async (e) => {

@@ -39,8 +39,21 @@ export default function AdminLayout() {
     <div className="admin-app">
       <aside className={`admin-sidebar${open ? " open" : ""}`} id="admin-sidebar">
         <div className="admin-logo">
-          <span className="brand-mark admin-brand-mark">N</span>
-          CommerceOS
+          <span className="brand-mark admin-brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 38 38" width="20" height="20" fill="none">
+              <path
+                d="M19 2.5L33.5 9.8V28.2L19 35.5L4.5 28.2V9.8L19 2.5Z"
+                stroke="#6eb4ff"
+                strokeWidth="2"
+                fill="rgba(21, 88, 201, 0.22)"
+              />
+              <path
+                d="M11.5 26.5V11.5L16.2 11.5L22.8 20.6V11.5H26.5V26.5H21.8L15.2 17.4V26.5H11.5Z"
+                fill="#ffffff"
+              />
+            </svg>
+          </span>
+          <span>NEXA Admin</span>
         </div>
         <nav className="admin-menu" aria-label="Điều hướng quản trị">
           {items.map(([path, icon, label]) => (

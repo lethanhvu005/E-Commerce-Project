@@ -29,9 +29,35 @@ class OrderAddressSerializer(serializers.ModelSerializer):
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
+    product_slug = serializers.CharField(source="variant.product.slug", read_only=True, default="")
+    cover_image = serializers.SerializerMethodField()
+
     class Meta:
         model = OrderItem
-        fields = ["id", "product_name_snapshot", "sku_snapshot", "options_snapshot", "quantity", "unit_price", "line_total"]
+        fields = [
+            "id",
+            "product_slug",
+            "cover_image",
+            "product_name_snapshot",
+            "sku_snapshot",
+            "options_snapshot",
+            "quantity",
+            "unit_price",
+            "line_total",
+        ]
+
+    def get_cover_image(self, item):
+        variant = getattr(item, "variant", None)
+        product = getattr(variant, "product", None) if variant else None
+        if not product:
+            return None
+        images = list(product.images.all())
+        image = next((img for img in images if img.is_cover), None) or (images[0] if images else None)
+        if image:
+            return {"object_key": image.object_key, "alt_text": image.alt_text}
+        if product.category and product.category.image_key:
+            return {"object_key": product.category.image_key, "alt_text": product.name}
+        return None
 
 
 class OrderSerializer(serializers.ModelSerializer):
