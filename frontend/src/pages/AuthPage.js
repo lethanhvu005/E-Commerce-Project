@@ -54,12 +54,12 @@ export default function AuthPage({ mode = "login" }) {
   };
 
   return (
-    <div className="container ux-page">
-      {/* Hero header matching login.html / register.html */}
-      <section className="ux-hero">
+    <div className="container ux-page nexa-auth-page">
+      {/* Compact Hero header matching login.html / register.html */}
+      <section className="ux-hero nexa-auth-hero">
         <div>
           <span className="ux-kicker">
-            {isRegister ? "ACCOUNT / REGISTER" : "ACCOUNT / SIGN IN"}
+            {isRegister ? "TÀI KHOẢN / ĐĂNG KÝ" : "TÀI KHOẢN / ĐĂNG NHẬP"}
           </span>
           <h1>
             {isRegister ? (
@@ -163,22 +163,17 @@ export default function AuthPage({ mode = "login" }) {
               placeholder="Tối thiểu 8 ký tự..."
             />
 
-            {error && (
-              <div style={{ marginTop: "14px" }}>
-                <ErrorBox error={error} />
-              </div>
-            )}
+            {error && <ErrorBox error={error} />}
 
             <button
               type="submit"
-              className="btn btn-violet full"
+              className="btn btn-violet full nexa-auth-submit"
               disabled={submitting}
-              style={{ width: "100%", marginTop: "18px", padding: "14px", fontSize: "14px" }}
             >
               {submitting ? "Đang xử lý..." : isRegister ? "Tạo tài khoản ↗" : "Đăng nhập ↗"}
             </button>
 
-            <p style={{ textAlign: "center", marginTop: "16px", color: "var(--muted)", fontSize: "12.5px" }}>
+            <p className="nexa-auth-switch">
               {isRegister ? "Đã có tài khoản? " : "Chưa có tài khoản? "}
               <Link className="ux-link" to={isRegister ? "/login" : "/register"}>
                 {isRegister ? "Đăng nhập" : "Đăng ký ngay"}
@@ -190,7 +185,7 @@ export default function AuthPage({ mode = "login" }) {
         {/* Right Promo Card matching ux-auth-promo */}
         <div className="ux-card ux-auth-promo">
           <div className="ux-icon">✦</div>
-          <h2>ONE ACCOUNT.<br />ALL YOUR GEAR.</h2>
+          <h2>MỘT TÀI KHOẢN.<br />TRỌN HỆ SINH THÁI.</h2>
           <p>
             Xem lịch sử mua sắm, lưu sản phẩm yêu thích, quản lý địa chỉ và nhận mã giảm giá trong một không gian.
           </p>

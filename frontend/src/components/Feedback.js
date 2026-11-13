@@ -49,14 +49,19 @@ export function Empty({
 }
 
 export function ErrorBox({ error, onRetry }) {
-  const message = error?.message || "Không thể kết nối đến máy chủ backend.";
+  if (!error) return null;
+  const message =
+    typeof error === "string"
+      ? error
+      : error?.message || "Không thể kết nối đến máy chủ backend.";
   return (
-    <div className="empty" style={{ margin: "25px 0", borderColor: "#f3a84d44", background: "var(--bg2)" }}>
-      <div style={{ color: "#f3a84d", fontSize: "36px", marginBottom: "8px" }}>⚠️</div>
-      <h2 style={{ color: "var(--ink)" }}>Không thể tải dữ liệu</h2>
-      <p style={{ color: "var(--muted)", maxWidth: "480px", margin: "8px auto 16px" }}>{message}</p>
+    <div className="nexa-error-banner" role="alert">
+      <span className="nexa-error-icon" aria-hidden="true">
+        ⚠
+      </span>
+      <span className="nexa-error-text">{message}</span>
       {onRetry && (
-        <button className="btn btn-primary" onClick={onRetry}>
+        <button type="button" className="nexa-error-retry" onClick={onRetry}>
           Thử lại
         </button>
       )}

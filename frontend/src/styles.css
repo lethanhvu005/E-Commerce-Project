@@ -1710,6 +1710,169 @@ html[data-theme="dark"] .nexa-chip {
   z-index: 160 !important;
 }
 
+/* Compact Inline Error Banner (.nexa-error-banner) */
+.nexa-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #ffb870;
+  background: rgba(243, 168, 77, 0.12);
+  border: 1px solid rgba(243, 168, 77, 0.35);
+}
+
+html[data-theme="light"] .nexa-error-banner {
+  color: #b54708;
+  background: #fffaeb;
+  border-color: #fec84b;
+}
+
+.nexa-error-icon {
+  font-size: 13px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.nexa-error-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.nexa-error-retry {
+  border: 1px solid rgba(243, 168, 77, 0.45);
+  background: rgba(243, 168, 77, 0.16);
+  color: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+/* Compact Auth Page Layout (.nexa-auth-page) so full Login/Register frame fits in viewport */
+.nexa-auth-page.ux-page {
+  padding-top: 6px !important;
+  padding-bottom: 24px !important;
+}
+
+.nexa-auth-hero.ux-hero {
+  max-width: 1020px !important;
+  margin: 10px auto 14px !important;
+  padding: 14px 26px !important;
+  min-height: 0 !important;
+  border-radius: 14px !important;
+}
+
+.nexa-auth-hero.ux-hero .ux-kicker {
+  font-size: 9.5px !important;
+}
+
+.nexa-auth-hero.ux-hero h1 {
+  font-size: clamp(22px, 2.3vw, 28px) !important;
+  margin: 3px 0 4px !important;
+  line-height: 1.15 !important;
+}
+
+.nexa-auth-hero.ux-hero p {
+  font-size: 12.5px !important;
+  line-height: 1.45 !important;
+}
+
+.nexa-auth-hero.ux-hero .ux-hero-orbit {
+  font-size: 160px !important;
+  bottom: -48px !important;
+}
+
+.nexa-auth-page .ux-auth {
+  max-width: 1020px !important;
+  gap: 16px !important;
+  align-items: stretch !important;
+}
+
+.nexa-auth-page .ux-card {
+  padding: 20px 24px !important;
+  border-radius: 14px !important;
+}
+
+.nexa-auth-page .ux-card h2 {
+  font-size: 20px !important;
+  margin: 0 0 12px !important;
+}
+
+.nexa-auth-page .ux-social-button {
+  padding: 9px 8px !important;
+  font-size: 11.5px !important;
+}
+
+.nexa-auth-page .ux-separator {
+  margin: 14px 0 !important;
+}
+
+.nexa-auth-page .ux-card label {
+  margin: 10px 0 4px !important;
+  font-size: 11.5px !important;
+}
+
+.nexa-auth-page .ux-card .field {
+  min-height: 39px !important;
+  padding: 8px 12px !important;
+  margin-top: 4px !important;
+  font-size: 13px !important;
+}
+
+.nexa-auth-page .form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.nexa-auth-submit {
+  width: 100%;
+  margin-top: 12px !important;
+  padding: 11px 14px !important;
+  font-size: 13.5px !important;
+}
+
+.nexa-auth-switch {
+  text-align: center;
+  margin: 12px 0 0 !important;
+  color: var(--muted);
+  font-size: 12px !important;
+}
+
+.nexa-auth-page .ux-auth-promo {
+  min-height: 0 !important;
+  padding: 22px 26px !important;
+}
+
+.nexa-auth-page .ux-auth-promo .ux-icon {
+  font-size: 40px !important;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.nexa-auth-page .ux-auth-promo h2 {
+  font-size: clamp(22px, 2.4vw, 30px) !important;
+  line-height: 1.15 !important;
+  margin-bottom: 10px !important;
+}
+
+.nexa-auth-page .ux-auth-promo p {
+  font-size: 13px !important;
+  line-height: 1.55 !important;
+  margin-bottom: 10px !important;
+}
+
+.nexa-auth-page .ux-benefits {
+  line-height: 1.85 !important;
+  font-size: 12.5px !important;
+  margin: 0;
+}
+
 @media (max-width: 1150px) {
   .gear-product-grid.home-grid-5 {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
