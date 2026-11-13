@@ -78,3 +78,50 @@ class HomeBannerSerializer(serializers.ModelSerializer):
     class Meta:
         model = HomeBanner
         fields = ["id", "title", "subtitle", "desktop_image_key", "mobile_image_key", "link_path", "sort_order"]
+
+
+class AdminProductVariantSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductVariant
+        fields = [
+            "id", "product_id", "sku", "option_key", "color", "switch_type",
+            "connection", "layout", "price", "compare_at_price", "currency", "is_active",
+        ]
+        read_only_fields = ["id", "product_id", "currency"]
+
+    def validate_sku(self, value):
+        return value.strip().upper()
+
+    def validate_option_key(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("Option key must not be empty.")
+        return value
+
+
+class AdminProductImageSerializer(serializers.ModelSerializer):
+    variant_id = serializers.PrimaryKeyRelatedField(
+        source="variant", queryset=ProductVariant.objects.all(), allow_null=True, required=False,
+    )
+
+    class Meta:
+        model = ProductImage
+        fields = ["id", "product_id", "variant_id", "object_key", "alt_text", "width", "height", "sort_order", "is_cover"]
+        read_only_fields = ["id", "product_id"]
+
+
+class AdminProductSerializer(serializers.ModelSerializer):
+    category_id = serializers.PrimaryKeyRelatedField(source="category", queryset=Category.objects.all())
+    brand_id = serializers.PrimaryKeyRelatedField(source="brand", queryset=Brand.objects.all())
+    variants = AdminProductVariantSerializer(many=True, read_only=True)
+    images = AdminProductImageSerializer(many=True, read_only=True)
+    features = ProductFeatureSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Product
+        fields = [
+            "id", "category_id", "brand_id", "name", "slug", "short_name", "badge",
+            "accent_color", "summary", "description", "specifications", "status",
+            "warranty_months", "created_at", "updated_at", "variants", "images", "features",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]

@@ -22,6 +22,7 @@ export default function AdminInventoryPage() {
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [delta, setDelta] = useState(0);
   const [reason, setReason] = useState("");
+  const [adjustmentKey, setAdjustmentKey] = useState(null);
   const [adjusting, setAdjusting] = useState(false);
 
   // Tab State: "balances" | "movements" | "audit"
@@ -79,7 +80,7 @@ export default function AdminInventoryPage() {
         variant_id: selectedVariant.variant_id,
         quantity_delta: Number(delta),
         reason: reason.trim(),
-        event_key: crypto.randomUUID(),
+        event_key: adjustmentKey,
       });
       setToastMsg(
         `Đã điều chỉnh kho cho SKU ${selectedVariant.sku} (${delta > 0 ? "+" : ""}${delta}).`,
@@ -88,6 +89,7 @@ export default function AdminInventoryPage() {
       setSelectedVariant(null);
       setDelta(0);
       setReason("");
+      setAdjustmentKey(null);
       loadAdminData();
     } catch (err) {
       setToastMsg(err.message || "Không thể điều chỉnh tồn kho.");
@@ -390,6 +392,7 @@ export default function AdminInventoryPage() {
                           setSelectedVariant(b);
                           setDelta(0);
                           setReason("");
+                          setAdjustmentKey(crypto.randomUUID());
                           setAdjustModal(true);
                         }}
                       >
@@ -615,7 +618,10 @@ export default function AdminInventoryPage() {
                 <button
                   type="button"
                   className="btn btn-quiet"
-                  onClick={() => setAdjustModal(false)}
+                  onClick={() => {
+                    setAdjustModal(false);
+                    setAdjustmentKey(null);
+                  }}
                 >
                   Hủy
                 </button>

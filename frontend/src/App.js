@@ -17,6 +17,7 @@ import ReviewsPage from "./pages/ReviewsPage";
 import AccountPage from "./pages/AccountPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AdminInventoryPage from "./pages/AdminInventoryPage";
+import AdminProductsPage from "./pages/AdminProductsPage";
 import AdminLayout from "./components/admin/AdminLayout";
 import { AdminAnalyticsPage, AdminUnavailablePage } from "./pages/AdminUnavailablePages";
 import {
@@ -78,7 +79,7 @@ export default function App() {
           <Route path="admin" element={<ProtectedRoute requireStaff><AdminLayout /></ProtectedRoute>}>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboardPage />} />
-            <Route path="products" element={<AdminUnavailablePage type="products" />} />
+            <Route path="products" element={<AdminProductsPage />} />
             <Route path="orders" element={<AdminUnavailablePage type="orders" />} />
             <Route path="inventory" element={<AdminInventoryPage />} />
             <Route path="analytics" element={<AdminAnalyticsPage />} />

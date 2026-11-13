@@ -4,6 +4,8 @@ from django.db.models.deletion import ProtectedError
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APITestCase
+from rest_framework_simplejwt.tokens import RefreshToken
+from accounts.models import User
 from common.test_factories import catalog
 from .models import Brand, Product, ProductImage, ProductVariant
 
@@ -77,3 +79,56 @@ class CatalogApiTests(APITestCase):
         self.assertEqual(brands.status_code, status.HTTP_200_OK)
         self.assertEqual(len(categories.data["results"]), 1)
         self.assertEqual(len(brands.data["results"]), 1)
+
+
+class AdminCatalogApiTests(APITestCase):
+    def authenticate(self, user):
+        token = RefreshToken.for_user(user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.access_token}")
+
+    def test_customer_cannot_access_admin_products(self):
+        self.authenticate(User.objects.create_user("buyer-catalog@example.test", "Buyer!Password123"))
+        self.assertEqual(self.client.get("/api/admin/products/").status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_superuser_can_list_create_update_and_manage_variant_and_image(self):
+        admin = User.objects.create_superuser("admin-catalog@example.test", "Admin!Password123")
+        self.authenticate(admin)
+        existing, _ = catalog()
+
+        listing = self.client.get("/api/admin/products/?status=draft&search=Keyboard")
+        self.assertEqual(listing.status_code, status.HTTP_200_OK)
+        self.assertEqual(listing.data["count"], 1)
+
+        payload = {
+            "category_id": existing.category_id,
+            "brand_id": existing.brand_id,
+            "name": "Admin Mouse",
+            "slug": "admin-mouse",
+            "short_name": "Mouse",
+            "summary": "Created through admin API",
+            "status": "draft",
+            "warranty_months": 24,
+        }
+        created = self.client.post("/api/admin/products/", payload, format="json")
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED)
+        product_id = created.data["id"]
+
+        updated = self.client.patch(f"/api/admin/products/{product_id}/", {"status": "active"}, format="json")
+        self.assertEqual(updated.status_code, status.HTTP_200_OK)
+        self.assertEqual(updated.data["status"], "active")
+
+        variant = self.client.post(
+            f"/api/admin/products/{product_id}/variants/",
+            {"sku": " mouse-01 ", "option_key": "default", "price": 500000},
+            format="json",
+        )
+        self.assertEqual(variant.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(variant.data["sku"], "MOUSE-01")
+
+        image = self.client.post(
+            f"/api/admin/products/{product_id}/images/",
+            {"variant_id": variant.data["id"], "object_key": "products/mouse.webp", "width": 800, "height": 800, "is_cover": True},
+            format="json",
+        )
+        self.assertEqual(image.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(image.data["is_cover"])

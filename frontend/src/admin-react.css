@@ -13,3 +13,8 @@
 .admin-stock-row small { color: #8794ab; }
 [data-theme="dark"] .admin-chart-empty { border-color: #263653; }
 [data-theme="dark"] .admin-status-track { background: #16233a; }
+.admin-pagination { display: flex; justify-content: center; align-items: center; gap: 12px; padding-top: 16px; font-size: 12px; color: #6b7c96; }
+.admin-pagination button { border: 1px solid #dce3ef; border-radius: 7px; background: transparent; color: inherit; padding: 7px 11px; }
+.admin-pagination button:disabled { opacity: .45; cursor: not-allowed; }
+.admin-editor-modal .field-label { display: block; margin: 12px 0 6px; }
+.admin-editor-modal .field, .admin-editor-modal .select { width: 100%; }

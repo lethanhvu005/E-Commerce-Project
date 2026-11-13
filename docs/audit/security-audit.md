@@ -1,53 +1,47 @@
-# Security audit
+# Security audit progress
 
-Status: in progress (2026-11-13).
+Date: 2026-11-13
 
-## Confirmed fixes
+## Fixed in this work group
 
+- Inventory idempotency keys now bind to variant, delta, reason and actor; conflicting reuse returns `409`.
+- React keeps the same event key across retries for one stock adjustment.
+- Order, order item/address/history, payment, inventory balance/reservation/movement, voucher redemption, audit log and outbox records are read-only in Django Admin.
+- Automated tests verify even a superuser cannot add/change/delete those operational records through ModelAdmin.
 - Production secret, debug mode, allowed hosts, trusted origins and HTTPS-related controls are environment-driven.
-- Production startup fails when secret or allowed hosts are missing.
+- Production startup fails when the secret or allowed hosts are missing.
 - CORS uses an explicit allow-list rather than `*`.
-- Login and registration use separate scoped throttles.
 - Registration rejects privilege fields and creates users through `create_user()`.
 - Logout verifies refresh-token ownership and blacklists the token.
 - Customer address and order queries are scoped to `request.user`.
-- Existing inventory and audit admin APIs require both staff status and the relevant Django permission.
-- React production source contains no `dangerouslySetInnerHTML` usage.
 
-## Remaining security work
+## Still to audit
 
-- Add cross-account IDOR tests for every customer-owned resource.
-- Add negative RBAC tests for every new and existing admin endpoint.
-- Validate and constrain future image uploads by MIME content, size and object key; upload endpoints do not yet exist.
+- `manage.py check --deploy` against a production environment configuration.
+- Authentication throttling and JWT lifetime policy.
+- Upload validation once Admin product image upload API is implemented.
+- Admin module-level permissions in React and each new Admin endpoint.
+- Complete IDOR/BOLA matrix for every owner-scoped API.
+- Add negative RBAC tests for every new Admin endpoint.
 - Add a deployment CSP compatible with the final asset set.
-- Use a shared cache (for example Redis) before relying on DRF throttles across multiple workers; throttling is not DDoS protection.
-- Run dependency audits and secret scanning and record the exact output.
-- Review secret history outside the working tree. No secret value is reproduced in this report.
+- Use a shared cache before relying on DRF throttles across multiple workers.
 
-## Dependency audit evidence
+## Deployment check evidence
 
-- `npm audit --omit=dev` initially reported 39 findings: 0 Critical, 18 High, 5 Moderate and 16 Low.
-- React Router was upgraded within major version 6 from 6.30.1 to 6.30.4. Tests and production build still pass.
-- The follow-up audit reports 38 findings: 0 Critical, 15 High, 7 Moderate and 16 Low.
-- Most remaining findings are transitive dependencies in the deprecated Create React App / `react-scripts` toolchain. They are not silently force-upgraded because `npm audit fix --force` proposes breaking toolchain changes. Replacing the toolchain requires a separately tested migration and is still a High open item.
+`python manage.py check --deploy` was run with the local development environment and correctly reported five warnings: HSTS disabled, SSL redirect disabled, session cookie not secure, CSRF cookie not secure, and DEBUG enabled. This local configuration is not production-ready.
 
-## Production environment contract
-
-Required:
+Production environment must provide:
 
 - `DJANGO_DEBUG=False`
 - `DJANGO_SECRET_KEY=<long random secret>`
 - `DJANGO_ALLOWED_HOSTS=<comma-separated hosts>`
 - `POSTGRES_PASSWORD=<secret>`
+- trusted CORS/CSRF origins
+- secure-cookie and HTTPS settings
+- HSTS only after HTTPS is verified end-to-end
 
-Deployment-specific:
+## Dependency audit evidence retained from the previous audit
 
-- `DJANGO_CORS_ALLOWED_ORIGINS`
-- `DJANGO_CSRF_TRUSTED_ORIGINS`
-- `DJANGO_SECURE_SSL_REDIRECT=True`
-- `DJANGO_SESSION_COOKIE_SECURE=True`
-- `DJANGO_CSRF_COOKIE_SECURE=True`
-- `DJANGO_SECURE_HSTS_SECONDS=31536000` only after HTTPS is verified end-to-end
-- `DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS` and `DJANGO_SECURE_HSTS_PRELOAD` only when their operational requirements are understood
-
-The local `.env` is ignored by Git. If any credential was previously committed publicly, it must be rotated; deleting it from the current file is not sufficient.
+- The last recorded `npm audit --omit=dev` result contained 38 findings: 0 Critical, 15 High, 7 Moderate and 16 Low.
+- Most remaining findings are transitive dependencies in Create React App / `react-scripts`; no breaking `npm audit fix --force` was applied.
+- Dependency and secret scanning must be rerun before a production release.

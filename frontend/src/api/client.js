@@ -236,6 +236,15 @@ export const communityService = {
 
 export const adminService = {
   getDashboard: () => api.get("/admin/dashboard/"),
+  getProducts: (params = {}) => {
+    const qs = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") qs.set(key, value);
+    });
+    return api.get(`/admin/products/?${qs.toString()}`);
+  },
+  createProduct: (payload) => api.post("/admin/products/", payload),
+  updateProduct: (productId, payload) => api.patch(`/admin/products/${productId}/`, payload),
   getInventoryBalances: () => api.get("/admin/inventory/"),
   adjustInventory: (payload) => api.post("/admin/inventory/", payload),
   getInventoryMovements: () => api.get("/admin/inventory/movements/"),

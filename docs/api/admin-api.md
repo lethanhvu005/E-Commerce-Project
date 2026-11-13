@@ -1,61 +1,59 @@
-# Admin API
+# CommerceOS Admin API
 
-All endpoints require `Authorization: Bearer <access_token>`. Being authenticated is not sufficient: the account must be staff and have every listed Django permission.
+All endpoints require `Authorization: Bearer <access_token>`, `is_staff=True`, and the matching Django model permission. Superusers have all permissions.
 
-## Dashboard
+## Products
 
-### `GET /api/admin/dashboard/`
+### `GET /api/admin/products/`
 
-Required permissions:
+Permission: `catalog.view_product`.
 
-- `orders.view_order`
-- `catalog.view_product`
-- `inventory.view_inventorybalance`
-- `accounts.view_user`
+Query parameters: `search`, `status`, `page`, `page_size` (maximum 100). Returns DRF page-number pagination with product, nested variant, image and feature data.
 
-Returns:
+### `POST /api/admin/products/`
 
-- `revenue`: sum of payments whose status is `succeeded` only.
-- `revenue_definition`: human-readable accounting rule used by this endpoint.
-- `orders_count`, `products_count`, `customers_count`, `low_stock_count`.
-- `orders_by_status`: grouped system-wide order counts.
-- `recent_orders`: latest eight orders with public ID, number, customer email, status, total and timestamp.
+Permission: `catalog.add_product`. Creates a product and writes an audit event.
 
-`403` is returned for customers, non-staff users, or staff missing any required permission.
+Required fields: `category_id`, `brand_id`, `name`, `slug`, `short_name`. Optional fields follow the Product model, including `status`, `summary`, `description`, `specifications`, and `warranty_months`.
 
-## Inventory
+### `GET/PATCH /api/admin/products/<product_id>/`
 
-### `GET /api/admin/inventory/`
+Permissions: `catalog.view_product` or `catalog.change_product`. `PATCH` updates only supplied fields and writes an audit event. Products are archived by setting `status=archived`; this API does not permanently delete products.
 
-Requires `inventory.view_inventorybalance`. Returns current on-hand, reserved and available quantities per variant.
+### Variant endpoints
 
-### `POST /api/admin/inventory/`
+- `GET/POST /api/admin/products/<product_id>/variants/`
+- `GET/PATCH /api/admin/products/<product_id>/variants/<variant_id>/`
 
-Requires `inventory.change_inventorybalance`.
+Permissions use `catalog.view_productvariant`, `add_productvariant`, and `change_productvariant`. SKU is normalized to uppercase. Use `is_active=false` instead of deleting a variant that may be referenced by order history.
 
-Request body:
+### Image endpoints
 
-```json
-{
-  "variant_id": 1,
-  "quantity_delta": 10,
-  "reason": "Nhập kho",
-  "event_key": "7b0e58e7-b334-47ae-aad8-54ed5d477f4c"
-}
-```
+- `GET/POST /api/admin/products/<product_id>/images/`
+- `GET/PATCH/DELETE /api/admin/products/<product_id>/images/<image_id>/`
 
-The event key makes retries idempotent. Adjustments that would make `on_hand` negative or lower than `reserved` are rejected.
+Permissions use the corresponding ProductImage model permission. Image metadata uses the existing storage `object_key`; this endpoint does not pretend that an object key is an uploaded file. A variant image must reference a variant belonging to the same product. Setting a cover image clears the previous cover inside a transaction.
 
-### `GET /api/admin/inventory/movements/`
+## Existing operations APIs
 
-Requires `inventory.view_inventorymovement`. Returns the latest inventory movements. Pagination is still required; the current endpoint is limited to 100 rows.
+- `GET /api/admin/dashboard/`
+- `GET/POST /api/admin/inventory/`
+- `GET /api/admin/inventory/movements/`
+- `GET /api/admin/audit-logs/`
 
-## Audit logs
+Inventory adjustment requires `variant_id`, non-zero `quantity_delta`, `reason`, and UUID `event_key`. A replay with the same payload returns the original movement. Reusing the key with different payload or actor returns HTTP `409`.
 
-### `GET /api/admin/audit-logs/`
+Dashboard requires all of `orders.view_order`, `catalog.view_product`, `inventory.view_inventorybalance`, and `accounts.view_user`. Its revenue is the sum of payments whose status is `succeeded`; pending, failed, cancelled and refunded payments are excluded.
 
-Requires `operations.view_auditlog`. Returns the latest audit records. Pagination is still required; the current endpoint is limited to 100 rows.
+Inventory permissions:
 
-## Not implemented yet
+- `GET /api/admin/inventory/`: `inventory.view_inventorybalance`.
+- `POST /api/admin/inventory/`: `inventory.change_inventorybalance`.
+- `GET /api/admin/inventory/movements/`: `inventory.view_inventorymovement`.
+- `GET /api/admin/audit-logs/`: `operations.view_auditlog`.
 
-The following required Admin contracts remain open and must not be simulated by the frontend: product/variant/image/category/brand/collection CRUD, system-wide orders and transitions, customers, vouchers, moderation, banners, and paginated audit APIs.
+The movement and audit endpoints currently return at most 100 rows and still require pagination.
+
+## Remaining Admin contracts
+
+System-wide orders and transitions, customer administration, voucher administration, moderation, date-range analytics, support tickets and safe store settings remain open. The frontend must not simulate successful mutations for these modules.
