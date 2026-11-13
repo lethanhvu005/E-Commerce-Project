@@ -1,261 +1,44 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { adminService } from "../api/client";
-import { useAuth } from "../auth/AuthContext";
-import { ErrorBox, Loading } from "../components/Feedback";
+import { money } from "../api/format";
+
+const labels = { pending: "Chờ xử lý", confirmed: "Đã xác nhận", processing: "Đang xử lý", shipped: "Đang giao", delivered: "Đã giao", cancelled: "Đã hủy" };
 
 export default function AdminDashboardPage() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-
-  const [stats, setStats] = useState({
-    productsCount: 0,
-    ordersCount: 0,
-    customersCount: 0,
-    lowStockCount: 0,
-    revenue: "0",
-    recentAuditLogs: [],
-  });
+  const [data, setData] = useState(null);
+  const [lowStock, setLowStock] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const load = useCallback(async () => {
+    setLoading(true); setError("");
+    try {
+      const [dashboard, inventory] = await Promise.all([adminService.getDashboard(), adminService.getInventoryBalances()]);
+      const balances = inventory?.results || inventory || [];
+      setData(dashboard);
+      setLowStock(balances.filter((x) => Number(x.available) <= Number(x.low_stock_threshold)).slice(0, 5));
+    } catch (err) { setError(err.message || "Không thể tải dữ liệu quản trị."); }
+    finally { setLoading(false); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+  const max = useMemo(() => Math.max(1, ...(data?.orders_by_status || []).map((x) => x.count)), [data]);
 
-  useEffect(() => {
-    if (!user) {
-      navigate("/login", { state: { from: { pathname: "/admin" } } });
-      return;
-    }
-
-    const fetchStats = async () => {
-      try {
-        setError("");
-        const [dashboard, auditRes] = await Promise.all([
-          adminService.getDashboard(),
-          adminService.getAuditLogs(),
-        ]);
-        const auditList = Array.isArray(auditRes)
-          ? auditRes
-          : auditRes.results || [];
-
-        setStats({
-          productsCount: dashboard.products_count,
-          ordersCount: dashboard.orders_count,
-          customersCount: dashboard.customers_count,
-          lowStockCount: dashboard.low_stock_count,
-          revenue: dashboard.revenue,
-          recentAuditLogs: auditList.slice(0, 5),
-        });
-      } catch (err) {
-        setError(
-          err.status === 403
-            ? "Tài khoản hiện tại không có quyền truy cập khu vực quản trị."
-            : err.message,
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStats();
-  }, [user, navigate]);
-
-  return (
-    <div className="container" style={{ padding: "30px 0 80px" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "baseline",
-          flexWrap: "wrap",
-          gap: "16px",
-          marginBottom: "24px",
-        }}
-      >
-        <div>
-          <span className="ux-kicker" style={{ color: "var(--action)" }}>
-            COMMERCEOS / ADMIN
-          </span>
-          <h1 className="page-title" style={{ margin: "4px 0" }}>
-            Tổng quan Quản trị
-          </h1>
-          <p style={{ color: "var(--muted)", fontSize: "13px", margin: 0 }}>
-            Hệ thống quản lý thời gian thực kết nối trực tiếp cơ sở dữ liệu
-            PostgreSQL.
-          </p>
-        </div>
-
-        <div style={{ display: "flex", gap: "10px" }}>
-          <Link className="btn btn-violet" to="/admin/inventory">
-            Quản lý kho hàng (Tồn kho) ↗
-          </Link>
-          <Link className="btn btn-quiet" to="/">
-            Xem cửa hàng →
-          </Link>
-        </div>
-      </div>
-
-      {loading ? (
-        <Loading label="Đang nạp dữ liệu quản trị..." />
-      ) : error ? (
-        <ErrorBox message={error} />
-      ) : (
-        <>
-          <div className="admin-kpis" style={{ marginBottom: "32px" }}>
-            <div className="kpi">
-              <small>Sản phẩm trong Catalog</small>
-              <strong>{stats.productsCount}</strong>
-              <span className="change green">Đang hoạt động</span>
-              <span className="kpi-icon">⬡</span>
-            </div>
-            <div className="kpi">
-              <small>Bản ghi tồn kho SKU</small>
-              <strong>{stats.lowStockCount}</strong>
-              <span className="change">Cập nhật thời gian thực</span>
-              <span className="kpi-icon green">▣</span>
-            </div>
-            <div className="kpi">
-              <small>Tổng đơn hàng hệ thống</small>
-              <strong>{stats.ordersCount}</strong>
-              <span className="change">Đã ghi nhận</span>
-              <span className="kpi-icon">♧</span>
-            </div>
-          </div>
-
-          <div className="ux-two">
-            <section className="ux-card">
-              <h2>Lối tắt quản lý</h2>
-              <p style={{ marginBottom: "16px" }}>
-                Truy cập nhanh các phân hệ nghiệp vụ hệ thống:
-              </p>
-              <div style={{ display: "grid", gap: "12px" }}>
-                <Link
-                  to="/admin/inventory"
-                  className="whitebox"
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "16px",
-                    textDecoration: "none",
-                    color: "inherit",
-                    border: "1px solid var(--border)",
-                  }}
-                >
-                  <div>
-                    <strong>Quản lý tồn kho & Điều chỉnh Stock</strong>
-                    <div
-                      style={{
-                        fontSize: "12px",
-                        color: "var(--muted)",
-                        marginTop: "4px",
-                      }}
-                    >
-                      Xem On-Hand, Reserved, Available; tạo phiếu điều chỉnh
-                      stock qua API.
-                    </div>
-                  </div>
-                  <span style={{ fontSize: "18px" }}>→</span>
-                </Link>
-                <Link
-                  to="/orders"
-                  className="whitebox"
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "16px",
-                    textDecoration: "none",
-                    color: "inherit",
-                    border: "1px solid var(--border)",
-                  }}
-                >
-                  <div>
-                    <strong>Quản lý đơn đặt hàng</strong>
-                    <div
-                      style={{
-                        fontSize: "12px",
-                        color: "var(--muted)",
-                        marginTop: "4px",
-                      }}
-                    >
-                      Xem danh sách đơn, chi tiết đơn hàng và lịch sử timeline.
-                    </div>
-                  </div>
-                  <span style={{ fontSize: "18px" }}>→</span>
-                </Link>
-                <Link
-                  to="/products"
-                  className="whitebox"
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "16px",
-                    textDecoration: "none",
-                    color: "inherit",
-                    border: "1px solid var(--border)",
-                  }}
-                >
-                  <div>
-                    <strong>Danh mục & Sản phẩm</strong>
-                    <div
-                      style={{
-                        fontSize: "12px",
-                        color: "var(--muted)",
-                        marginTop: "4px",
-                      }}
-                    >
-                      Duyệt tất cả sản phẩm, bộ lọc ngành hàng và thương hiệu.
-                    </div>
-                  </div>
-                  <span style={{ fontSize: "18px" }}>→</span>
-                </Link>
-              </div>
-            </section>
-
-            <section className="ux-card">
-              <h2>Nhật ký vận hành gần nhất</h2>
-              {stats.recentAuditLogs.length === 0 ? (
-                <p style={{ color: "var(--muted)" }}>
-                  Chưa có bản ghi nhật ký vận hành nào.
-                </p>
-              ) : (
-                <div style={{ display: "grid", gap: "10px" }}>
-                  {stats.recentAuditLogs.map((log) => (
-                    <div
-                      key={log.id}
-                      style={{
-                        padding: "12px",
-                        background: "rgba(255, 255, 255, 0.03)",
-                        borderRadius: "8px",
-                        fontSize: "13px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          marginBottom: "4px",
-                        }}
-                      >
-                        <strong>{log.action}</strong>
-                        <span
-                          style={{ color: "var(--muted)", fontSize: "11px" }}
-                        >
-                          {log.created_at?.slice(0, 16)}
-                        </span>
-                      </div>
-                      <div style={{ color: "var(--muted)", fontSize: "12px" }}>
-                        Bởi: {log.actor_email || "Hệ thống"} · Đối tượng:{" "}
-                        {log.entity_type} #{log.entity_id}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-          </div>
-        </>
-      )}
+  return <>
+    <div className="admin-intro"><div><h1>Tổng quan</h1><p>Chào mừng bạn trở lại! Đây là giao diện quản trị CommerceOS.</p></div><button className="admin-select" onClick={load}>↻ Làm mới dữ liệu</button></div>
+    {error && <div className="admin-hero-note admin-error">⚠ <strong>Không thể tải dữ liệu:</strong> {error}</div>}
+    <div className="admin-kpis">
+      <div className="kpi"><small>Doanh thu</small><strong>{loading ? "—" : money(data?.revenue)}</strong><span className="change green">Thanh toán thành công</span><span className="kpi-icon green">▣</span></div>
+      <div className="kpi"><small>Đơn hàng</small><strong>{loading ? "—" : data?.orders_count ?? 0}</strong><span className="change">Toàn hệ thống</span><span className="kpi-icon">♧</span></div>
+      <div className="kpi"><small>Khách hàng</small><strong>{loading ? "—" : data?.customers_count ?? 0}</strong><span className="change">Tài khoản khách hàng</span><span className="kpi-icon">♙</span></div>
+      <div className="kpi"><small>Sản phẩm sắp hết</small><strong>{loading ? "—" : data?.low_stock_count ?? 0}</strong><span className="change down">Theo ngưỡng tồn kho</span><span className="kpi-icon red">⚠</span></div>
     </div>
-  );
+    <div className="admin-charts">
+      <section className="admin-panel"><div className="admin-panel-head"><div><h3>Doanh thu & đơn hàng</h3><div className="chart-legend"><span><i className="legend-dot" />Dữ liệu thực từ backend</span></div></div></div><div className="admin-chart-empty">API hiện chưa cung cấp chuỗi dữ liệu theo ngày để vẽ biểu đồ.</div></section>
+      <section className="admin-panel"><div className="admin-panel-head"><h3>Đơn hàng theo trạng thái</h3></div><div className="admin-status-bars">{(data?.orders_by_status || []).length ? data.orders_by_status.map((row) => <div className="admin-status-row" key={row.status}><span>{labels[row.status] || row.status}</span><div className="admin-status-track"><div className="admin-status-fill" style={{ width: `${(row.count / max) * 100}%` }} /></div><b>{row.count}</b></div>) : <div className="admin-empty">Chưa có đơn hàng.</div>}</div></section>
+    </div>
+    <div className="admin-bottom">
+      <section className="admin-panel"><div className="admin-panel-head"><h3>Đơn hàng gần đây</h3><Link className="text-link" to="/admin/orders">Xem tất cả ↗</Link></div><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Tổng tiền</th><th>Trạng thái</th></tr></thead><tbody>{(data?.recent_orders || []).length ? data.recent_orders.map((order) => <tr key={order.public_id}><td><strong>{order.order_number}</strong></td><td>{order.user__email}</td><td><strong>{money(order.grand_total)}</strong></td><td><span className="pill blue">{labels[order.status] || order.status}</span></td></tr>) : <tr><td colSpan="4" className="admin-empty">Chưa có đơn hàng.</td></tr>}</tbody></table></div></section>
+      <section className="admin-panel"><div className="admin-panel-head"><h3>Sản phẩm tồn kho thấp</h3><Link className="text-link" to="/admin/inventory">Xem tất cả ↗</Link></div>{lowStock.length ? lowStock.map((item) => <div className="admin-stock-row" key={item.variant_id}><div><b>{item.sku}</b><small>Khả dụng: {item.available}</small></div><span className="pill yellow">Ngưỡng {item.low_stock_threshold}</span></div>) : <div className="admin-empty">Không có SKU dưới ngưỡng.</div>}</section>
+    </div>
+  </>;
 }

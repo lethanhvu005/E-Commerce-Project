@@ -1,0 +1,15 @@
+.admin-brand-mark { width: 28px; height: 28px; font-size: 16px; }
+.admin-link { text-decoration: none; }
+.admin-veil { border: 0; padding: 0; }
+.admin-empty { padding: 34px 18px; text-align: center; color: #8794ab; }
+.admin-error { margin-bottom: 16px; }
+.admin-chart-empty { min-height: 210px; display: grid; place-items: center; color: #8794ab; border: 1px dashed #dbe3ef; border-radius: 8px; }
+.admin-status-bars { display: grid; gap: 12px; padding: 14px 0; }
+.admin-status-row { display: grid; grid-template-columns: 110px 1fr 38px; gap: 10px; align-items: center; font-size: 12px; }
+.admin-status-track { height: 8px; background: #edf2f8; border-radius: 999px; overflow: hidden; }
+.admin-status-fill { height: 100%; min-width: 4px; background: #3267df; border-radius: inherit; }
+.admin-stock-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #e9edf4; }
+.admin-stock-row div { display: grid; gap: 4px; }
+.admin-stock-row small { color: #8794ab; }
+[data-theme="dark"] .admin-chart-empty { border-color: #263653; }
+[data-theme="dark"] .admin-status-track { background: #16233a; }

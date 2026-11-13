@@ -116,11 +116,12 @@ export default function AdminInventoryPage() {
   ).length;
 
   return (
-    <div className="container" style={{ padding: "30px 0 80px" }}>
+    <div className="admin-inventory-react">
       <Toast message={toastMsg} onClose={() => setToastMsg("")} />
 
       {/* Admin Intro Header */}
       <div
+        className="admin-intro"
         style={{
           display: "flex",
           justifyContent: "space-between",
@@ -165,7 +166,7 @@ export default function AdminInventoryPage() {
           marginBottom: "28px",
         }}
       >
-        <div className="whitebox" style={{ padding: "18px" }}>
+        <div className="kpi">
           <small style={{ color: "var(--muted)", display: "block" }}>
             Tổng tồn thực tế (On Hand)
           </small>
@@ -184,7 +185,7 @@ export default function AdminInventoryPage() {
           </span>
         </div>
 
-        <div className="whitebox" style={{ padding: "18px" }}>
+        <div className="kpi">
           <small style={{ color: "var(--muted)", display: "block" }}>
             Tồn đang giữ (Reserved)
           </small>
@@ -203,7 +204,7 @@ export default function AdminInventoryPage() {
           </span>
         </div>
 
-        <div className="whitebox" style={{ padding: "18px" }}>
+        <div className="kpi">
           <small style={{ color: "var(--muted)", display: "block" }}>
             Khả dụng bán (Available)
           </small>
@@ -222,7 +223,7 @@ export default function AdminInventoryPage() {
           </span>
         </div>
 
-        <div className="whitebox" style={{ padding: "18px" }}>
+        <div className="kpi">
           <small style={{ color: "var(--muted)", display: "block" }}>
             SKU sắp hết hàng
           </small>
@@ -302,11 +303,11 @@ export default function AdminInventoryPage() {
 
       {/* Tab 1: Balances Table */}
       {activeTab === "balances" && (
-        <section className="whitebox" style={{ overflowX: "auto" }}>
+        <section className="admin-panel admin-table-wrap">
           {loading ? (
             <Loading label="Đang tải dữ liệu tồn kho..." />
           ) : (
-            <table
+            <table className="admin-table"
               style={{
                 width: "100%",
                 borderCollapse: "collapse",
@@ -405,8 +406,8 @@ export default function AdminInventoryPage() {
 
       {/* Tab 2: Movements Table */}
       {activeTab === "movements" && (
-        <section className="whitebox" style={{ overflowX: "auto" }}>
-          <table
+        <section className="admin-panel admin-table-wrap">
+          <table className="admin-table"
             style={{
               width: "100%",
               borderCollapse: "collapse",
@@ -478,8 +479,8 @@ export default function AdminInventoryPage() {
 
       {/* Tab 3: Audit Logs Table */}
       {activeTab === "audit" && (
-        <section className="whitebox" style={{ overflowX: "auto" }}>
-          <table
+        <section className="admin-panel admin-table-wrap">
+          <table className="admin-table"
             style={{
               width: "100%",
               borderCollapse: "collapse",
