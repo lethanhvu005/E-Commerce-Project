@@ -49,14 +49,59 @@ class ProductListSerializer(serializers.ModelSerializer):
     brand = BrandSerializer(read_only=True)
     cover_image = serializers.SerializerMethodField()
     min_price = serializers.DecimalField(max_digits=14, decimal_places=0, read_only=True)
+    compare_at_price = serializers.SerializerMethodField()
+    default_variant_id = serializers.SerializerMethodField()
+    available_stock = serializers.SerializerMethodField()
+    rating_avg = serializers.SerializerMethodField()
+    review_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
-        fields = ["id", "name", "slug", "short_name", "badge", "summary", "category", "brand", "cover_image", "min_price", "created_at"]
+        fields = [
+            "id", "name", "slug", "short_name", "badge", "accent_color", "summary",
+            "category", "brand", "cover_image", "min_price", "compare_at_price",
+            "default_variant_id", "available_stock", "rating_avg", "review_count", "created_at",
+        ]
 
     def get_cover_image(self, product):
         image = next((item for item in product.images.all() if item.is_cover), None)
         return ProductImageSerializer(image).data if image else None
+
+    def _active_variants(self, product):
+        return [v for v in product.variants.all() if v.is_active]
+
+    def get_compare_at_price(self, product):
+        variants = self._active_variants(product)
+        with_compare = [v.compare_at_price for v in variants if v.compare_at_price]
+        return str(min(with_compare)) if with_compare else None
+
+    def get_default_variant_id(self, product):
+        variants = sorted(self._active_variants(product), key=lambda v: (v.price, v.id))
+        for v in variants:
+            try:
+                if v.inventory.available > 0:
+                    return v.id
+            except ProductVariant.inventory.RelatedObjectDoesNotExist:
+                continue
+        return variants[0].id if variants else None
+
+    def get_available_stock(self, product):
+        total = 0
+        for v in self._active_variants(product):
+            try:
+                total += max(0, v.inventory.available)
+            except ProductVariant.inventory.RelatedObjectDoesNotExist:
+                continue
+        return total
+
+    def get_rating_avg(self, product):
+        published = [r.stars for r in product.reviews.all() if r.status == "published"]
+        if not published:
+            return None
+        return round(sum(published) / len(published), 1)
+
+    def get_review_count(self, product):
+        return sum(1 for r in product.reviews.all() if r.status == "published")
 
 
 class ProductDetailSerializer(ProductListSerializer):

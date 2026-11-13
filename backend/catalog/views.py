@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import Min, Q
+from django.db.models import F, Min, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -33,7 +33,7 @@ def active_products():
     return (
         Product.objects.filter(status=Product.Status.ACTIVE, category__is_active=True, brand__is_active=True)
         .select_related("category", "brand")
-        .prefetch_related("images")
+        .prefetch_related("images", "variants__inventory", "reviews")
         .annotate(min_price=Min("variants__price", filter=Q(variants__is_active=True)))
     )
 
@@ -62,6 +62,10 @@ def products(request):
     search = request.query_params.get("search", "").strip()
     category = request.query_params.get("category", "").strip()
     brand = request.query_params.get("brand", "").strip()
+    collection = request.query_params.get("collection", "").strip()
+    min_price = request.query_params.get("min_price", "").strip()
+    max_price = request.query_params.get("max_price", "").strip()
+    in_stock = request.query_params.get("in_stock", "").strip()
     ordering = request.query_params.get("ordering", "-created_at")
     if search:
         queryset = queryset.filter(Q(name__icontains=search) | Q(summary__icontains=search) | Q(variants__sku__icontains=search))
@@ -69,6 +73,14 @@ def products(request):
         queryset = queryset.filter(category__slug=category)
     if brand:
         queryset = queryset.filter(brand__slug=brand)
+    if collection:
+        queryset = queryset.filter(collection_entries__collection__slug=collection, collection_entries__collection__is_active=True)
+    if min_price.isdigit():
+        queryset = queryset.filter(min_price__gte=int(min_price))
+    if max_price.isdigit():
+        queryset = queryset.filter(min_price__lte=int(max_price))
+    if in_stock in ("1", "true", "True"):
+        queryset = queryset.filter(variants__is_active=True, variants__inventory__on_hand__gt=F("variants__inventory__reserved"))
     ordering_map = {
         "name": "name", "-name": "-name", "price": "min_price",
         "-price": "-min_price", "created_at": "created_at", "-created_at": "-created_at",

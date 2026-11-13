@@ -228,7 +228,7 @@ export default function CheckoutPage() {
 
             {/* Inline Add Address Form */}
             {showAddAddress && (
-              <div style={{ background: "#f8faff", border: "1px solid #d5e0f0", borderRadius: "12px", padding: "16px", marginBottom: "16px" }}>
+              <div className="nexa-inline-subpanel" style={{ borderRadius: "12px", padding: "16px", marginBottom: "16px" }}>
                 <h4 style={{ margin: "0 0 12px" }}>Thêm địa chỉ giao hàng</h4>
                 <div className="form-grid">
                   <div>

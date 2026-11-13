@@ -1,71 +1,1122 @@
-/* styles.css — React overrides only. All base styles come from /public/assets/css/ */
+/* ==========================================================================
+   NEXA COMMERCEOS — 3D SPATIAL MOTION & PREMIUM UI ENHANCEMENTS
+   Builds upon /public/assets/css/ tokens with 3D perspective, holographic glare,
+   floating hardware physics, and clean dark/light theme adaptability.
+   ========================================================================== */
 
-/* Ensure theme token is on <html> not <body> */
+/* Theme visibility helpers */
 html[data-theme="light"] .hero-image-dark { opacity: 0; }
 html[data-theme="dark"] .hero-image-light { opacity: 0; }
 
-/* Slider animation */
-.slider-viewport { position: relative; overflow: hidden; }
-.slider-viewport [hidden] { display: none !important; }
+/* Slider viewport */
+.slider-viewport {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+}
+.slider-viewport [hidden] {
+  display: none !important;
+}
+
+/* Main container minimum height */
+.main-with-mobile {
+  min-height: 75vh;
+  transition: background-color 0.28s ease, color 0.28s ease;
+}
+
+/* ==========================================================================
+   1. 3D PERSPECTIVE TILT & HOLOGRAPHIC GLARE SYSTEM (.nexa-3d-tilt)
+   ========================================================================== */
+.nexa-3d-tilt {
+  position: relative;
+  transform-style: preserve-3d;
+  transform: perspective(1050px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) scale3d(var(--tilt-scale, 1), var(--tilt-scale, 1), 1);
+  transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease, border-color 0.3s ease;
+  will-change: transform;
+}
+
+.nexa-3d-tilt[data-tilting="true"] {
+  transition: transform 0.09s linear, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.nexa-3d-glare {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0;
+  background: radial-gradient(
+    360px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(156, 198, 255, 0.16),
+    rgba(72, 104, 255, 0.05) 45%,
+    transparent 75%
+  );
+  mix-blend-mode: screen;
+  transition: opacity 0.3s ease;
+}
+
+html[data-theme="light"] .nexa-3d-glare {
+  background: radial-gradient(
+    340px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(21, 88, 201, 0.11),
+    rgba(255, 255, 255, 0.4) 45%,
+    transparent 75%
+  );
+  mix-blend-mode: normal;
+}
+
+.nexa-3d-tilt:hover .nexa-3d-glare {
+  opacity: 1;
+}
+
+/* ==========================================================================
+   2. 3D PRODUCT CARDS & FLOATING HARDWARE DEPTH (.nexa-card-3d)
+   ========================================================================== */
+.gear-card.nexa-card-3d {
+  border-radius: 18px;
+  overflow: hidden;
+  backface-visibility: hidden;
+}
+
+.gear-card.nexa-card-3d:hover {
+  border-color: color-mix(in srgb, var(--card-accent, var(--accent)) 65%, var(--edge));
+  box-shadow:
+    0 22px 44px -12px rgba(6, 15, 32, 0.48),
+    0 0 28px -6px color-mix(in srgb, var(--card-accent, var(--accent)) 28%, transparent);
+}
+
+html[data-theme="light"] .gear-card.nexa-card-3d:hover {
+  box-shadow:
+    0 20px 40px -12px rgba(18, 38, 74, 0.15),
+    0 0 0 1px rgba(21, 88, 201, 0.22);
+}
+
+.gear-product-photo-wrap {
+  position: relative;
+  overflow: hidden;
+}
+
+.gear-photo-halo {
+  position: absolute;
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--card-accent, #4868ff) 28%, transparent) 0%, transparent 72%);
+  filter: blur(18px);
+  opacity: 0.55;
+  transition: transform 0.45s ease, opacity 0.45s ease;
+  pointer-events: none;
+}
+
+.gear-card.nexa-card-3d:hover .gear-photo-halo {
+  transform: scale(1.32);
+  opacity: 0.92;
+}
+
+.nexa-3d-float-img {
+  transition: transform 0.48s cubic-bezier(0.22, 1, 0.36, 1), filter 0.4s ease !important;
+  filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.32));
+}
+
+.gear-card.nexa-card-3d:hover .nexa-3d-float-img,
+.gear-category.nexa-cat-3d:hover .nexa-3d-float-img {
+  transform: translateY(-8px) scale(1.075) rotate(-1.5deg) !important;
+  filter: drop-shadow(0 22px 24px rgba(0, 0, 0, 0.45));
+}
+
+.gear-photo-floor-shadow {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 56%;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.38) 0%, transparent 75%);
+  transition: transform 0.45s ease, opacity 0.45s ease;
+  pointer-events: none;
+}
+
+.gear-card.nexa-card-3d:hover .gear-photo-floor-shadow {
+  transform: translateX(-50%) scaleX(0.82);
+  opacity: 0.65;
+}
+
+/* Quick View 3D Trigger Button on Product Card */
+.nexa-quickview-trigger {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #f0f6ff;
+  background: rgba(11, 20, 38, 0.82);
+  border: 1px solid rgba(156, 198, 255, 0.35);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.24s ease, transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.2s ease;
+}
+
+.nexa-quickview-trigger svg {
+  width: 14px;
+  height: 14px;
+}
+
+.gear-card:hover .nexa-quickview-trigger,
+.nexa-quickview-trigger:focus-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.nexa-quickview-trigger:hover {
+  background: var(--action);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* Card meta top row & stock indicator */
+.gear-meta-toprow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.nexa-card-rating {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #f5b324;
+  background: rgba(245, 179, 36, 0.12);
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+.gear-price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 14px;
+}
+
+.gear-price-row .gear-price {
+  margin: 0;
+}
+
+.nexa-stock-dot {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.nexa-stock-dot.in {
+  color: #20c997;
+  background: rgba(32, 201, 151, 0.12);
+}
+
+.nexa-stock-dot.low {
+  color: #f59f00;
+  background: rgba(245, 159, 0, 0.14);
+}
+
+.nexa-stock-dot.out {
+  color: #ff6b81;
+  background: rgba(255, 107, 129, 0.14);
+}
+
+/* ==========================================================================
+   3. HERO 3D STAGE & PARALLAX AMBIENT RINGS (.nexa-hero-3d-wrap)
+   ========================================================================== */
+@keyframes float3D {
+  0%, 100% {
+    transform: translate3d(var(--stage-tx, 0px), var(--stage-ty, 0px), 0) rotateX(var(--stage-rx, 0deg)) rotateY(var(--stage-ry, 0deg));
+  }
+  50% {
+    transform: translate3d(var(--stage-tx, 0px), calc(var(--stage-ty, 0px) - 10px), 16px) rotateX(var(--stage-rx, 0deg)) rotateY(var(--stage-ry, 0deg));
+  }
+}
+
+@keyframes orbitSpinSlow {
+  from { transform: translate(-50%, -50%) rotateX(68deg) rotateZ(0deg); }
+  to { transform: translate(-50%, -50%) rotateX(68deg) rotateZ(360deg); }
+}
+
+.nexa-hero-3d-wrap {
+  margin-top: 14px;
+}
+
+.nexa-hero-ambient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.nexa-orbit-ring {
+  position: absolute;
+  left: 66%;
+  top: 54%;
+  width: 560px;
+  height: 560px;
+  border-radius: 50%;
+  border: 1px dashed rgba(156, 198, 255, 0.2);
+  transform: translate(-50%, -50%) rotateX(68deg);
+  animation: orbitSpinSlow 26s linear infinite;
+}
+
+.nexa-orbit-ring.ring-2 {
+  width: 740px;
+  height: 740px;
+  border-style: solid;
+  border-color: rgba(72, 104, 255, 0.14);
+  animation-direction: reverse;
+  animation-duration: 38s;
+}
+
+.nexa-hero-spotlight {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    550px circle at var(--cursor-x, 65%) var(--cursor-y, 50%),
+    rgba(39, 113, 230, 0.22),
+    transparent 70%
+  );
+}
+
+.nexa-hero-3d-img {
+  animation: float3D 6s ease-in-out infinite;
+  transition: transform 0.2s ease-out;
+  will-change: transform;
+}
+
+.nexa-3d-copy-layer {
+  transform: translate3d(calc(var(--stage-tx, 0px) * -0.25), calc(var(--stage-ty, 0px) * -0.25), 24px);
+  transition: transform 0.25s ease-out;
+}
+
+.nexa-pulse-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #43e6e3;
+  box-shadow: 0 0 10px #43e6e3;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.nexa-hero-arrows {
+  position: absolute;
+  right: 22px;
+  bottom: 18px;
+  z-index: 5;
+  display: flex;
+  gap: 8px;
+}
+
+.nexa-hero-arrow {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(9, 16, 32, 0.65);
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  backdrop-filter: blur(8px);
+  transition: background-color 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.nexa-hero-arrow:hover {
+  background: var(--action);
+  border-color: var(--accent);
+  transform: scale(1.08);
+}
+
+/* ==========================================================================
+   4. TRUST PILLARS & COLLECTION CARDS (.nexa-trust-strip)
+   ========================================================================== */
+.nexa-trust-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.nexa-trust-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px 18px;
+  background: var(--bg2);
+  border: 1px solid var(--edge);
+  border-radius: 14px;
+}
+
+.nexa-trust-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(21, 88, 201, 0.2), rgba(67, 230, 227, 0.1));
+  border: 1px solid rgba(156, 198, 255, 0.22);
+}
+
+.nexa-trust-card strong {
+  display: block;
+  font-size: 13.5px;
+  margin-bottom: 4px;
+  color: var(--ink);
+}
+
+.nexa-trust-card p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.nexa-collection-pills {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 16px;
+}
+
+.nexa-collection-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 22px;
+  background: linear-gradient(135deg, var(--bg2), var(--panel));
+  border: 1px solid var(--edge);
+  border-radius: 14px;
+}
+
+.nexa-col-num {
+  font-family: var(--serif);
+  font-size: 32px;
+  font-style: italic;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.nexa-collection-card strong {
+  display: block;
+  font-size: 15px;
+  margin-bottom: 3px;
+}
+
+.nexa-collection-card small {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+/* ==========================================================================
+   5. PRODUCT DETAIL 3D STUDIO & VARIANT PILLS
+   ========================================================================== */
+.nexa-pd-hero-3d {
+  box-shadow: 0 28px 60px -15px rgba(0, 0, 0, 0.65);
+}
+
+.pd-orbit-three {
+  top: 25%;
+  right: -15%;
+  width: 550px;
+  height: 550px;
+  border-color: rgba(67, 230, 227, 0.15);
+  transform: rotate(35deg);
+}
+
+.nexa-pd-3d-object {
+  transform: perspective(1050px) rotateX(calc(-4deg + var(--stage-rx, 0deg))) rotateY(calc(-10deg + var(--stage-ry, 0deg))) translate3d(var(--stage-tx, 0px), var(--stage-ty, 0px), 25px) scale(0.99);
+}
+
+.pd-artwork.is-spin3d-mode {
+  cursor: grab;
+  user-select: none;
+}
+
+.pd-artwork.is-spin3d-mode.is-dragging {
+  cursor: grabbing;
+}
+
+.nexa-3d-mode-btn {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  background: rgba(21, 88, 201, 0.25);
+  color: #d6e6ff;
+  border: 1px solid rgba(156, 198, 255, 0.4);
+  transition: all 0.2s ease;
+}
+
+.nexa-3d-mode-btn.active,
+.nexa-3d-mode-btn:hover {
+  background: var(--action);
+  color: #fff;
+  border-color: #9cc6ff;
+  box-shadow: 0 0 18px rgba(21, 88, 201, 0.55);
+}
+
+.nexa-3d-controls-bar {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(10, 16, 30, 0.85);
+  border: 1px solid rgba(156, 198, 255, 0.3);
+  backdrop-filter: blur(10px);
+  font-size: 11px;
+  color: #d8e6ff;
+}
+
+.nexa-3d-controls-bar input[type="range"] {
+  width: 130px;
+  accent-color: #9cc6ff;
+}
+
+.nexa-3d-controls-bar button {
+  border: 0;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 10.5px;
+}
+
+/* Variant Pills on Product Detail */
+.nexa-variant-picker {
+  margin: 16px 0;
+}
+
+.nexa-variant-pills {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+  gap: 8px;
+}
+
+.nexa-variant-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #35304a;
+  background: rgba(21, 18, 34, 0.75);
+  color: #e6e0f8;
+  text-align: left;
+  transition: all 0.18s ease;
+}
+
+.nexa-variant-pill strong {
+  font-size: 12px;
+  color: #fff;
+}
+
+.nexa-variant-pill span {
+  font-size: 10.5px;
+  color: #9d94b8;
+}
+
+.nexa-variant-pill:hover:not(.is-out) {
+  border-color: #7096e8;
+  background: rgba(26, 38, 68, 0.85);
+}
+
+.nexa-variant-pill.active {
+  border-color: #9cc6ff;
+  background: linear-gradient(135deg, rgba(21, 88, 201, 0.42), rgba(15, 32, 67, 0.9));
+  box-shadow: 0 0 0 1px #9cc6ff inset;
+}
+
+.nexa-variant-pill.is-out {
+  opacity: 0.45;
+}
+
+.nexa-feature-list {
+  list-style: none;
+  padding: 0;
+  margin: 22px 0 0;
+  display: grid;
+  gap: 10px;
+}
+
+.nexa-feature-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.nexa-feat-check {
+  color: var(--accent);
+  font-size: 14px;
+}
+
+.nexa-qa-answers {
+  margin-top: 10px;
+  padding-left: 12px;
+  border-left: 2px solid var(--action);
+}
+
+.nexa-qa-answer {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* ==========================================================================
+   6. 3D QUICK VIEW MODAL (.nexa-qv-backdrop)
+   ========================================================================== */
+@keyframes modalPop3D {
+  from {
+    opacity: 0;
+    transform: perspective(900px) rotateX(10deg) translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(900px) rotateX(0deg) translateY(0) scale(1);
+  }
+}
+
+.nexa-qv-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(3, 6, 14, 0.76);
+  backdrop-filter: blur(10px);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.nexa-qv-modal {
+  position: relative;
+  width: min(880px, 100%);
+  background: #0c1424;
+  color: #f0f5ff;
+  border: 1px solid #283c5e;
+  border-radius: 22px;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+  animation: modalPop3D 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nexa-qv-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 5;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(15, 25, 45, 0.8);
+  color: #fff;
+  font-size: 20px;
+  display: grid;
+  place-items: center;
+}
+
+.nexa-qv-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+}
+
+.nexa-qv-visual {
+  position: relative;
+  min-height: 380px;
+  background: radial-gradient(circle at 50% 50%, #16294c 0%, #070c18 80%);
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  overflow: hidden;
+}
+
+.nexa-qv-orbit {
+  position: absolute;
+  border: 1px dashed rgba(156, 198, 255, 0.22);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.nexa-qv-orbit-1 {
+  width: 300px;
+  height: 300px;
+}
+
+.nexa-qv-orbit-2 {
+  width: 420px;
+  height: 420px;
+  border-style: solid;
+  border-color: rgba(156, 198, 255, 0.08);
+}
+
+.nexa-qv-img {
+  width: 85%;
+  max-height: 250px;
+  object-fit: contain;
+  filter: drop-shadow(0 22px 26px rgba(0, 0, 0, 0.55));
+  transform: perspective(900px) rotateX(var(--stage-rx, 0deg)) rotateY(var(--stage-ry, 0deg)) translate3d(var(--stage-tx, 0px), var(--stage-ty, 0px), 20px);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nexa-qv-visual.view-tilt .nexa-qv-img {
+  transform: perspective(900px) rotateY(-22deg) rotateX(10deg) rotateZ(-4deg) scale(1.08);
+}
+
+.nexa-qv-visual.view-zoom .nexa-qv-img {
+  transform: scale(1.32) rotate(-6deg);
+}
+
+.nexa-qv-angles {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  background: rgba(8, 14, 26, 0.8);
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(156, 198, 255, 0.2);
+}
+
+.nexa-qv-angles button {
+  border: 0;
+  background: transparent;
+  color: #9eb2d0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+}
+
+.nexa-qv-angles button.active {
+  background: var(--action);
+  color: #fff;
+}
+
+.nexa-qv-info {
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+}
+
+.nexa-qv-title {
+  font-size: 22px;
+  margin: 8px 0 12px;
+  color: #fff;
+}
+
+.nexa-qv-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.nexa-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.nexa-pill-accent {
+  background: var(--action);
+  color: #fff;
+}
+
+.nexa-pill-stock {
+  background: rgba(32, 201, 151, 0.16);
+  color: #38d9a9;
+}
+
+.nexa-pill-out {
+  background: rgba(255, 107, 129, 0.16);
+  color: #ff6b81;
+}
+
+.nexa-pill-star {
+  background: rgba(245, 179, 36, 0.16);
+  color: #fcc419;
+}
+
+.nexa-qv-price {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.nexa-qv-price strong {
+  font-size: 26px;
+  font-weight: 800;
+  color: #9cc6ff;
+}
+
+.nexa-qv-price del {
+  font-size: 14px;
+  color: #7c8ea8;
+}
+
+.nexa-qv-summary {
+  font-size: 13.5px;
+  color: #b4c3dc;
+  line-height: 1.65;
+  margin: 0 0 22px;
+}
+
+.nexa-qv-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.nexa-qv-detail-link {
+  display: inline-block;
+  margin-top: 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #9cc6ff;
+}
+
+/* ==========================================================================
+   7. CATALOG HEADER, CHIPS & GRID DENSITY (.nexa-catalog-hero)
+   ========================================================================== */
+.nexa-catalog-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: 16px 0 8px;
+}
+
+.nexa-quick-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.nexa-quick-cats button {
+  border: 1px solid var(--edge);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 999px;
+  transition: all 0.18s ease;
+}
+
+.nexa-quick-cats button:hover,
+.nexa-quick-cats button.active {
+  background: var(--action);
+  border-color: var(--action);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(21, 88, 201, 0.28);
+}
+
+.nexa-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.nexa-grid-switcher {
+  display: inline-flex;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.nexa-grid-switcher button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 6px 10px;
+}
+
+.nexa-grid-switcher button.active {
+  background: var(--action);
+  color: #fff;
+}
+
+.products-grid.cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.products-grid.cols-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.nexa-active-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.nexa-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(21, 88, 201, 0.12);
+  color: var(--action);
+  border: 1px solid rgba(21, 88, 201, 0.3);
+}
+
+html[data-theme="dark"] .nexa-chip {
+  color: #9cc6ff;
+  background: rgba(156, 198, 255, 0.12);
+  border-color: rgba(156, 198, 255, 0.3);
+}
+
+/* ==========================================================================
+   8. CART FREE SHIPPING BAR & THEME-ADAPTIVE CONTROLS
+   ========================================================================== */
+.nexa-cart-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 24px;
+  padding: 20px 0 60px;
+}
+
+.nexa-freeship-bar {
+  padding: 14px 16px;
+  border-radius: 12px;
+  margin-bottom: 18px;
+  background: rgba(21, 88, 201, 0.08);
+  border: 1px solid rgba(21, 88, 201, 0.22);
+}
+
+.nexa-freeship-text {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  margin-bottom: 8px;
+}
+
+.nexa-freeship-track {
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(140, 160, 190, 0.22);
+  overflow: hidden;
+}
+
+.nexa-freeship-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #1558c9, #43e6e3);
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.nexa-qty-control {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg2);
+}
+
+.nexa-qty-control button {
+  border: 0;
+  padding: 5px 11px;
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  transition: background-color 0.16s ease;
+}
+
+.nexa-qty-control button:hover:not(:disabled) {
+  background: rgba(21, 88, 201, 0.16);
+}
+
+.nexa-qty-control span {
+  padding: 4px 12px;
+  min-width: 32px;
+  text-align: center;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.nexa-applied-voucher {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin: 14px 0;
+  background: rgba(21, 88, 201, 0.1);
+  border: 1px solid rgba(21, 88, 201, 0.28);
+}
+
+.nexa-applied-voucher span {
+  font-size: 10px;
+  color: var(--muted);
+  display: block;
+}
+
+.nexa-applied-voucher strong {
+  color: var(--accent);
+  letter-spacing: 1px;
+}
+
+.nexa-applied-voucher button {
+  border: 0;
+  background: none;
+  color: #ff4d61;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.nexa-inline-subpanel {
+  background: rgba(21, 88, 201, 0.06);
+  border: 1px solid var(--edge);
+}
+
+/* ==========================================================================
+   9. HEADER GLASSMORPHISM, WISHLIST BADGE & FLOATING BACK-TO-TOP
+   ========================================================================== */
+.nexa-glass-header {
+  backdrop-filter: blur(18px) saturate(160%);
+}
+
+.nexa-mark-3d {
+  box-shadow: 0 4px 14px rgba(21, 88, 201, 0.45);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gear-brand:hover .nexa-mark-3d {
+  transform: rotateY(18deg) scale(1.06);
+}
+
+.nexa-wish-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #1558c9;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+}
+
+.nexa-search-clear {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 16px;
+  padding: 0 6px;
+}
+
+.nexa-back-top {
+  position: fixed;
+  right: 24px;
+  bottom: 28px;
+  z-index: 65;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(156, 198, 255, 0.35);
+  background: var(--action);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+  box-shadow: 0 12px 26px rgba(21, 88, 201, 0.42);
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.2s ease;
+}
+
+.nexa-back-top:hover {
+  transform: translateY(-4px) scale(1.06);
+  background: var(--action-hover);
+}
+
+/* 3D Button Lift */
+.nexa-btn-3d {
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease, background-color 0.2s ease !important;
+}
+
+.nexa-btn-3d:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(21, 88, 201, 0.38);
+}
+
+/* Spinner & State feedback */
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2.5px solid var(--edge);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 
 /* Mobile tabs bottom nav */
 .mobile-tabs {
   display: none;
 }
 
-/* Main with mobile bottom padding */
-.main-with-mobile {
-  min-height: 70vh;
+@media (max-width: 1024px) {
+  .nexa-trust-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .products-grid.cols-3,
+  .products-grid.cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .nexa-cart-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
-/* State boxes for React feedback */
-.state-box {
-  min-height: 150px;
-  border: 1px dashed var(--edge);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  color: var(--muted);
-  padding: 30px;
-  border-radius: 14px;
-  margin: 20px 0;
-}
-.state-empty,
-.state-error {
-  flex-direction: column;
-  text-align: center;
-}
-.state-error {
-  border-color: #ff4d6180;
-  color: #ff4d61;
-}
-.spinner {
-  width: 22px;
-  height: 22px;
-  border: 2px solid var(--edge);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Success message */
-.success-message {
-  color: #41d6a4;
-  font-weight: 600;
-}
-
-/* Field error */
-.field-error {
-  color: #ff4d61;
-  font-size: 12px;
-  margin: 4px 0;
-}
-
-/* Mobile bottom tabs – shown on small screens */
 @media (max-width: 900px) {
   .mobile-tabs {
     display: flex;
@@ -78,6 +1129,7 @@ html[data-theme="dark"] .hero-image-light { opacity: 0; }
     border-top: 1px solid var(--edge);
     justify-content: space-around;
     padding: env(safe-area-inset-bottom) 0 0;
+    backdrop-filter: blur(14px);
   }
   .mobile-tabs button {
     display: flex;
@@ -102,6 +1154,21 @@ html[data-theme="dark"] .hero-image-light { opacity: 0; }
     height: 22px;
   }
   .main-with-mobile {
-    padding-bottom: 80px;
+    padding-bottom: 84px;
+  }
+  .nexa-back-top {
+    bottom: 78px;
+  }
+  .nexa-qv-grid {
+    grid-template-columns: 1fr;
+  }
+  .nexa-qv-visual {
+    min-height: 260px;
+  }
+}
+
+@media (max-width: 600px) {
+  .nexa-trust-strip {
+    grid-template-columns: 1fr;
   }
 }

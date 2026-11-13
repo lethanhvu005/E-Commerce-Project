@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { promotionService } from "../api/client";
+import { Tilt3DCard } from "../components/Motion3D";
 import { Empty, ErrorBox, Loading, Toast } from "../components/Feedback";
 
 export default function VouchersPage() {
@@ -32,7 +33,7 @@ export default function VouchersPage() {
     setToastMsg(`Đã sao chép mã ${code}! Đang chuyển đến giỏ hàng...`);
     setTimeout(() => {
       navigate("/cart");
-    }, 1000);
+    }, 900);
   };
 
   if (loading && vouchers.length === 0) {
@@ -47,22 +48,23 @@ export default function VouchersPage() {
     <div className="container ux-page">
       <Toast message={toastMsg} onClose={() => setToastMsg("")} />
 
-      {/* Hero Header matching vouchers.html */}
-      <section className="ux-hero">
+      <section className="ux-hero nexa-hero-glow">
         <div>
           <span className="ux-kicker">REWARDS / OFFERS</span>
           <h1>
-            Good gear.<br />
+            Good gear.
+            <br />
             <em>Better deals.</em>
           </h1>
           <p>Khám phá ưu đãi độc quyền từ NEXA và áp dụng ngay trong giỏ hàng của bạn.</p>
         </div>
-        <span className="ux-hero-orbit" aria-hidden="true">N</span>
+        <span className="ux-hero-orbit" aria-hidden="true">
+          N
+        </span>
       </section>
 
       {error && <ErrorBox error={error} onRetry={loadVouchers} />}
 
-      {/* Vouchers Grid matching vouchers.html */}
       {vouchers.length === 0 ? (
         <Empty
           title="Chưa có mã ưu đãi"
@@ -73,21 +75,32 @@ export default function VouchersPage() {
       ) : (
         <div className="ux-voucher-grid">
           {vouchers.map((v) => (
-            <article className="ux-voucher" key={v.id || v.code}>
+            <Tilt3DCard
+              as="article"
+              className="ux-voucher"
+              key={v.id || v.code}
+              intensity={10}
+              scale={1.02}
+            >
               <span className="ux-kicker">NEXA / REWARDS</span>
               <h2>{v.name || v.code}</h2>
               <p>
-                {v.description || (v.kind === "percent" ? `Giảm ${v.value}% cho toàn bộ giỏ hàng` : v.kind === "free_ship" ? "Miễn phí vận chuyển toàn quốc" : `Giảm ngay ${v.value} ₫`)}
+                {v.description ||
+                  (v.kind === "percent"
+                    ? `Giảm ${v.value}% cho toàn bộ giỏ hàng`
+                    : v.kind === "free_ship"
+                    ? "Miễn phí vận chuyển toàn quốc"
+                    : `Giảm ngay ${v.value} ₫`)}
               </p>
               <code>{v.code}</code>
               <button
                 type="button"
-                className="btn btn-violet"
+                className="btn btn-violet nexa-btn-3d"
                 onClick={() => handleUseVoucher(v.code)}
               >
                 Sao chép & Sử dụng →
               </button>
-            </article>
+            </Tilt3DCard>
           ))}
         </div>
       )}
