@@ -1,17 +1,22 @@
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
+from decimal import Decimal
 
+from django.core.management import call_command
 from django.db import close_old_connections
 from django.db import IntegrityError, transaction
 from django.test import TestCase, TransactionTestCase
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.models import Address, User
 from carts.models import Cart, CartItem
 from common.test_factories import catalog, order
-from inventory.models import InventoryBalance
-from .models import Order, OrderItem
+from inventory.models import InventoryBalance, InventoryReservation
+from promotions.models import Voucher, VoucherRedemption
+from .models import Order, OrderItem, OrderStatus
 from .models import ShippingMethod
 from .services import create_order
 
@@ -90,6 +95,108 @@ class OrderApiTests(APITestCase):
         self.assertEqual(response.data["status"], "cancelled")
         balance = InventoryBalance.objects.get(variant=self.variant)
         self.assertEqual(balance.reserved, 0)
+
+    def test_percent_voucher_fractional_discount_rounds_down_cleanly(self):
+        self.variant.price = Decimal("1999999")
+        self.variant.save(update_fields=["price"])
+        cart = Cart.objects.get(user=self.user, status=Cart.Status.ACTIVE)
+        cart.items.update(quantity=1)
+        voucher = Voucher.objects.create(
+            code="ODD15",
+            kind=Voucher.Kind.PERCENT,
+            value=Decimal("15"),
+            starts_at=timezone.now() - timedelta(hours=1),
+            ends_at=timezone.now() + timedelta(days=1),
+        )
+        cart.voucher = voucher
+        cart.save(update_fields=["voucher"])
+
+        preview_res = self.client.post("/api/checkout/preview/", self.payload(), format="json")
+        self.assertEqual(preview_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(preview_res.data["discount_total"], Decimal("299999"))
+        self.assertEqual(preview_res.data["grand_total"], Decimal("1700020"))
+
+        create_res = self.client.post("/api/orders/", self.payload(), format="json")
+        self.assertEqual(create_res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(create_res.data["discount_total"], "299999")
+        self.assertEqual(create_res.data["grand_total"], "1700020")
+
+    def test_deactivated_product_or_variant_in_cart_is_rejected_at_checkout(self):
+        self.variant.is_active = False
+        self.variant.save(update_fields=["is_active"])
+        res = self.client.post("/api/orders/", self.payload(), format="json")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("cart", res.data)
+
+    def test_cancel_order_releases_voucher_redemption_for_reuse(self):
+        voucher = Voucher.objects.create(
+            code="ONCEONLY",
+            kind=Voucher.Kind.FIXED,
+            value=Decimal("50"),
+            usage_limit=1,
+            per_user_limit=1,
+            starts_at=timezone.now() - timedelta(hours=1),
+            ends_at=timezone.now() + timedelta(days=1),
+        )
+        cart = Cart.objects.get(user=self.user, status=Cart.Status.ACTIVE)
+        cart.voucher = voucher
+        cart.save(update_fields=["voucher"])
+
+        created = self.client.post("/api/orders/", self.payload(), format="json")
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(
+            VoucherRedemption.objects.get(order__public_id=created.data["public_id"]).status,
+            VoucherRedemption.Status.RESERVED,
+        )
+
+        cancelled = self.client.post(
+            f"/api/orders/{created.data['public_id']}/cancel/",
+            {"reason": "Đặt lại"},
+            format="json",
+        )
+        self.assertEqual(cancelled.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            VoucherRedemption.objects.get(order__public_id=created.data["public_id"]).status,
+            VoucherRedemption.Status.RELEASED,
+        )
+
+        new_cart = Cart.objects.create(user=self.user, voucher=voucher)
+        CartItem.objects.create(cart=new_cart, variant=self.variant, quantity=1)
+        recreated = self.client.post("/api/orders/", self.payload(), format="json")
+        self.assertEqual(recreated.status_code, status.HTTP_201_CREATED)
+
+    def test_release_expired_reservations_command_expires_order_and_restores_stock(self):
+        voucher = Voucher.objects.create(
+            code="EXP10",
+            kind=Voucher.Kind.FIXED,
+            value=Decimal("10"),
+            usage_limit=1,
+            starts_at=timezone.now() - timedelta(hours=1),
+            ends_at=timezone.now() + timedelta(days=1),
+        )
+        cart = Cart.objects.get(user=self.user, status=Cart.Status.ACTIVE)
+        cart.voucher = voucher
+        cart.save(update_fields=["voucher"])
+
+        created = self.client.post("/api/orders/", self.payload(), format="json")
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED)
+        order_obj = Order.objects.get(public_id=created.data["public_id"])
+        past = timezone.now() - timedelta(minutes=31)
+        InventoryReservation.objects.filter(order=order_obj).update(
+            created_at=past - timedelta(minutes=30),
+            expires_at=past,
+        )
+
+        call_command("release_expired_reservations")
+
+        order_obj.refresh_from_db()
+        self.assertEqual(order_obj.status, OrderStatus.EXPIRED)
+        reservation = InventoryReservation.objects.get(order=order_obj)
+        self.assertEqual(reservation.status, InventoryReservation.Status.EXPIRED)
+        self.assertIsNotNone(reservation.closed_at)
+        balance = InventoryBalance.objects.get(variant=self.variant)
+        self.assertEqual(balance.reserved, 0)
+        self.assertEqual(order_obj.voucher_redemption.status, VoucherRedemption.Status.RELEASED)
 
 
 class ConcurrentCheckoutTests(TransactionTestCase):

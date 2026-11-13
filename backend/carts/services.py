@@ -1,6 +1,7 @@
-from decimal import Decimal
+from decimal import Decimal, ROUND_DOWN
 
 from django.db import transaction
+from django.db.models import Count, Q
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
@@ -53,23 +54,46 @@ def add_item(user, variant_id, quantity):
     return cart
 
 
-def is_voucher_usable(voucher, user_id, subtotal, now=None):
+def compute_discount(voucher, subtotal):
+    if not voucher or subtotal <= 0:
+        return Decimal("0")
+    if voucher.kind == Voucher.Kind.PERCENT:
+        discount = (subtotal * voucher.value / Decimal("100")).quantize(
+            Decimal("1"), rounding=ROUND_DOWN
+        )
+        if voucher.max_discount is not None:
+            discount = min(discount, voucher.max_discount)
+        return min(subtotal, discount)
+    if voucher.kind == Voucher.Kind.FIXED:
+        return min(subtotal, voucher.value).quantize(Decimal("1"), rounding=ROUND_DOWN)
+    return Decimal("0")
+
+
+def get_voucher_error(voucher, user_id, subtotal, now=None):
     if not voucher or not voucher.is_active:
-        return False
+        return "Voucher không hợp lệ hoặc đã hết hạn."
     now = now or timezone.now()
     if not (voucher.starts_at <= now < voucher.ends_at):
-        return False
+        return "Voucher không hợp lệ hoặc đã hết hạn."
     if subtotal < voucher.min_subtotal:
-        return False
-    active_redemptions = VoucherRedemption.objects.filter(voucher=voucher).exclude(
-        status=VoucherRedemption.Status.RELEASED
-    )
-    if voucher.usage_limit is not None and active_redemptions.count() >= voucher.usage_limit:
-        return False
-    if user_id and voucher.per_user_limit is not None:
-        if active_redemptions.filter(user_id=user_id).count() >= voucher.per_user_limit:
-            return False
-    return True
+        return f"Đơn hàng tối thiểu để áp dụng voucher là {voucher.min_subtotal} VND."
+    if voucher.usage_limit is not None or (user_id and voucher.per_user_limit is not None):
+        active_redemptions = VoucherRedemption.objects.filter(voucher=voucher).exclude(
+            status=VoucherRedemption.Status.RELEASED
+        )
+        aggregates = {"total": Count("id")}
+        if user_id and voucher.per_user_limit is not None:
+            aggregates["mine"] = Count("id", filter=Q(user_id=user_id))
+        counts = active_redemptions.aggregate(**aggregates)
+        if voucher.usage_limit is not None and counts["total"] >= voucher.usage_limit:
+            return "Voucher đã hết lượt sử dụng."
+        if user_id and voucher.per_user_limit is not None and counts.get("mine", 0) >= voucher.per_user_limit:
+            return "Bạn đã dùng hết số lượt cho phép của voucher này."
+    return None
+
+
+def is_voucher_usable(voucher, user_id, subtotal, now=None):
+    return get_voucher_error(voucher, user_id, subtotal, now=now) is None
 
 
 def cart_totals(cart):
@@ -80,13 +104,12 @@ def cart_totals(cart):
     )
     subtotal = sum((item.variant.price * item.quantity for item in items), Decimal("0"))
     discount = Decimal("0")
+    voucher_error = None
     if cart.voucher_id:
         voucher = cart.voucher
-        if is_voucher_usable(voucher, cart.user_id, subtotal):
-            if voucher.kind == Voucher.Kind.PERCENT:
-                discount = subtotal * voucher.value / Decimal("100")
-                if voucher.max_discount is not None:
-                    discount = min(discount, voucher.max_discount)
-            elif voucher.kind == Voucher.Kind.FIXED:
-                discount = min(subtotal, voucher.value)
+        voucher_error = get_voucher_error(voucher, cart.user_id, subtotal)
+        if voucher_error is None:
+            discount = compute_discount(voucher, subtotal)
+    cart._voucher_error = voucher_error
+    cart._voucher_usable = cart.voucher_id is not None and voucher_error is None
     return items, subtotal, discount, subtotal - discount

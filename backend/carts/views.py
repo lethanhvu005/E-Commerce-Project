@@ -12,14 +12,21 @@ from .services import add_item, cart_totals, get_cart, validate_variant
 
 def cart_response(cart):
     items, subtotal, discount, total = cart_totals(cart)
-    return Response({
+    voucher_error = getattr(cart, "_voucher_error", None)
+    if voucher_error and cart.voucher_id:
+        cart.voucher = None
+        cart.save(update_fields=["voucher", "updated_at"])
+    payload = {
         "id": cart.id,
         "items": CartItemSerializer(items, many=True).data,
         "subtotal": subtotal,
         "discount_total": discount,
         "total": total,
         "voucher_code": cart.voucher.code if cart.voucher_id else None,
-    })
+    }
+    if voucher_error:
+        payload["voucher_error"] = voucher_error
+    return Response(payload)
 
 
 @api_view(["GET"])

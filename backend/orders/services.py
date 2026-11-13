@@ -11,7 +11,7 @@ from rest_framework.exceptions import ValidationError
 
 from accounts.models import Address
 from carts.models import Cart
-from carts.services import cart_totals, is_voucher_usable
+from carts.services import cart_totals, compute_discount, get_voucher_error
 from catalog.models import Product
 from inventory.models import InventoryBalance, InventoryReservation
 from operations.models import OutboxEvent
@@ -55,19 +55,74 @@ def validate_and_lock_voucher(voucher_id, user, subtotal):
         voucher = Voucher.objects.select_for_update().get(pk=voucher_id)
     except Voucher.DoesNotExist:
         raise ValidationError({"voucher": ["Voucher không tồn tại."]})
-    now = timezone.now()
-    if not voucher.is_active or not (voucher.starts_at <= now < voucher.ends_at):
-        raise ValidationError({"voucher": ["Voucher không hợp lệ hoặc đã hết hạn."]})
-    if subtotal < voucher.min_subtotal:
-        raise ValidationError({"voucher": [f"Đơn hàng tối thiểu để áp dụng voucher là {voucher.min_subtotal} VND."]})
-    active_redemptions = VoucherRedemption.objects.filter(voucher=voucher).exclude(
-        status=VoucherRedemption.Status.RELEASED
-    )
-    if voucher.usage_limit is not None and active_redemptions.count() >= voucher.usage_limit:
-        raise ValidationError({"voucher": ["Voucher đã hết lượt sử dụng."]})
-    if voucher.per_user_limit is not None and active_redemptions.filter(user=user).count() >= voucher.per_user_limit:
-        raise ValidationError({"voucher": ["Bạn đã dùng hết số lượt cho phép của voucher này."]})
+    voucher_error = get_voucher_error(voucher, user.id if user else None, subtotal)
+    if voucher_error:
+        raise ValidationError({"voucher": [voucher_error]})
     return voucher
+
+
+@transaction.atomic
+def release_expired_reservations(now=None, variant_ids=None):
+    now = now or timezone.now()
+    filters = {
+        "status": InventoryReservation.Status.ACTIVE,
+        "expires_at__lte": now,
+    }
+    if variant_ids is not None:
+        filters["variant_id__in"] = list(variant_ids)
+    due_order_ids = list(
+        InventoryReservation.objects.filter(**filters)
+        .values_list("order_id", flat=True)
+        .distinct()
+        .order_by("order_id")
+    )
+    if not due_order_ids:
+        return 0
+
+    expired_count = 0
+    for order_id in due_order_ids:
+        order = Order.objects.select_for_update().get(pk=order_id)
+        due_reservations = list(
+            order.reservations.select_for_update()
+            .filter(status=InventoryReservation.Status.ACTIVE, expires_at__lte=now)
+            .order_by("variant_id")
+        )
+        if not due_reservations:
+            continue
+        for reservation in due_reservations:
+            balance = InventoryBalance.objects.select_for_update().get(variant_id=reservation.variant_id)
+            if balance.reserved < reservation.quantity:
+                logger.warning(
+                    "Inventory reserved underflow prevented on expiry for variant_id=%s (reserved=%s, release=%s)",
+                    reservation.variant_id,
+                    balance.reserved,
+                    reservation.quantity,
+                )
+            balance.reserved = max(0, balance.reserved - reservation.quantity)
+            balance.save(update_fields=["reserved", "updated_at"])
+            reservation.status = InventoryReservation.Status.EXPIRED
+            reservation.closed_at = now
+            reservation.save(update_fields=["status", "closed_at"])
+            expired_count += 1
+
+        if (
+            order.status == OrderStatus.PENDING
+            and not order.reservations.filter(status=InventoryReservation.Status.ACTIVE).exists()
+        ):
+            if hasattr(order, "voucher_redemption"):
+                order.voucher_redemption.status = VoucherRedemption.Status.RELEASED
+                order.voucher_redemption.save(update_fields=["status", "updated_at"])
+            order.payments.filter(status=Payment.Status.PENDING).update(status=Payment.Status.CANCELLED)
+            order.status = OrderStatus.EXPIRED
+            order.save(update_fields=["status", "updated_at"])
+            OrderStatusHistory.objects.create(
+                order=order,
+                from_status=OrderStatus.PENDING,
+                to_status=OrderStatus.EXPIRED,
+                actor=None,
+                reason="Đơn hàng hết hạn giữ chỗ tồn kho",
+            )
+    return expired_count
 
 
 def checkout_values(user, data, lock=False):
@@ -85,13 +140,14 @@ def checkout_values(user, data, lock=False):
     if not items:
         raise ValidationError({"cart": ["Giỏ hàng đang trống."]})
     validate_cart_items_sellable(items)
+    if getattr(cart, "_voucher_error", None):
+        raise ValidationError({"voucher": [cart._voucher_error]})
     shipping_fee = shipping.base_fee
     if shipping.free_threshold is not None and subtotal >= shipping.free_threshold:
         shipping_fee = Decimal("0")
     shipping_discount = Decimal("0")
-    if cart.voucher_id and cart.voucher.kind == Voucher.Kind.FREE_SHIP:
-        if is_voucher_usable(cart.voucher, user.id, subtotal):
-            shipping_discount = shipping_fee
+    if cart.voucher_id and cart.voucher.kind == Voucher.Kind.FREE_SHIP and getattr(cart, "_voucher_usable", False):
+        shipping_discount = shipping_fee
     grand_total = total_after_discount + shipping_fee - shipping_discount
     return address, shipping, cart, items, subtotal, discount, shipping_fee, shipping_discount, grand_total
 
@@ -121,20 +177,15 @@ def create_order(user, data):
         if existing.request_hash != digest:
             raise ValidationError({"checkout_key": ["Khóa này đã được dùng với dữ liệu khác."]}, code="conflict")
         return existing, False
+    release_expired_reservations()
     address, shipping, cart, items, subtotal, discount, shipping_fee, shipping_discount, grand_total = checkout_values(user, data, lock=True)
 
     locked_voucher = None
     if cart.voucher_id:
         locked_voucher = validate_and_lock_voucher(cart.voucher_id, user, subtotal)
-        discount = Decimal("0")
+        discount = compute_discount(locked_voucher, subtotal)
         shipping_discount = Decimal("0")
-        if locked_voucher.kind == Voucher.Kind.PERCENT:
-            discount = subtotal * locked_voucher.value / Decimal("100")
-            if locked_voucher.max_discount is not None:
-                discount = min(discount, locked_voucher.max_discount)
-        elif locked_voucher.kind == Voucher.Kind.FIXED:
-            discount = min(subtotal, locked_voucher.value)
-        elif locked_voucher.kind == Voucher.Kind.FREE_SHIP:
+        if locked_voucher.kind == Voucher.Kind.FREE_SHIP:
             shipping_discount = shipping_fee
         grand_total = (subtotal - discount) + shipping_fee - shipping_discount
 
