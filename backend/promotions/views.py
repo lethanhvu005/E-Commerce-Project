@@ -6,8 +6,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from carts.services import cart_totals, get_cart
-
-from .models import Voucher
+from .models import Voucher, VoucherRedemption
 from .serializers import VoucherCodeSerializer, VoucherSerializer
 
 
@@ -42,6 +41,19 @@ def cart_voucher(request):
         if subtotal < voucher.min_subtotal:
             return Response(
                 {"code": [f"Đơn hàng tối thiểu là {voucher.min_subtotal} VND."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        active_redemptions = VoucherRedemption.objects.filter(voucher=voucher).exclude(
+            status=VoucherRedemption.Status.RELEASED
+        )
+        if voucher.usage_limit is not None and active_redemptions.count() >= voucher.usage_limit:
+            return Response(
+                {"code": ["Voucher đã hết lượt sử dụng."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if voucher.per_user_limit is not None and active_redemptions.filter(user=request.user).count() >= voucher.per_user_limit:
+            return Response(
+                {"code": ["Bạn đã dùng hết số lượt cho phép của voucher này."]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         cart.voucher = voucher

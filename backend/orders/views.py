@@ -26,15 +26,18 @@ def checkout_preview(request):
     return Response(preview(request.user, serializer.validated_data))
 
 
+def order_queryset_with_relations():
+    return Order.objects.select_related("delivery_address").prefetch_related(
+        "items__variant__product__images",
+        "items__variant__product__category",
+    )
+
+
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def orders(request):
     if request.method == "GET":
-        queryset = (
-            Order.objects.filter(user=request.user)
-            .prefetch_related("items__variant__product__images", "items__variant__product__category")
-            .order_by("-created_at", "-id")
-        )
+        queryset = order_queryset_with_relations().filter(user=request.user).order_by("-created_at", "-id")
         requested_status = request.query_params.get("status")
         if requested_status:
             queryset = queryset.filter(status=requested_status)
@@ -52,6 +55,7 @@ def orders(request):
         if getattr(error, "get_codes", lambda: None)() == {"checkout_key": ["conflict"]}:
             return Response(error.detail, status=status.HTTP_409_CONFLICT)
         raise
+    order = order_queryset_with_relations().get(pk=order.pk)
     return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
 
@@ -59,10 +63,7 @@ def orders(request):
 @permission_classes([IsAuthenticated])
 def order_detail(request, public_id):
     order = get_object_or_404(
-        Order.objects.prefetch_related(
-            "items__variant__product__images",
-            "items__variant__product__category",
-        ).select_related("delivery_address"),
+        order_queryset_with_relations(),
         public_id=public_id, user=request.user,
     )
     return Response(OrderSerializer(order).data)
@@ -82,4 +83,6 @@ def order_cancel(request, public_id):
     order = get_object_or_404(Order, public_id=public_id, user=request.user)
     serializer = CancelSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    return Response(OrderSerializer(cancel_order(order, request.user, serializer.validated_data["reason"])).data)
+    canceled_order = cancel_order(order, request.user, serializer.validated_data["reason"])
+    canceled_order = order_queryset_with_relations().get(pk=canceled_order.pk)
+    return Response(OrderSerializer(canceled_order).data)
