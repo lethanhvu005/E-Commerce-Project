@@ -734,49 +734,99 @@ export default function ProductDetailPage() {
                 </p>
               ) : (
                 <div className="ux-review-stack">
-                  {reviews.map((rev) => (
-                    <article className="ux-review" key={rev.id}>
-                      <div className="ux-review-head">
-                        <b>{rev.author?.first_name || rev.author?.email || rev.author || "Khách hàng NEXA"}</b>
-                        <small>{new Date(rev.created_at).toLocaleDateString("vi-VN")}</small>
-                      </div>
-                      <div style={{ color: "#ffc107", fontSize: "14px", margin: "4px 0" }}>
-                        {"★".repeat(rev.stars)}
-                        {"☆".repeat(5 - rev.stars)}
-                        {rev.is_verified_buyer && <span className="ux-verified">✓ Đã mua hàng</span>}
-                      </div>
-                      <p>{rev.body}</p>
-                    </article>
-                  ))}
+                  {reviews.map((rev) => {
+                    const authorName = rev.author?.first_name || rev.author?.email || rev.author || "Khách hàng NEXA";
+                    const initial = (authorName[0] || "K").toUpperCase();
+                    return (
+                      <article className="ux-review nexa-review-card" key={rev.id}>
+                        <div className="ux-review-head">
+                          <div className="nexa-qa-author-wrap">
+                            <span className="nexa-qa-avatar">{initial}</span>
+                            <div>
+                              <b className="nexa-qa-author-name">{authorName}</b>
+                              <div className="nexa-review-stars-row">
+                                <span className="nexa-stars-gold">
+                                  {"★".repeat(rev.stars)}
+                                  {"☆".repeat(5 - rev.stars)}
+                                </span>
+                                {rev.is_verified_buyer && (
+                                  <span className="ux-verified">✓ Đã mua hàng</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <small className="nexa-qa-date">
+                            {new Date(rev.created_at).toLocaleDateString("vi-VN")}
+                          </small>
+                        </div>
+                        <p className="nexa-review-body">{rev.body}</p>
+                      </article>
+                    );
+                  })}
                 </div>
               )}
 
-              <div style={{ marginTop: "28px", borderTop: "1px solid var(--edge)", paddingTop: "20px" }}>
-                <h3>Hỏi đáp về sản phẩm ({questions.length})</h3>
+              <div className="nexa-qa-section">
+                <div className="nexa-qa-section-head">
+                  <h3>
+                    Hỏi đáp về sản phẩm <span className="demo-pill">{questions.length} câu hỏi</span>
+                  </h3>
+                </div>
                 {questions.length === 0 ? (
                   <p style={{ color: "var(--muted)" }}>
                     Chưa có câu hỏi nào. Đặt câu hỏi bên phải nếu bạn cần tư vấn kỹ thuật!
                   </p>
                 ) : (
-                  <div className="ux-review-stack">
-                    {questions.map((q) => (
-                      <article className="ux-review" key={q.id}>
-                        <div className="ux-review-head">
-                          <b>{q.author?.first_name || q.author || "Khách hàng"}</b>
-                          <small>{new Date(q.created_at).toLocaleDateString("vi-VN")}</small>
-                        </div>
-                        <p style={{ fontWeight: 600, color: "var(--ink)" }}>{q.body}</p>
-                        {q.answers && q.answers.length > 0 && (
-                          <div className="nexa-qa-answers">
-                            {q.answers.map((ans) => (
-                              <div key={ans.id} className="nexa-qa-answer">
-                                <strong>Phản hồi từ NEXA:</strong> {ans.body}
+                  <div className="nexa-qa-list">
+                    {questions.map((q) => {
+                      const qAuthor = q.author?.first_name || q.author || "Khách hàng";
+                      const qInitial = (qAuthor[0] || "H").toUpperCase();
+                      return (
+                        <article className="nexa-qa-card" key={q.id}>
+                          <div className="nexa-qa-question-head">
+                            <div className="nexa-qa-author-wrap">
+                              <span className="nexa-qa-avatar question">{qInitial}</span>
+                              <div>
+                                <strong className="nexa-qa-author-name">{qAuthor}</strong>
+                                <span className="nexa-qa-role-tag">Khách hàng quan tâm</span>
                               </div>
-                            ))}
+                            </div>
+                            <small className="nexa-qa-date">
+                              {new Date(q.created_at).toLocaleDateString("vi-VN")}
+                            </small>
                           </div>
-                        )}
-                      </article>
-                    ))}
+
+                          <div className="nexa-qa-question-body">
+                            <span className="nexa-qa-q-badge">Hỏi</span>
+                            <p>{q.body}</p>
+                          </div>
+
+                          {q.answers && q.answers.length > 0 && (
+                            <div className="nexa-qa-answers">
+                              {q.answers.map((ans) => (
+                                <div key={ans.id} className="nexa-qa-answer">
+                                  <div className="nexa-qa-answer-head">
+                                    <div className="nexa-qa-author-wrap">
+                                      <span className="nexa-qa-avatar official">N</span>
+                                      <strong>{ans.author || "Chuyên viên NEXA"}</strong>
+                                      <span className="nexa-qa-official-badge">
+                                        ✓ Phản hồi từ NEXA
+                                      </span>
+                                    </div>
+                                    {ans.created_at && (
+                                      <small className="nexa-qa-date">
+                                        {new Date(ans.created_at).toLocaleDateString("vi-VN")}
+                                      </small>
+                                    )}
+                                  </div>
+                                  <p className="nexa-qa-answer-text">{ans.body}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </article>
+                      );
+                    })}
                   </div>
                 )}
               </div>

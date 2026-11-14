@@ -1,95 +1,200 @@
 import { useEffect, useState } from "react";
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { AdminIcon } from "./AdminIcons";
 import "../../admin-react.css";
 
 const items = [
-  ["dashboard", "◫", "Tổng quan"],
-  ["products", "⬡", "Sản phẩm"],
-  ["orders", "▤", "Đơn hàng"],
-  ["inventory", "▣", "Tồn kho"],
-  ["analytics", "▥", "Báo cáo"],
-  ["customers", "♙", "Khách hàng"],
-  ["promotions", "◈", "Ưu đãi"],
-  ["reviews", "★", "Đánh giá"],
-  ["support", "☎", "Hỗ trợ"],
-  ["settings", "⚙", "Cài đặt"],
+  ["dashboard", "dashboard", "Tổng quan"],
+  ["products", "products", "Sản phẩm"],
+  ["orders", "orders", "Đơn hàng"],
+  ["inventory", "inventory", "Tồn kho"],
+  ["analytics", "analytics", "Báo cáo"],
+  ["customers", "customers", "Khách hàng"],
+  ["promotions", "promotions", "Ưu đãi"],
+  ["reviews", "reviews", "Đánh giá"],
+  ["support", "support", "Hỗ trợ"],
+  ["settings", "settings", "Cài đặt"],
 ];
 
 export default function AdminLayout() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem("nexa_theme") || "light");
+  const [topSearch, setTopSearch] = useState("");
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", localStorage.getItem("nexa_theme") || "dark");
+    document.documentElement.setAttribute("data-theme", theme);
     const close = (event) => event.key === "Escape" && setOpen(false);
     document.addEventListener("keydown", close);
     return () => document.removeEventListener("keydown", close);
-  }, []);
+  }, [theme]);
 
   const toggleTheme = () => {
-    const root = document.documentElement;
-    const dark = root.getAttribute("data-theme") === "dark";
-    const next = dark ? "light" : "dark";
-    root.setAttribute("data-theme", next);
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    document.documentElement.setAttribute("data-theme", next);
     localStorage.setItem("nexa_theme", next);
   };
+
+  const handleViewStorefront = () => {
+    sessionStorage.setItem("nexa_admin_view_storefront", "1");
+    setOpen(false);
+    navigate("/");
+  };
+
+  const handleTopSearch = (e) => {
+    e.preventDefault();
+    const q = topSearch.trim();
+    if (q.toUpperCase().startsWith("NX-")) {
+      navigate("/admin/orders");
+    } else {
+      navigate("/admin/products");
+    }
+  };
+
+  const handleAdminLogout = async () => {
+    sessionStorage.removeItem("nexa_admin_view_storefront");
+    await logout();
+    navigate("/login");
+  };
+
+  const displayName =
+    [user?.last_name, user?.first_name].filter(Boolean).join(" ") ||
+    user?.first_name ||
+    "Quản trị viên";
+  const avatarChar = (user?.first_name?.[0] || user?.email?.[0] || "A").toUpperCase();
 
   return (
     <div className="admin-app">
       <aside className={`admin-sidebar${open ? " open" : ""}`} id="admin-sidebar">
         <div className="admin-logo">
-          <span className="brand-mark admin-brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 38 38" width="20" height="20" fill="none">
-              <path
-                d="M19 2.5L33.5 9.8V28.2L19 35.5L4.5 28.2V9.8L19 2.5Z"
-                stroke="#6eb4ff"
-                strokeWidth="2"
-                fill="rgba(21, 88, 201, 0.22)"
-              />
-              <path
-                d="M11.5 26.5V11.5L16.2 11.5L22.8 20.6V11.5H26.5V26.5H21.8L15.2 17.4V26.5H11.5Z"
-                fill="#ffffff"
-              />
-            </svg>
+          <span
+            className="brand-mark admin-brand-mark"
+            style={{ width: 28, height: 28, fontSize: 15, display: "grid", placeItems: "center" }}
+          >
+            N
           </span>
-          <span>NEXA Admin</span>
+          <span>CommerceOS</span>
+          <span className="admin-logo-badge">PRO</span>
         </div>
+
         <nav className="admin-menu" aria-label="Điều hướng quản trị">
-          {items.map(([path, icon, label]) => (
+          {items.map(([path, iconName, label]) => (
             <NavLink
               key={path}
               to={`/admin/${path}`}
               className={({ isActive }) => `admin-link${isActive ? " active" : ""}`}
               onClick={() => setOpen(false)}
             >
-              <span className="ico" aria-hidden="true">{icon}</span>{label}
+              <span className="ico" aria-hidden="true">
+                <AdminIcon name={iconName} size={17} />
+              </span>
+              <span>{label}</span>
             </NavLink>
           ))}
-          <Link className="admin-link" to="/">
-            <span className="ico" aria-hidden="true">↗</span>Xem cửa hàng
-          </Link>
+
+          <div className="admin-menu-divider" />
+
+          <button
+            type="button"
+            className="admin-link admin-link-storefront"
+            onClick={handleViewStorefront}
+          >
+            <span className="ico" aria-hidden="true">
+              <AdminIcon name="globe" size={17} />
+            </span>
+            <span>Xem trang web</span>
+            <AdminIcon name="external" size={13} className="admin-ext-arrow" />
+          </button>
         </nav>
+
         <div className="sidebar-bottom">
           <div className="admin-user">
-            <span className="admin-avatar">{(user?.first_name || user?.email || "A")[0].toUpperCase()}</span>
-            <div><b>{user?.first_name || "Admin"}</b><br /><span>{user?.email}</span></div>
+            <span className="admin-avatar">{avatarChar}</span>
+            <div className="admin-user-meta">
+              <b>{displayName}</b>
+              <span>{user?.email || "Quản trị hệ thống"}</span>
+            </div>
+            <button
+              type="button"
+              className="admin-logout-mini"
+              onClick={handleAdminLogout}
+              title="Đăng xuất"
+              aria-label="Đăng xuất"
+            >
+              <AdminIcon name="logout" size={15} />
+            </button>
           </div>
         </div>
       </aside>
-      {open && <button className="admin-veil" aria-label="Đóng menu" onClick={() => setOpen(false)} />}
+
+      {open && (
+        <button
+          className="admin-veil"
+          aria-label="Đóng menu"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
       <div className="admin-main">
         <header className="admin-top">
-          <button className="sidebar-toggle" onClick={() => setOpen(true)} aria-label="Mở menu quản trị">☰</button>
-          <label className="admin-top-search">⌕<input placeholder="Tìm sản phẩm, đơn hàng, khách hàng..." aria-label="Tìm nhanh admin" /></label>
+          <button
+            className="sidebar-toggle"
+            onClick={() => setOpen(true)}
+            aria-label="Mở menu quản trị"
+          >
+            <AdminIcon name="menu" size={20} />
+          </button>
+
+          <form className="admin-top-search" onSubmit={handleTopSearch}>
+            <AdminIcon name="search" size={16} />
+            <input
+              value={topSearch}
+              onChange={(e) => setTopSearch(e.target.value)}
+              placeholder="Tìm sản phẩm, mã đơn hàng, khách hàng..."
+              aria-label="Tìm nhanh admin"
+            />
+          </form>
+
           <div className="admin-top-right">
-            <button className="icon-btn" onClick={toggleTheme} title="Đổi giao diện sáng tối">◐</button>
-            <Link className="icon-btn" to="/" title="Xem cửa hàng">↗</Link>
-            <span className="admin-avatar">{(user?.first_name || user?.email || "A")[0].toUpperCase()}</span>
-            <b className="desktop-only">Admin</b>
+            <span className="demo-pill desktop-only">POSTGRESQL LIVE</span>
+
+            <button
+              type="button"
+              className="admin-view-web-btn"
+              onClick={handleViewStorefront}
+              title="Chuyển sang giao diện trang web cửa hàng"
+            >
+              <AdminIcon name="globe" size={15} />
+              <span>Xem trang web</span>
+              <AdminIcon name="external" size={13} />
+            </button>
+
+            <button
+              type="button"
+              className="icon-btn admin-theme-btn"
+              onClick={toggleTheme}
+              title={theme === "dark" ? "Chuyển sang giao diện Sáng" : "Chuyển sang giao diện Tối"}
+              aria-label="Đổi giao diện sáng tối"
+            >
+              <AdminIcon name={theme === "dark" ? "sun" : "moon"} size={17} />
+            </button>
+
+            <span
+              className="admin-avatar"
+              style={{ height: 32, width: 32, fontSize: 12 }}
+            >
+              {avatarChar}
+            </span>
+            <b className="desktop-only">{displayName}</b>
           </div>
         </header>
-        <main className="admin-content"><Outlet /></main>
+
+        <main className="admin-content">
+          <Outlet />
+        </main>
       </div>
     </div>
   );

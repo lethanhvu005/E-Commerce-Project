@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { adminService } from "../api/client";
 import { dateTime, money, orderStatusLabel } from "../api/format";
+import { AdminIcon } from "../components/admin/AdminIcons";
 
 const MODERATION_LABELS = {
   published: "Đã duyệt",
@@ -150,8 +151,9 @@ export function AdminUnavailablePage({ type }) {
           <h1>{title}</h1>
           <p>{description}</p>
         </div>
-        <button className="admin-select" onClick={loadData}>
-          ↻ Làm mới từ Database
+        <button className="admin-select admin-refresh-btn" onClick={loadData}>
+          <AdminIcon name="refresh" size={14} />
+          <span>Làm mới từ Database</span>
         </button>
       </div>
       {error && (
@@ -199,17 +201,25 @@ export function AdminUnavailablePage({ type }) {
               ) : (
                 rows.map((row) => {
                   if (type === "orders") {
+                    const pillColor =
+                      row.status === "delivered"
+                        ? "green"
+                        : row.status === "cancelled" || row.status === "expired"
+                        ? "red"
+                        : row.status === "pending" || row.status === "packing"
+                        ? "yellow"
+                        : "blue";
                     return (
                       <tr key={row.id || row.order_number}>
-                        <td><strong>{row.order_number}</strong></td>
+                        <td><strong>#{row.order_number}</strong></td>
                         <td>
-                          {row.customer_name}
-                          <small style={{ display: "block", color: "var(--muted)" }}>{row.customer_email}</small>
+                          <strong>{row.customer_name}</strong>
+                          <small>{row.customer_email}</small>
                         </td>
                         <td>{dateTime(row.created_at)}</td>
                         <td>{row.items_count}</td>
                         <td><strong>{money(row.grand_total)}</strong></td>
-                        <td><span className="pill blue">{orderStatusLabel(row.status)}</span></td>
+                        <td><span className={`pill ${pillColor}`}>{orderStatusLabel(row.status)}</span></td>
                         <td>{row.shipping_method}</td>
                       </tr>
                     );
@@ -364,8 +374,9 @@ export function AdminAnalyticsPage() {
           <h1>Báo cáo & phân tích</h1>
           <p>Số liệu tổng hợp truy vấn trực tiếp từ PostgreSQL (bảng orders & payments).</p>
         </div>
-        <button className="admin-select" onClick={loadAnalytics}>
-          ↻ Làm mới báo cáo
+        <button className="admin-select admin-refresh-btn" onClick={loadAnalytics}>
+          <AdminIcon name="refresh" size={14} />
+          <span>Làm mới báo cáo</span>
         </button>
       </div>
       {error && (
@@ -378,21 +389,33 @@ export function AdminAnalyticsPage() {
           <small>Doanh thu thực thu</small>
           <strong>{loading ? "—" : money(data?.revenue)}</strong>
           <span className="change green">Từ bảng payments (succeeded)</span>
+          <span className="kpi-icon green">
+            <AdminIcon name="revenue" size={18} />
+          </span>
         </div>
         <div className="kpi">
           <small>Tổng đơn hàng hợp lệ</small>
           <strong>{loading ? "—" : data?.orders_count ?? 0}</strong>
           <span className="change">Không tính đơn đã hủy / hết hạn</span>
+          <span className="kpi-icon">
+            <AdminIcon name="orders" size={18} />
+          </span>
         </div>
         <div className="kpi">
           <small>Khách hàng</small>
           <strong>{loading ? "—" : data?.customers_count ?? 0}</strong>
           <span className="change">Từ bảng users</span>
+          <span className="kpi-icon">
+            <AdminIcon name="customers" size={18} />
+          </span>
         </div>
         <div className="kpi">
           <small>Giá trị đơn trung bình</small>
           <strong>{loading ? "—" : money(data?.avg_order_value)}</strong>
           <span className="change">Trung bình đơn hợp lệ</span>
+          <span className="kpi-icon">
+            <AdminIcon name="trend" size={18} />
+          </span>
         </div>
       </div>
       <div className="admin-panel">

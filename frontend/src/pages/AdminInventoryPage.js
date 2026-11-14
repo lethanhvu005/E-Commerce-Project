@@ -1,23 +1,23 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { adminService } from "../api/client";
 import { dateTime } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import { ErrorBox, Loading, Toast } from "../components/Feedback";
+import { AdminIcon } from "../components/admin/AdminIcons";
 
 export default function AdminInventoryPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Data States
   const [balances, setBalances] = useState([]);
   const [movements, setMovements] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [toastMsg, setToastMsg] = useState("");
 
-  // Adjustment Modal State
   const [adjustModal, setAdjustModal] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [delta, setDelta] = useState(0);
@@ -25,7 +25,6 @@ export default function AdminInventoryPage() {
   const [adjustmentKey, setAdjustmentKey] = useState(null);
   const [adjusting, setAdjusting] = useState(false);
 
-  // Tab State: "balances" | "movements" | "audit"
   const [activeTab, setActiveTab] = useState("balances");
 
   const loadAdminData = async () => {
@@ -56,8 +55,8 @@ export default function AdminInventoryPage() {
     if (!user.is_staff && !user.is_superuser) {
       setError(
         new Error(
-          "Tài khoản của bạn không có quyền truy cập cổng Quản trị (yêu cầu is_staff=True).",
-        ),
+          "Tài khoản của bạn không có quyền truy cập cổng Quản trị (yêu cầu is_staff=True)."
+        )
       );
       setLoading(false);
       return;
@@ -65,10 +64,9 @@ export default function AdminInventoryPage() {
     loadAdminData();
   }, [user, navigate]);
 
-  // Handle inventory adjustment submission
   const handleAdjustStock = async (e) => {
     e.preventDefault();
-    if (!selectedVariant || delta === 0) return;
+    if (!selectedVariant || Number(delta) === 0) return;
     if (!reason.trim()) {
       setToastMsg("Vui lòng nhập lý do điều chỉnh kho.");
       return;
@@ -83,7 +81,7 @@ export default function AdminInventoryPage() {
         event_key: adjustmentKey,
       });
       setToastMsg(
-        `Đã điều chỉnh kho cho SKU ${selectedVariant.sku} (${delta > 0 ? "+" : ""}${delta}).`,
+        `Đã điều chỉnh kho cho SKU ${selectedVariant.sku} (${Number(delta) > 0 ? "+" : ""}${delta}).`
       );
       setAdjustModal(false);
       setSelectedVariant(null);
@@ -98,545 +96,323 @@ export default function AdminInventoryPage() {
     }
   };
 
-  // KPI Calculations from live backend balances
-  const totalOnHand = balances.reduce(
-    (sum, b) => sum + (Number(b.on_hand) || 0),
-    0,
-  );
-  const totalReserved = balances.reduce(
-    (sum, b) => sum + (Number(b.reserved) || 0),
-    0,
-  );
-  const totalAvailable = balances.reduce(
-    (sum, b) => sum + (Number(b.available) || 0),
-    0,
-  );
+  const totalOnHand = balances.reduce((sum, b) => sum + (Number(b.on_hand) || 0), 0);
+  const totalReserved = balances.reduce((sum, b) => sum + (Number(b.reserved) || 0), 0);
+  const totalAvailable = balances.reduce((sum, b) => sum + (Number(b.available) || 0), 0);
   const lowStockCount = balances.filter(
-    (b) =>
-      b.low_stock_threshold != null &&
-      Number(b.available) <= Number(b.low_stock_threshold),
+    (b) => b.low_stock_threshold != null && Number(b.available) <= Number(b.low_stock_threshold)
   ).length;
 
+  const filteredBalances = balances.filter((b) =>
+    !search.trim() || String(b.sku || "").toLowerCase().includes(search.trim().toLowerCase())
+  );
+
   return (
-    <div className="admin-inventory-react">
+    <>
       <Toast message={toastMsg} onClose={() => setToastMsg("")} />
 
-      {/* Admin Intro Header */}
-      <div
-        className="admin-intro"
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "baseline",
-          flexWrap: "wrap",
-          gap: "16px",
-          marginBottom: "24px",
-        }}
-      >
+      <div className="admin-intro">
         <div>
-          <span className="ux-kicker" style={{ color: "var(--action)" }}>
-            STAFF MANAGEMENT PORTAL
-          </span>
-          <h1 className="page-title" style={{ margin: "4px 0" }}>
-            Quản lý kho & vận hành
-          </h1>
-          <p style={{ color: "var(--muted)", fontSize: "13px", margin: 0 }}>
-            Dữ liệu tồn kho, biến động điều chỉnh và nhật ký audit thực tế từ
-            backend PostgreSQL.
-          </p>
+          <h1>Quản lý tồn kho</h1>
+          <p>Theo dõi số lượng tồn thực tế, tồn đang giữ và lịch sử xuất nhập kho từng SKU.</p>
         </div>
-
-        <div style={{ display: "flex", gap: "10px" }}>
-          <button className="btn btn-quiet" onClick={loadAdminData}>
-            ↻ Đồng bộ dữ liệu
-          </button>
-          <Link className="btn btn-dark" to="/">
-            Xem cửa hàng →
-          </Link>
-        </div>
+        <button className="admin-select admin-refresh-btn" onClick={loadAdminData}>
+          <AdminIcon name="refresh" size={14} />
+          <span>Đồng bộ dữ liệu</span>
+        </button>
       </div>
 
       {error && <ErrorBox error={error} />}
 
-      {/* Admin KPIs matching admin_inventory.html */}
-      <div
-        className="admin-kpis"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-          gap: "16px",
-          marginBottom: "28px",
-        }}
-      >
+      <div className="admin-kpis">
         <div className="kpi">
-          <small style={{ color: "var(--muted)", display: "block" }}>
-            Tổng tồn thực tế (On Hand)
-          </small>
-          <strong
-            style={{
-              fontSize: "28px",
-              color: "var(--ink)",
-              display: "block",
-              margin: "6px 0",
-            }}
-          >
-            {totalOnHand}
-          </strong>
-          <span style={{ fontSize: "12px", color: "#169569" }}>
-            Dữ liệu kiểm kê kho
+          <small>Tổng tồn thực tế (On Hand)</small>
+          <strong>{totalOnHand}</strong>
+          <span className="change green">Dữ liệu kiểm kê tại kho</span>
+          <span className="kpi-icon green">
+            <AdminIcon name="inventory" size={18} />
           </span>
         </div>
 
         <div className="kpi">
-          <small style={{ color: "var(--muted)", display: "block" }}>
-            Tồn đang giữ (Reserved)
-          </small>
-          <strong
-            style={{
-              fontSize: "28px",
-              color: "#c97714",
-              display: "block",
-              margin: "6px 0",
-            }}
-          >
-            {totalReserved}
-          </strong>
-          <span style={{ fontSize: "12px", color: "var(--muted)" }}>
-            Đang trong giỏ / đơn chờ
+          <small>Tồn khả dụng (Available)</small>
+          <strong>{totalAvailable}</strong>
+          <span className="change">Sẵn sàng xuất bán ({balances.length} SKU)</span>
+          <span className="kpi-icon">
+            <AdminIcon name="products" size={18} />
           </span>
         </div>
 
         <div className="kpi">
-          <small style={{ color: "var(--muted)", display: "block" }}>
-            Khả dụng bán (Available)
-          </small>
-          <strong
-            style={{
-              fontSize: "28px",
-              color: "var(--action)",
-              display: "block",
-              margin: "6px 0",
-            }}
-          >
-            {totalAvailable}
-          </strong>
-          <span style={{ fontSize: "12px", color: "#169569" }}>
-            Sẵn sàng xuất kho
+          <small>Tồn đang giữ (Reserved)</small>
+          <strong>{totalReserved}</strong>
+          <span className="change">Đang giữ cho đơn chờ xử lý</span>
+          <span className="kpi-icon">
+            <AdminIcon name="orders" size={18} />
           </span>
         </div>
 
         <div className="kpi">
-          <small style={{ color: "var(--muted)", display: "block" }}>
-            SKU sắp hết hàng
-          </small>
-          <strong
-            style={{
-              fontSize: "28px",
-              color: lowStockCount > 0 ? "#d43b62" : "#169569",
-              display: "block",
-              margin: "6px 0",
-            }}
-          >
-            {lowStockCount}
-          </strong>
-          <span
-            style={{
-              fontSize: "12px",
-              color: lowStockCount > 0 ? "#d43b62" : "var(--muted)",
-            }}
-          >
-            Ngưỡng dưới mức an toàn
+          <small>Sản phẩm sắp hết</small>
+          <strong>{lowStockCount}</strong>
+          <span className="change down">Dưới ngưỡng cảnh báo tồn kho</span>
+          <span className="kpi-icon red">
+            <AdminIcon name="alert" size={18} />
           </span>
         </div>
       </div>
 
-      {/* Admin View Navigation Tabs */}
-      <div
-        style={{
-          display: "flex",
-          gap: "10px",
-          borderBottom: "1px solid var(--edge)",
-          marginBottom: "20px",
-        }}
-      >
-        <button
-          className="btn btn-quiet"
-          style={{
-            borderBottom:
-              activeTab === "balances"
-                ? "3px solid var(--accent)"
-                : "3px solid transparent",
-            borderRadius: 0,
-            fontWeight: activeTab === "balances" ? 800 : 500,
-          }}
-          onClick={() => setActiveTab("balances")}
-        >
-          Tồn kho từng SKU ({balances.length})
-        </button>
-        <button
-          className="btn btn-quiet"
-          style={{
-            borderBottom:
-              activeTab === "movements"
-                ? "3px solid var(--accent)"
-                : "3px solid transparent",
-            borderRadius: 0,
-            fontWeight: activeTab === "movements" ? 800 : 500,
-          }}
-          onClick={() => setActiveTab("movements")}
-        >
-          Lịch sử biến động kho ({movements.length})
-        </button>
-        <button
-          className="btn btn-quiet"
-          style={{
-            borderBottom:
-              activeTab === "audit"
-                ? "3px solid var(--accent)"
-                : "3px solid transparent",
-            borderRadius: 0,
-            fontWeight: activeTab === "audit" ? 800 : 500,
-          }}
-          onClick={() => setActiveTab("audit")}
-        >
-          Nhật ký Audit ({auditLogs.length})
-        </button>
-      </div>
+      <section className="admin-panel">
+        <div className="admin-tabs">
+          <button
+            type="button"
+            className={`admin-tab${activeTab === "balances" ? " active" : ""}`}
+            onClick={() => setActiveTab("balances")}
+          >
+            Danh sách tồn kho theo SKU ({balances.length})
+          </button>
+          <button
+            type="button"
+            className={`admin-tab${activeTab === "movements" ? " active" : ""}`}
+            onClick={() => setActiveTab("movements")}
+          >
+            Lịch sử biến động kho ({movements.length})
+          </button>
+          <button
+            type="button"
+            className={`admin-tab${activeTab === "audit" ? " active" : ""}`}
+            onClick={() => setActiveTab("audit")}
+          >
+            Nhật ký Audit ({auditLogs.length})
+          </button>
+        </div>
 
-      {/* Tab 1: Balances Table */}
-      {activeTab === "balances" && (
-        <section className="admin-panel admin-table-wrap">
-          {loading ? (
-            <Loading label="Đang tải dữ liệu tồn kho..." />
-          ) : (
-            <table className="admin-table"
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                textAlign: "left",
-                fontSize: "13px",
-              }}
-            >
+        {activeTab === "balances" && (
+          <>
+            <div className="admin-toolbar">
+              <input
+                className="field"
+                placeholder="Tìm mã SKU..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <span style={{ fontSize: "11.5px", color: "#78869d" }}>
+                Hiển thị {filteredBalances.length} / {balances.length} mã SKU
+              </span>
+            </div>
+
+            {loading ? (
+              <Loading label="Đang tải dữ liệu tồn kho..." />
+            ) : (
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Mã SKU</th>
+                      <th>Tồn thực tế</th>
+                      <th>Tồn đang giữ</th>
+                      <th>Tồn khả dụng</th>
+                      <th>Ngưỡng cảnh báo</th>
+                      <th>Trạng thái</th>
+                      <th>Cập nhật</th>
+                      <th>Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredBalances.map((b) => {
+                      const isLow =
+                        b.low_stock_threshold != null &&
+                        Number(b.available) <= Number(b.low_stock_threshold);
+                      return (
+                        <tr key={b.variant_id}>
+                          <td>
+                            <div className="mini-product">
+                              <span className="mini-img">
+                                <AdminIcon name="products" size={17} />
+                              </span>
+                              <span>
+                                <strong>{b.sku}</strong>
+                                <small>Variant #{b.variant_id}</small>
+                              </span>
+                            </div>
+                          </td>
+                          <td>
+                            <strong>{b.on_hand}</strong>
+                          </td>
+                          <td>{b.reserved}</td>
+                          <td>
+                            <strong>{b.available}</strong>
+                          </td>
+                          <td>{b.low_stock_threshold}</td>
+                          <td>
+                            <span className={`pill ${isLow ? "yellow" : "green"}`}>
+                              {isLow ? "Sắp hết" : "Bình thường"}
+                            </span>
+                          </td>
+                          <td>{dateTime(b.updated_at)}</td>
+                          <td>
+                            <button
+                              type="button"
+                              className="admin-select"
+                              style={{ cursor: "pointer", fontWeight: 700 }}
+                              onClick={() => {
+                                setSelectedVariant(b);
+                                setDelta(0);
+                                setReason("");
+                                setAdjustmentKey(crypto.randomUUID());
+                                setAdjustModal(true);
+                              }}
+                            >
+                              ± Điều chỉnh
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+
+        {activeTab === "movements" && (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
               <thead>
-                <tr
-                  style={{
-                    borderBottom: "2px solid #e2eaf5",
-                    color: "var(--muted)",
-                  }}
-                >
-                  <th style={{ padding: "12px 10px" }}>ID</th>
-                  <th style={{ padding: "12px 10px" }}>Mã SKU</th>
-                  <th style={{ padding: "12px 10px" }}>Tồn kho (On Hand)</th>
-                  <th style={{ padding: "12px 10px" }}>Đang giữ (Reserved)</th>
-                  <th style={{ padding: "12px 10px" }}>Khả dụng (Available)</th>
-                  <th style={{ padding: "12px 10px" }}>Ngưỡng tối thiểu</th>
-                  <th style={{ padding: "12px 10px" }}>Cập nhật</th>
-                  <th style={{ padding: "12px 10px", textAlign: "right" }}>
-                    Thao tác
-                  </th>
+                <tr>
+                  <th>SKU</th>
+                  <th>Loại biến động</th>
+                  <th>Số lượng thay đổi</th>
+                  <th>Lý do</th>
+                  <th>Thời gian</th>
                 </tr>
               </thead>
               <tbody>
-                {balances.map((b) => (
-                  <tr
-                    key={b.variant_id}
-                    style={{ borderBottom: "1px solid #edf2f9" }}
-                  >
-                    <td style={{ padding: "12px 10px", color: "var(--muted)" }}>
-                      {b.variant_id}
+                {movements.map((m, idx) => (
+                  <tr key={m.event_key || idx}>
+                    <td>
+                      <strong>{m.sku}</strong>
                     </td>
-                    <td style={{ padding: "12px 10px" }}>
-                      <strong
-                        style={{ color: "var(--ink)", letterSpacing: "0.5px" }}
-                      >
-                        {b.sku}
-                      </strong>
-                    </td>
-                    <td style={{ padding: "12px 10px", fontWeight: 700 }}>
-                      {b.on_hand}
-                    </td>
-                    <td style={{ padding: "12px 10px", color: "#c97714" }}>
-                      {b.reserved}
-                    </td>
-                    <td style={{ padding: "12px 10px" }}>
-                      <span
-                        style={{
-                          fontWeight: 800,
-                          color:
-                            b.low_stock_threshold != null &&
-                            Number(b.available) <= Number(b.low_stock_threshold)
-                              ? "#d43b62"
-                              : "var(--action)",
-                        }}
-                      >
-                        {b.available}
+                    <td>
+                      <span className={`pill ${m.quantity_delta > 0 ? "green" : "blue"}`}>
+                        {m.kind === "receipt" ? "Nhập kho" : m.kind === "sale" ? "Xuất bán" : m.kind}
                       </span>
                     </td>
-                    <td style={{ padding: "12px 10px", color: "var(--muted)" }}>
-                      {b.low_stock_threshold}
+                    <td>
+                      <strong style={{ color: m.quantity_delta > 0 ? "#178959" : "#c63f58" }}>
+                        {m.quantity_delta > 0 ? `+${m.quantity_delta}` : m.quantity_delta}
+                      </strong>
                     </td>
-                    <td
-                      style={{
-                        padding: "12px 10px",
-                        color: "var(--muted)",
-                        fontSize: "11.5px",
-                      }}
-                    >
-                      {dateTime(b.updated_at)}
-                    </td>
-                    <td style={{ padding: "12px 10px", textAlign: "right" }}>
-                      <button
-                        className="btn btn-violet"
-                        style={{ padding: "6px 12px", fontSize: "11px" }}
-                        onClick={() => {
-                          setSelectedVariant(b);
-                          setDelta(0);
-                          setReason("");
-                          setAdjustmentKey(crypto.randomUUID());
-                          setAdjustModal(true);
-                        }}
-                      >
-                        ± Điều chỉnh
-                      </button>
-                    </td>
+                    <td>{m.reason}</td>
+                    <td>{dateTime(m.created_at)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          )}
-        </section>
-      )}
+          </div>
+        )}
 
-      {/* Tab 2: Movements Table */}
-      {activeTab === "movements" && (
-        <section className="admin-panel admin-table-wrap">
-          <table className="admin-table"
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              textAlign: "left",
-              fontSize: "13px",
-            }}
-          >
-            <thead>
-              <tr
-                style={{
-                  borderBottom: "2px solid #e2eaf5",
-                  color: "var(--muted)",
-                }}
-              >
-                <th style={{ padding: "12px 10px" }}>SKU</th>
-                <th style={{ padding: "12px 10px" }}>Loại biến động</th>
-                <th style={{ padding: "12px 10px" }}>Thay đổi (Delta)</th>
-                <th style={{ padding: "12px 10px" }}>Lý do</th>
-                <th style={{ padding: "12px 10px" }}>Thời gian</th>
-              </tr>
-            </thead>
-            <tbody>
-              {movements.map((m, idx) => (
-                <tr
-                  key={m.event_key || idx}
-                  style={{ borderBottom: "1px solid #edf2f9" }}
-                >
-                  <td style={{ padding: "12px 10px" }}>
-                    <strong>{m.sku}</strong>
-                  </td>
-                  <td
-                    style={{
-                      padding: "12px 10px",
-                      textTransform: "uppercase",
-                      fontSize: "11.5px",
-                    }}
-                  >
-                    {m.kind}
-                  </td>
-                  <td
-                    style={{
-                      padding: "12px 10px",
-                      fontWeight: 800,
-                      color: m.quantity_delta > 0 ? "#169569" : "#d43b62",
-                    }}
-                  >
-                    {m.quantity_delta > 0
-                      ? `+${m.quantity_delta}`
-                      : m.quantity_delta}
-                  </td>
-                  <td style={{ padding: "12px 10px", color: "var(--muted)" }}>
-                    {m.reason}
-                  </td>
-                  <td
-                    style={{
-                      padding: "12px 10px",
-                      color: "var(--muted)",
-                      fontSize: "11.5px",
-                    }}
-                  >
-                    {dateTime(m.created_at)}
-                  </td>
+        {activeTab === "audit" && (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Người thực hiện</th>
+                  <th>Hành động</th>
+                  <th>Thực thể</th>
+                  <th>Chi tiết thay đổi</th>
+                  <th>Thời gian</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      )}
+              </thead>
+              <tbody>
+                {auditLogs.map((a) => (
+                  <tr key={a.id}>
+                    <td>
+                      <strong>{a.actor_email || "Hệ thống"}</strong>
+                    </td>
+                    <td>
+                      <span className="pill blue">{a.action}</span>
+                    </td>
+                    <td>
+                      {a.entity_type} #{a.entity_id}
+                    </td>
+                    <td>
+                      <code>
+                        {typeof a.changes === "object"
+                          ? JSON.stringify(a.changes)
+                          : String(a.changes)}
+                      </code>
+                    </td>
+                    <td>{dateTime(a.created_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
-      {/* Tab 3: Audit Logs Table */}
-      {activeTab === "audit" && (
-        <section className="admin-panel admin-table-wrap">
-          <table className="admin-table"
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              textAlign: "left",
-              fontSize: "13px",
-            }}
-          >
-            <thead>
-              <tr
-                style={{
-                  borderBottom: "2px solid #e2eaf5",
-                  color: "var(--muted)",
-                }}
-              >
-                <th style={{ padding: "12px 10px" }}>Người thực hiện</th>
-                <th style={{ padding: "12px 10px" }}>Hành động</th>
-                <th style={{ padding: "12px 10px" }}>Thực thể</th>
-                <th style={{ padding: "12px 10px" }}>Chi tiết thay đổi</th>
-                <th style={{ padding: "12px 10px" }}>Thời gian</th>
-              </tr>
-            </thead>
-            <tbody>
-              {auditLogs.map((a) => (
-                <tr key={a.id} style={{ borderBottom: "1px solid #edf2f9" }}>
-                  <td style={{ padding: "12px 10px" }}>
-                    <strong>{a.actor_email}</strong>
-                  </td>
-                  <td style={{ padding: "12px 10px", color: "var(--action)" }}>
-                    {a.action}
-                  </td>
-                  <td style={{ padding: "12px 10px" }}>
-                    {a.entity_type} #{a.entity_id}
-                  </td>
-                  <td
-                    style={{
-                      padding: "12px 10px",
-                      fontSize: "12px",
-                      color: "var(--muted)",
-                    }}
-                  >
-                    {typeof a.changes === "object"
-                      ? JSON.stringify(a.changes)
-                      : String(a.changes)}
-                  </td>
-                  <td
-                    style={{
-                      padding: "12px 10px",
-                      color: "var(--muted)",
-                      fontSize: "11.5px",
-                    }}
-                  >
-                    {dateTime(a.created_at)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      )}
-
-      {/* Modal: Adjust Inventory Dialog */}
       {adjustModal && selectedVariant && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.6)",
-            zIndex: 999,
-            display: "grid",
-            placeItems: "center",
-            padding: "20px",
-          }}
+          className="modal-back"
+          role="presentation"
+          onMouseDown={(e) => e.target === e.currentTarget && setAdjustModal(false)}
         >
-          <div
-            className="whitebox"
-            style={{ width: "100%", maxWidth: "460px", padding: "28px" }}
-          >
-            <h3 style={{ margin: "0 0 16px" }}>Điều chỉnh tồn kho</h3>
-            <p
-              style={{
-                color: "var(--muted)",
-                fontSize: "13px",
-                margin: "0 0 16px",
-              }}
-            >
-              SKU:{" "}
-              <strong style={{ color: "var(--ink)" }}>
-                {selectedVariant.sku}
-              </strong>{" "}
-              (Hiện có: {selectedVariant.on_hand}, Khả dụng:{" "}
-              {selectedVariant.available})
+          <form className="modal admin-editor-modal" onSubmit={handleAdjustStock}>
+            <h2>Điều chỉnh tồn kho</h2>
+            <p style={{ fontSize: "12.5px", color: "#6b7b94", margin: "0 0 14px" }}>
+              SKU: <strong>{selectedVariant.sku}</strong> · Tồn thực tế:{" "}
+              <b>{selectedVariant.on_hand}</b> · Khả dụng: <b>{selectedVariant.available}</b>
             </p>
 
-            <form onSubmit={handleAdjustStock}>
-              <label className="field-label" htmlFor="adj-delta">
-                Số lượng thay đổi (dương: nhập thêm, âm: xuất bớt)
-              </label>
-              <input
-                id="adj-delta"
-                className="field"
-                type="number"
-                required
-                value={delta}
-                onChange={(e) => setDelta(e.target.value)}
-                placeholder="Ví dụ: 10 hoặc -5"
-              />
+            <label className="field-label" htmlFor="adj-delta">
+              Số lượng thay đổi (dương: nhập thêm, âm: xuất bớt)
+            </label>
+            <input
+              id="adj-delta"
+              className="field"
+              type="number"
+              required
+              value={delta}
+              onChange={(e) => setDelta(e.target.value)}
+              placeholder="Ví dụ: 10 hoặc -5"
+            />
 
-              <label
-                className="field-label"
-                htmlFor="adj-reason"
-                style={{ marginTop: "12px" }}
-              >
-                Lý do điều chỉnh (bắt buộc)
-              </label>
-              <input
-                id="adj-reason"
-                className="field"
-                required
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Nhập kho đợt mới, xuất mẫu thử, kiểm kê kho..."
-              />
+            <label className="field-label" htmlFor="adj-reason">
+              Lý do điều chỉnh (bắt buộc)
+            </label>
+            <input
+              id="adj-reason"
+              className="field"
+              required
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Nhập kho đợt mới, kiểm kê kho..."
+            />
 
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "flex-end",
-                  gap: "10px",
-                  marginTop: "20px",
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="btn btn-quiet"
+                onClick={() => {
+                  setAdjustModal(false);
+                  setAdjustmentKey(null);
                 }}
               >
-                <button
-                  type="button"
-                  className="btn btn-quiet"
-                  onClick={() => {
-                    setAdjustModal(false);
-                    setAdjustmentKey(null);
-                  }}
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-violet"
-                  disabled={adjusting || delta === 0}
-                >
-                  {adjusting ? "Đang xử lý..." : "Xác nhận điều chỉnh"}
-                </button>
-              </div>
-            </form>
-          </div>
+                Hủy
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={adjusting || Number(delta) === 0}
+              >
+                {adjusting ? "Đang xử lý..." : "Xác nhận điều chỉnh"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
-    </div>
+    </>
   );
 }

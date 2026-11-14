@@ -29,23 +29,32 @@ export default function AuthPage({ mode = "login" }) {
     setError(null);
 
     try {
+      let profile;
       if (isRegister) {
-        await register({
+        profile = await register({
           email: form.email.trim(),
           password: form.password,
           first_name: form.first_name.trim(),
           last_name: form.last_name.trim(),
         });
       } else {
-        await login({
+        profile = await login({
           email: form.email.trim(),
           password: form.password,
         });
       }
 
-      // Redirect to origin page or homepage
       const target = location.state?.from;
-      navigate(target ? `${target.pathname || "/"}${target.search || ""}` : "/", { replace: true });
+      if (profile?.is_staff || profile?.is_superuser) {
+        sessionStorage.removeItem("nexa_admin_view_storefront");
+        const adminTarget =
+          target?.pathname && target.pathname.startsWith("/admin")
+            ? `${target.pathname}${target.search || ""}`
+            : "/admin/dashboard";
+        navigate(adminTarget, { replace: true });
+      } else {
+        navigate(target ? `${target.pathname || "/"}${target.search || ""}` : "/", { replace: true });
+      }
     } catch (err) {
       setError(err);
     } finally {

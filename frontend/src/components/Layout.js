@@ -170,6 +170,16 @@ export default function Layout() {
   }, [theme]);
 
   useEffect(() => {
+    if (
+      (user?.is_staff || user?.is_superuser) &&
+      location.pathname === "/" &&
+      sessionStorage.getItem("nexa_admin_view_storefront") !== "1"
+    ) {
+      navigate("/admin/dashboard", { replace: true });
+    }
+  }, [user, location.pathname, navigate]);
+
+  useEffect(() => {
     catalogService
       .getCategories()
       .then((data) => {
@@ -485,6 +495,17 @@ export default function Layout() {
                 <Icon name="sun" />
               </span>
             </button>
+
+            {(user?.is_staff || user?.is_superuser) && (
+              <Link
+                to="/admin/dashboard"
+                className="nexa-admin-switch-btn"
+                title="Vào trang Quản trị Admin"
+              >
+                <Icon name="grid" />
+                <span>Quản trị</span>
+              </Link>
+            )}
 
             <div className="desktop-account">
               <Icon name="user" />

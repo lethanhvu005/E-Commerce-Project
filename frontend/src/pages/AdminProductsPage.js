@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { adminService, catalogService } from "../api/client";
 import { money } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
+import { AdminIcon } from "../components/admin/AdminIcons";
 
 const emptyForm = { category_id: "", brand_id: "", name: "", slug: "", short_name: "", summary: "", status: "draft", warranty_months: 0 };
+const statusLabelMap = { active: "Đang bán", draft: "Bản nháp", archived: "Đã lưu trữ" };
 
 export default function AdminProductsPage() {
   const { user } = useAuth();
@@ -55,13 +57,13 @@ export default function AdminProductsPage() {
   };
 
   return <>
-    <div className="admin-intro"><div><h1>Quản lý sản phẩm</h1><p>Quản lý catalog, trạng thái và giá bán từ PostgreSQL.</p></div>{canAdd && <button className="btn btn-primary" onClick={() => setModal(true)}>+ Thêm sản phẩm</button>}</div>
+    <div className="admin-intro"><div><h1>Quản lý sản phẩm</h1><p>Quản lý catalog, trạng thái và giá bán trực tiếp từ PostgreSQL.</p></div>{canAdd && <button className="btn btn-primary" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }} onClick={() => setModal(true)}><AdminIcon name="plus" size={15} /><span>Thêm sản phẩm</span></button>}</div>
     {error && <div className="admin-hero-note">⚠ {error}</div>}
     <section className="admin-panel">
       <div className="admin-tabs">{[["", "Tất cả"], ["active", "Đang bán"], ["draft", "Bản nháp"], ["archived", "Đã lưu trữ"]].map(([value, label]) => <button key={label} className={`admin-tab${status === value ? " active" : ""}`} onClick={() => { setStatus(value); setPage(1); }}>{label}</button>)}</div>
-      <div className="admin-toolbar"><input className="field" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="⌕ Tìm tên, slug hoặc SKU..." /><span>{count} sản phẩm</span></div>
+      <div className="admin-toolbar"><input className="field" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Tìm tên, slug hoặc SKU..." /><span>{count} sản phẩm</span></div>
       <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Sản phẩm</th><th>SKU</th><th>Danh mục</th><th>Giá bán</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>
-        {loading ? <tr><td colSpan="6" className="admin-empty">Đang tải dữ liệu...</td></tr> : products.length ? products.map((product) => <tr key={product.id}><td><strong>{product.name}</strong><small>{brands.find((item) => item.id === product.brand_id)?.name || product.slug}</small></td><td>{product.variants?.[0]?.sku || "—"}</td><td>{categories.find((item) => item.id === product.category_id)?.name || product.category_id}</td><td>{product.variants?.length ? money(product.variants[0].price) : "—"}</td><td><span className={`pill ${product.status === "active" ? "green" : product.status === "draft" ? "yellow" : "blue"}`}>{product.status}</span></td><td>{canChange ? <select className="select" value={product.status} onChange={(e) => changeStatus(product, e.target.value)}><option value="draft">Draft</option><option value="active">Active</option><option value="archived">Archived</option></select> : "Chỉ xem"}</td></tr>) : <tr><td colSpan="6" className="admin-empty">Không có sản phẩm phù hợp.</td></tr>}
+        {loading ? <tr><td colSpan="6" className="admin-empty">Đang tải dữ liệu...</td></tr> : products.length ? products.map((product) => <tr key={product.id}><td><div className="mini-product"><span className="mini-img"><AdminIcon name="products" size={17} /></span><span><strong>{product.name}</strong><small>{brands.find((item) => item.id === product.brand_id)?.name || product.slug}</small></span></div></td><td><strong>{product.variants?.[0]?.sku || "—"}</strong></td><td>{categories.find((item) => item.id === product.category_id)?.name || product.category_id}</td><td><strong>{product.variants?.length ? money(product.variants[0].price) : "—"}</strong></td><td><span className={`pill ${product.status === "active" ? "green" : product.status === "draft" ? "yellow" : "blue"}`}>{statusLabelMap[product.status] || product.status}</span></td><td>{canChange ? <select className="select" value={product.status} onChange={(e) => changeStatus(product, e.target.value)}><option value="draft">Bản nháp</option><option value="active">Đang bán</option><option value="archived">Đã lưu trữ</option></select> : "Chỉ xem"}</td></tr>) : <tr><td colSpan="6" className="admin-empty">Không có sản phẩm phù hợp.</td></tr>}
       </tbody></table></div>
       <div className="admin-pagination"><button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>← Trước</button><span>Trang {page}</span><button disabled={page * 20 >= count} onClick={() => setPage((p) => p + 1)}>Sau →</button></div>
     </section>

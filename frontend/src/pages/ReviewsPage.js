@@ -131,19 +131,35 @@ export default function ReviewsPage() {
               />
             ) : (
               <div className="ux-review-stack">
-                {reviews.map((r) => (
-                  <article className="ux-review" key={r.id}>
-                    <div className="ux-review-head">
-                      <strong>{r.author?.first_name || r.author?.email || r.author || "Khách hàng NEXA"}</strong>
-                      <small>{new Date(r.created_at).toLocaleDateString("vi-VN")}</small>
-                    </div>
-                    <div style={{ color: "#ffc107", fontSize: "14px", margin: "4px 0" }}>
-                      {"★".repeat(r.stars)}{"☆".repeat(5 - r.stars)}
-                      {r.is_verified_buyer && <span className="ux-verified">✓ Đã mua hàng</span>}
-                    </div>
-                    <p>{r.body}</p>
-                  </article>
-                ))}
+                {reviews.map((r) => {
+                  const authorName = r.author?.first_name || r.author?.email || r.author || "Khách hàng NEXA";
+                  const initial = (authorName[0] || "K").toUpperCase();
+                  return (
+                    <article className="ux-review nexa-review-card" key={r.id}>
+                      <div className="ux-review-head">
+                        <div className="nexa-qa-author-wrap">
+                          <span className="nexa-qa-avatar">{initial}</span>
+                          <div>
+                            <strong className="nexa-qa-author-name">{authorName}</strong>
+                            <div className="nexa-review-stars-row">
+                              <span className="nexa-stars-gold">
+                                {"★".repeat(r.stars)}
+                                {"☆".repeat(5 - r.stars)}
+                              </span>
+                              {r.is_verified_buyer && (
+                                <span className="ux-verified">✓ Đã mua hàng</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <small className="nexa-qa-date">
+                          {new Date(r.created_at).toLocaleDateString("vi-VN")}
+                        </small>
+                      </div>
+                      <p className="nexa-review-body">{r.body}</p>
+                    </article>
+                  );
+                })}
               </div>
             )}
           </div>
