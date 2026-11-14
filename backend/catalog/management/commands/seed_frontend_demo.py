@@ -1,17 +1,18 @@
 from datetime import timedelta
 from decimal import Decimal
 import hashlib
+import os
 import uuid
 
+from django.conf import settings
 from django.contrib.admin.models import ADDITION, CHANGE, LogEntry
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
-from django.core.management.base import BaseCommand
-from django.db import transaction
+from django.core.management.base import BaseCommand, CommandError
+from django.db import connection, transaction
 from django.db.models import Sum
 from django.utils import timezone
 from django.utils.text import slugify
-from rest_framework.authtoken.models import Token
 
 from accounts.models import Address, User
 from carts.models import Cart, CartItem
@@ -82,17 +83,53 @@ def deterministic_sha256(seed_str: str) -> str:
     return hashlib.sha256(f"nexa-commerceos.{seed_str}".encode("utf-8")).hexdigest()
 
 
+def _save_or_get(manager, force_overwrite: bool, **kwargs):
+    if force_overwrite:
+        return manager.update_or_create(**kwargs)
+    return manager.get_or_create(**kwargs)
+
+
 class Command(BaseCommand):
-    help = "Nạp dữ liệu mẫu đầy đủ cho tất cả các bảng trong database. Có thể chạy lại an toàn (idempotent)."
+    help = "Nạp dữ liệu mẫu đầy đủ cho tất cả các bảng trong database demo/test. Có thể chạy lại an toàn (idempotent)."
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--allow-non-debug",
+            action="store_true",
+            help="Cho phép chạy trên môi trường demo/staging khi DEBUG=False (yêu cầu tên DB chứa 'demo' hoặc 'test').",
+        )
+        parser.add_argument(
+            "--force-overwrite",
+            action="store_true",
+            help="Ghi đè dữ liệu mẫu đã tồn tại bằng update_or_create (mặc định dùng get_or_create để bảo vệ dữ liệu hiện có).",
+        )
 
     @transaction.atomic
     def handle(self, *args, **options):
+        allow_non_debug = bool(options.get("allow_non_debug"))
+        force_overwrite = bool(options.get("force_overwrite"))
+        env_name = os.environ.get("DJANGO_ENV", "").strip().lower()
+        db_name = str(connection.settings_dict.get("NAME") or "").lower()
+
+        if env_name == "production" or (not settings.DEBUG and not allow_non_debug):
+            raise CommandError(
+                "Chặn thực thi seed_frontend_demo khi DEBUG=False hoặc trên môi trường production. "
+                "Chỉ chạy trên môi trường phát triển/demo hoặc truyền --allow-non-debug cho DB demo/test."
+            )
+        if not settings.DEBUG and "demo" not in db_name and "test" not in db_name:
+            raise CommandError(
+                f"Từ chối chạy seed_frontend_demo trên database '{db_name}' khi DEBUG=False. "
+                "Tên database phải chứa 'demo' hoặc 'test'."
+            )
+
         now = timezone.now()
 
         # 1. Categories & Brands
         categories = {}
         for sort_order, (name, code, slug, image) in enumerate(CATEGORIES, 1):
-            category, _ = Category.objects.update_or_create(
+            category, _ = _save_or_get(
+                Category.objects,
+                force_overwrite,
                 code=code,
                 defaults={
                     "name": name,
@@ -106,7 +143,9 @@ class Command(BaseCommand):
 
         brands = {}
         for name in sorted({item[2] for item in PRODUCTS}):
-            brand, _ = Brand.objects.update_or_create(
+            brand, _ = _save_or_get(
+                Brand.objects,
+                force_overwrite,
                 slug=slugify(name),
                 defaults={"name": name, "is_active": True},
             )
@@ -115,9 +154,12 @@ class Command(BaseCommand):
         # 2. Products, Variants, InventoryBalances, Features, Images
         seeded_products = []
         variants_by_sku = {}
+        newly_created_skus = set()
         for idx, item in enumerate(PRODUCTS):
             name, short_name, brand_name, category_code, price, old_price, stock, sku, badge, accent, description, features = item
-            product, _ = Product.objects.update_or_create(
+            product, product_created = _save_or_get(
+                Product.objects,
+                force_overwrite,
                 slug=slugify(name),
                 defaults={
                     "category": categories[category_code],
@@ -139,7 +181,9 @@ class Command(BaseCommand):
             )
             seeded_products.append(product)
 
-            variant, _ = ProductVariant.objects.update_or_create(
+            variant, _ = _save_or_get(
+                ProductVariant.objects,
+                force_overwrite,
                 sku=sku,
                 defaults={
                     "product": product,
@@ -156,18 +200,25 @@ class Command(BaseCommand):
             )
             variants_by_sku[sku] = variant
 
-            InventoryBalance.objects.update_or_create(
+            _, balance_created = _save_or_get(
+                InventoryBalance.objects,
+                force_overwrite,
                 variant=variant,
                 defaults={"on_hand": max(stock, 20), "reserved": 0, "low_stock_threshold": 10},
             )
+            if balance_created:
+                newly_created_skus.add(sku)
 
-            ProductFeature.objects.filter(product=product).delete()
-            ProductFeature.objects.bulk_create([
-                ProductFeature(product=product, content=feature, sort_order=index)
-                for index, feature in enumerate(features, 1)
-            ])
+            if product_created or force_overwrite or not ProductFeature.objects.filter(product=product).exists():
+                ProductFeature.objects.filter(product=product).delete()
+                ProductFeature.objects.bulk_create([
+                    ProductFeature(product=product, content=feature, sort_order=index)
+                    for index, feature in enumerate(features, 1)
+                ])
 
-            ProductImage.objects.update_or_create(
+            _save_or_get(
+                ProductImage.objects,
+                force_overwrite,
                 product=product,
                 is_cover=True,
                 defaults={
@@ -181,33 +232,40 @@ class Command(BaseCommand):
             )
 
         # 3. Collections & Banners
-        all_collection, _ = Collection.objects.update_or_create(
+        all_collection, _ = _save_or_get(
+            Collection.objects,
+            force_overwrite,
             slug="gaming-gear",
             defaults={"name": "Gaming Gear Tuyển Chọn", "is_active": True, "sort_order": 1},
         )
-        nexa_collection, _ = Collection.objects.update_or_create(
+        nexa_collection, _ = _save_or_get(
+            Collection.objects,
+            force_overwrite,
             slug="nexa-select",
             defaults={"name": "NEXA Studio Signature", "is_active": True, "sort_order": 2},
         )
-        esports_collection, _ = Collection.objects.update_or_create(
+        esports_collection, _ = _save_or_get(
+            Collection.objects,
+            force_overwrite,
             slug="esports-pro",
             defaults={"name": "Chuẩn Thi Đấu eSports", "is_active": True, "sort_order": 3},
         )
-        CollectionProduct.objects.filter(collection__in=[all_collection, nexa_collection, esports_collection]).delete()
-        CollectionProduct.objects.bulk_create(
-            [
-                CollectionProduct(collection=all_collection, product=product, sort_order=index)
-                for index, product in enumerate(seeded_products, 1)
-            ]
-            + [
-                CollectionProduct(collection=nexa_collection, product=product, sort_order=index)
-                for index, product in enumerate([p for p in seeded_products if p.brand.name == "NEXA"], 1)
-            ]
-            + [
-                CollectionProduct(collection=esports_collection, product=product, sort_order=index)
-                for index, product in enumerate(seeded_products[:8], 1)
-            ]
-        )
+        if force_overwrite or not CollectionProduct.objects.filter(collection=all_collection).exists():
+            CollectionProduct.objects.filter(collection__in=[all_collection, nexa_collection, esports_collection]).delete()
+            CollectionProduct.objects.bulk_create(
+                [
+                    CollectionProduct(collection=all_collection, product=product, sort_order=index)
+                    for index, product in enumerate(seeded_products, 1)
+                ]
+                + [
+                    CollectionProduct(collection=nexa_collection, product=product, sort_order=index)
+                    for index, product in enumerate([p for p in seeded_products if p.brand.name == "NEXA"], 1)
+                ]
+                + [
+                    CollectionProduct(collection=esports_collection, product=product, sort_order=index)
+                    for index, product in enumerate(seeded_products[:8], 1)
+                ]
+            )
 
         banners = [
             ("Cảm Nhận Từng Khoảnh Khắc", "Âm thanh cho những khoảnh khắc riêng. Thiết kế cho nhịp sống của bạn.", "cobalt-sound-wide.png", "cobalt-sound-wide-day.png", "/products?category=tai-nghe"),
@@ -215,7 +273,9 @@ class Command(BaseCommand):
             ("Tự Do Trong Từng Chuyển Động", "Khám phá thiết bị phù hợp với cách bạn làm việc, chơi và tận hưởng mỗi ngày.", "cobalt-motion.png", "cobalt-motion-day.png", "/products?category=chuot"),
         ]
         for sort_order, (title, subtitle, dark_image, light_image, link) in enumerate(banners, 1):
-            HomeBanner.objects.update_or_create(
+            _save_or_get(
+                HomeBanner.objects,
+                force_overwrite,
                 title=title,
                 defaults={
                     "subtitle": subtitle,
@@ -230,11 +290,15 @@ class Command(BaseCommand):
             )
 
         # 4. Shipping Methods & Vouchers
-        std_ship, _ = ShippingMethod.objects.update_or_create(
+        std_ship, _ = _save_or_get(
+            ShippingMethod.objects,
+            force_overwrite,
             code="standard",
             defaults={"name": "Giao tiêu chuẩn", "base_fee": 30000, "free_threshold": 1000000, "min_days": 2, "max_days": 4, "is_active": True},
         )
-        exp_ship, _ = ShippingMethod.objects.update_or_create(
+        exp_ship, _ = _save_or_get(
+            ShippingMethod.objects,
+            force_overwrite,
             code="express",
             defaults={"name": "Giao hỏa tốc", "base_fee": 50000, "free_threshold": None, "min_days": 1, "max_days": 2, "is_active": True},
         )
@@ -251,7 +315,9 @@ class Command(BaseCommand):
         ]
         vouchers_by_code = {}
         for code, kind, value, max_discount, min_subtotal, usage_limit, per_user_limit in voucher_defs:
-            v, _ = Voucher.objects.update_or_create(
+            v, _ = _save_or_get(
+                Voucher.objects,
+                force_overwrite,
                 code=code,
                 defaults={
                     "kind": kind,
@@ -267,7 +333,7 @@ class Command(BaseCommand):
             )
             vouchers_by_code[code] = v
 
-        # 5. Auth Groups, Users, Tokens, and Addresses
+        # 5. Auth Groups, Users, and Addresses (No hardcoded superuser passwords or long-lived DRF Tokens)
         admin_group, _ = Group.objects.get_or_create(name="Quản trị viên hệ thống")
         ops_group, _ = Group.objects.get_or_create(name="Nhân viên vận hành & kho")
         cs_group, _ = Group.objects.get_or_create(name="Chăm sóc khách hàng")
@@ -277,20 +343,21 @@ class Command(BaseCommand):
             ops_group.permissions.set(all_perms)
             cs_group.permissions.set(all_perms[:20])
 
+        seed_password = os.environ.get("SEED_DEMO_PASSWORD", "").strip()
         user_specs = [
-            ("lethanhvu005@gmail.com", "Vũ", "Lê Thành", "0901234567", True, True),
-            ("lethanhvu2005@gmail.com", "Thành", "Lê", "0912345678", False, False),
-            ("vu@gmail.com", "Vũ", "Nguyễn", "0987654321", False, False),
-            ("minh.tran@nexa.vn", "Minh", "Trần Quốc", "0938112233", False, False),
-            ("huong.pham@nexa.vn", "Hương", "Phạm Thu", "0977445566", False, False),
-            ("khoa.staff@nexa.vn", "Khoa", "Đặng Đăng", "0966889900", True, False),
-            ("anh.nguyen@nexa.vn", "Anh", "Nguyễn Hoàng", "0905123890", False, False),
-            ("linh.le@nexa.vn", "Linh", "Lê Mỹ", "0918234567", False, False),
-            ("duc.vo@nexa.vn", "Đức", "Võ Minh", "0944556677", False, False),
-            ("trang.hoang@nexa.vn", "Trang", "Hoàng Thảo", "0989112244", False, False),
+            ("lethanhvu005@gmail.com", "Vũ", "Lê Thành", "0901234567", True),
+            ("lethanhvu2005@gmail.com", "Thành", "Lê", "0912345678", False),
+            ("vu@gmail.com", "Vũ", "Nguyễn", "0987654321", False),
+            ("minh.tran@nexa.vn", "Minh", "Trần Quốc", "0938112233", False),
+            ("huong.pham@nexa.vn", "Hương", "Phạm Thu", "0977445566", False),
+            ("khoa.staff@nexa.vn", "Khoa", "Đặng Đăng", "0966889900", True),
+            ("anh.nguyen@nexa.vn", "Anh", "Nguyễn Hoàng", "0905123890", False),
+            ("linh.le@nexa.vn", "Linh", "Lê Mỹ", "0918234567", False),
+            ("duc.vo@nexa.vn", "Đức", "Võ Minh", "0944556677", False),
+            ("trang.hoang@nexa.vn", "Trang", "Hoàng Thảo", "0989112244", False),
         ]
         users_by_email = {}
-        for email, first_name, last_name, phone, is_staff, is_superuser in user_specs:
+        for email, first_name, last_name, phone, is_staff in user_specs:
             user, created = User.objects.get_or_create(
                 email=email,
                 defaults={
@@ -298,9 +365,8 @@ class Command(BaseCommand):
                     "last_name": last_name,
                     "phone": phone,
                     "is_staff": is_staff,
-                    "is_superuser": is_superuser,
+                    "is_superuser": False,
                     "is_active": True,
-                    "email_verified_at": now - timedelta(days=20),
                 },
             )
             updated_fields = []
@@ -313,11 +379,11 @@ class Command(BaseCommand):
             if not user.phone:
                 user.phone = phone
                 updated_fields.append("phone")
-            if not user.email_verified_at:
-                user.email_verified_at = now - timedelta(days=20)
-                updated_fields.append("email_verified_at")
             if created:
-                user.set_password("Nexa@12345")
+                if seed_password:
+                    user.set_password(seed_password)
+                else:
+                    user.set_unusable_password()
                 updated_fields.append("password")
             if updated_fields:
                 user.save(update_fields=updated_fields)
@@ -329,7 +395,6 @@ class Command(BaseCommand):
             else:
                 user.groups.add(cs_group)
 
-            Token.objects.get_or_create(user=user)
             users_by_email[email] = user
 
         address_specs = [
@@ -353,12 +418,13 @@ class Command(BaseCommand):
             if is_default:
                 existing_default = Address.objects.filter(user=u, is_default=True).first()
                 if existing_default:
-                    existing_default.recipient_name = recipient
-                    existing_default.phone = phone
-                    existing_default.address_line = line
-                    existing_default.ward = ward
-                    existing_default.province = province
-                    existing_default.save()
+                    if force_overwrite:
+                        existing_default.recipient_name = recipient
+                        existing_default.phone = phone
+                        existing_default.address_line = line
+                        existing_default.ward = ward
+                        existing_default.province = province
+                        existing_default.save()
                     default_address_by_email[email] = existing_default
                 else:
                     addr = Address.objects.create(
@@ -373,7 +439,9 @@ class Command(BaseCommand):
                     )
                     default_address_by_email[email] = addr
             else:
-                Address.objects.update_or_create(
+                _save_or_get(
+                    Address.objects,
+                    force_overwrite,
                     user=u,
                     address_line=line,
                     defaults={
@@ -386,10 +454,9 @@ class Command(BaseCommand):
                     },
                 )
 
-        # Ensure any other manually registered users also have a default address and token
+        # Ensure any other manually registered users also have a default address without overwriting existing data
         for u in User.objects.exclude(email__in=users_by_email.keys()):
             users_by_email[u.email] = u
-            Token.objects.get_or_create(user=u)
             existing_def = Address.objects.filter(user=u, is_default=True).first()
             if not existing_def:
                 existing_def = Address.objects.create(
@@ -415,7 +482,7 @@ class Command(BaseCommand):
         ]
         for email, voucher_code, items in active_cart_specs:
             u = users_by_email[email]
-            cart, _ = Cart.objects.get_or_create(
+            cart, cart_created = Cart.objects.get_or_create(
                 user=u,
                 status=Cart.Status.ACTIVE,
                 defaults={
@@ -423,18 +490,23 @@ class Command(BaseCommand):
                     "expires_at": now + timedelta(days=30),
                 },
             )
-            if voucher_code and not cart.voucher_id:
-                cart.voucher = vouchers_by_code.get(voucher_code)
-                cart.save(update_fields=["voucher"])
-            for sku, qty in items:
-                CartItem.objects.update_or_create(
-                    cart=cart,
-                    variant=variants_by_sku[sku],
-                    defaults={"quantity": qty},
-                )
+            if cart_created or force_overwrite:
+                if voucher_code and not cart.voucher_id:
+                    cart.voucher = vouchers_by_code.get(voucher_code)
+                    cart.save(update_fields=["voucher"])
+                for sku, qty in items:
+                    _save_or_get(
+                        CartItem.objects,
+                        force_overwrite,
+                        cart=cart,
+                        variant=variants_by_sku[sku],
+                        defaults={"quantity": qty},
+                    )
 
         guest_hash = deterministic_sha256("guest-demo-cart-1")
-        guest_cart, _ = Cart.objects.update_or_create(
+        guest_cart, guest_created = _save_or_get(
+            Cart.objects,
+            force_overwrite,
             guest_token_hash=guest_hash,
             defaults={
                 "user": None,
@@ -443,11 +515,14 @@ class Command(BaseCommand):
                 "voucher": vouchers_by_code["NEXA5"],
             },
         )
-        CartItem.objects.update_or_create(
-            cart=guest_cart,
-            variant=variants_by_sku["NEXA-S98"],
-            defaults={"quantity": 1},
-        )
+        if guest_created or force_overwrite:
+            _save_or_get(
+                CartItem.objects,
+                force_overwrite,
+                cart=guest_cart,
+                variant=variants_by_sku["NEXA-S98"],
+                defaults={"quantity": 1},
+            )
 
         # 7. Orders across all statuses and all 14 days for all users
         order_specs = [
@@ -874,14 +949,19 @@ class Command(BaseCommand):
                     expires_at=created_time + timedelta(days=7),
                 )
 
-            for sku, qty in spec["items"]:
-                CartItem.objects.update_or_create(
-                    cart=source_cart,
-                    variant=variants_by_sku[sku],
-                    defaults={"quantity": qty},
-                )
+            if not existing_order or force_overwrite:
+                for sku, qty in spec["items"]:
+                    _save_or_get(
+                        CartItem.objects,
+                        force_overwrite,
+                        cart=source_cart,
+                        variant=variants_by_sku[sku],
+                        defaults={"quantity": qty},
+                    )
 
-            order, _ = Order.objects.update_or_create(
+            order, order_created = _save_or_get(
+                Order.objects,
+                force_overwrite,
                 order_number=order_number,
                 defaults={
                     "user": user,
@@ -903,10 +983,12 @@ class Command(BaseCommand):
                     "customer_note": spec["note"],
                 },
             )
-            # Backdate created_at so analytics charts and order history show realistic dates
-            Order.objects.filter(pk=order.pk).update(created_at=created_time, updated_at=created_time)
+            if order_created or force_overwrite:
+                Order.objects.filter(pk=order.pk).update(created_at=created_time, updated_at=created_time)
 
-            OrderAddress.objects.update_or_create(
+            _save_or_get(
+                OrderAddress.objects,
+                force_overwrite,
                 order=order,
                 defaults={
                     "recipient_name": addr.recipient_name,
@@ -920,7 +1002,9 @@ class Command(BaseCommand):
 
             for sku, qty in spec["items"]:
                 variant = variants_by_sku[sku]
-                oi, _ = OrderItem.objects.update_or_create(
+                oi, _ = _save_or_get(
+                    OrderItem.objects,
+                    force_overwrite,
                     order=order,
                     variant=variant,
                     defaults={
@@ -936,37 +1020,50 @@ class Command(BaseCommand):
                         "line_total": variant.price * qty,
                     },
                 )
-                if spec["status"] == OrderStatus.DELIVERED:
+                if order.status == OrderStatus.DELIVERED:
                     delivered_order_items[(user.email, variant.product.slug)] = oi
 
-                # InventoryReservation for every order item
+                # InventoryReservation for every order item (30-minute hold window matching checkout)
                 if spec["status"] in [OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PACKING]:
                     res_status = InventoryReservation.Status.ACTIVE
+                    res_created_at = now
                     closed_at = None
+                    expires_at_val = now + timedelta(minutes=30)
                 elif spec["status"] in [OrderStatus.SHIPPED, OrderStatus.DELIVERED]:
                     res_status = InventoryReservation.Status.CONSUMED
-                    closed_at = now - timedelta(hours=2)
+                    res_created_at = created_time
+                    closed_at = created_time + timedelta(minutes=25)
+                    expires_at_val = created_time + timedelta(minutes=30)
                 elif spec["status"] == OrderStatus.CANCELLED:
                     res_status = InventoryReservation.Status.RELEASED
-                    closed_at = now - timedelta(hours=2)
+                    res_created_at = created_time
+                    closed_at = created_time + timedelta(minutes=15)
+                    expires_at_val = created_time + timedelta(minutes=30)
                 else:
                     res_status = InventoryReservation.Status.EXPIRED
-                    closed_at = now - timedelta(hours=2)
+                    res_created_at = created_time
+                    closed_at = created_time + timedelta(minutes=30)
+                    expires_at_val = created_time + timedelta(minutes=30)
 
-                InventoryReservation.objects.update_or_create(
+                _save_or_get(
+                    InventoryReservation.objects,
+                    force_overwrite,
                     order=order,
                     variant=variant,
                     defaults={
                         "quantity": qty,
                         "status": res_status,
-                        "expires_at": now + timedelta(days=7),
+                        "created_at": res_created_at,
+                        "expires_at": expires_at_val,
                         "closed_at": closed_at,
                     },
                 )
 
                 # InventoryMovement (sale for shipped/delivered)
                 if spec["status"] in [OrderStatus.SHIPPED, OrderStatus.DELIVERED]:
-                    InventoryMovement.objects.update_or_create(
+                    _save_or_get(
+                        InventoryMovement.objects,
+                        force_overwrite,
                         order=order,
                         variant=variant,
                         kind=InventoryMovement.Kind.SALE,
@@ -1006,14 +1103,17 @@ class Command(BaseCommand):
                         created_at=created_time + timedelta(hours=step_i * 2)
                     )
 
-            # VoucherRedemption
+            # VoucherRedemption (RELEASED for cancelled/expired orders)
             if voucher:
-                red_status = (
-                    VoucherRedemption.Status.USED
-                    if spec["status"] in [OrderStatus.CONFIRMED, OrderStatus.PACKING, OrderStatus.SHIPPED, OrderStatus.DELIVERED]
-                    else VoucherRedemption.Status.RESERVED
-                )
-                VoucherRedemption.objects.update_or_create(
+                if spec["status"] in [OrderStatus.CONFIRMED, OrderStatus.PACKING, OrderStatus.SHIPPED, OrderStatus.DELIVERED]:
+                    red_status = VoucherRedemption.Status.USED
+                elif spec["status"] == OrderStatus.PENDING:
+                    red_status = VoucherRedemption.Status.RESERVED
+                else:
+                    red_status = VoucherRedemption.Status.RELEASED
+                _save_or_get(
+                    VoucherRedemption.objects,
+                    force_overwrite,
                     order=order,
                     defaults={
                         "voucher": voucher,
@@ -1025,7 +1125,9 @@ class Command(BaseCommand):
 
             # Payment
             paid_at_val = created_time if spec["payment_status"] in [Payment.Status.SUCCEEDED, Payment.Status.REFUNDED] else None
-            pay_obj, _ = Payment.objects.update_or_create(
+            pay_obj, pay_created = _save_or_get(
+                Payment.objects,
+                force_overwrite,
                 idempotency_key=deterministic_uuid(f"pay-{order_number}"),
                 defaults={
                     "order": order,
@@ -1037,28 +1139,32 @@ class Command(BaseCommand):
                     "paid_at": paid_at_val,
                 },
             )
-            Payment.objects.filter(pk=pay_obj.pk).update(created_at=created_time)
+            if pay_created or force_overwrite:
+                Payment.objects.filter(pk=pay_obj.pk).update(created_at=created_time)
 
-        # Sync InventoryBalance.reserved with active reservations and configure 3 realistic low-stock SKUs
+        # Sync InventoryBalance.reserved with active reservations for newly seeded or force-overwritten SKUs
         low_stock_skus = {"ASUS-XG27": 7, "KEY-Q1PRO": 8, "RAZER-ATLAS": 6}
         for sku, variant in variants_by_sku.items():
-            active_res = (
-                InventoryReservation.objects.filter(variant=variant, status=InventoryReservation.Status.ACTIVE)
-                .aggregate(total=Sum("quantity"))["total"]
-                or 0
-            )
             balance = InventoryBalance.objects.get(variant=variant)
-            balance.reserved = active_res
-            if sku in low_stock_skus:
-                balance.low_stock_threshold = 10
-                balance.on_hand = active_res + low_stock_skus[sku]
-            else:
-                balance.low_stock_threshold = 8
-                if balance.on_hand < active_res + 15:
-                    balance.on_hand = active_res + 28
-            balance.save(update_fields=["on_hand", "reserved", "low_stock_threshold", "updated_at"])
+            if sku in newly_created_skus or force_overwrite:
+                active_res = (
+                    InventoryReservation.objects.filter(variant=variant, status=InventoryReservation.Status.ACTIVE)
+                    .aggregate(total=Sum("quantity"))["total"]
+                    or 0
+                )
+                balance.reserved = active_res
+                if sku in low_stock_skus:
+                    balance.low_stock_threshold = 10
+                    balance.on_hand = active_res + low_stock_skus[sku]
+                else:
+                    balance.low_stock_threshold = 8
+                    if balance.on_hand < active_res + 15:
+                        balance.on_hand = active_res + 28
+                balance.save(update_fields=["on_hand", "reserved", "low_stock_threshold", "updated_at"])
 
-            InventoryMovement.objects.update_or_create(
+            _save_or_get(
+                InventoryMovement.objects,
+                force_overwrite,
                 event_key=deterministic_uuid(f"receipt-initial-{sku}"),
                 defaults={
                     "variant": variant,
@@ -1208,7 +1314,9 @@ class Command(BaseCommand):
             for email, stars, body, rev_status, days_ago in rev_list:
                 u = users_by_email[email]
                 verified_oi = delivered_order_items.get((email, product.slug))
-                rev, _ = Review.objects.update_or_create(
+                rev, rev_created = _save_or_get(
+                    Review.objects,
+                    force_overwrite,
                     user=u,
                     product=product,
                     defaults={
@@ -1218,8 +1326,9 @@ class Command(BaseCommand):
                         "status": rev_status,
                     },
                 )
-                rev_time = now - timedelta(days=days_ago, hours=2)
-                Review.objects.filter(pk=rev.pk).update(created_at=rev_time, updated_at=rev_time)
+                if rev_created or force_overwrite:
+                    rev_time = now - timedelta(days=days_ago, hours=2)
+                    Review.objects.filter(pk=rev.pk).update(created_at=rev_time, updated_at=rev_time)
 
         # Q&A for ALL 24 Products (2 questions + answers per product)
         qa_templates_by_category = {
@@ -1329,7 +1438,9 @@ class Command(BaseCommand):
             for t_idx, (q_tpl, ans_list) in enumerate(templates):
                 asker = users_by_email[customer_emails_cycle[(p_idx + t_idx) % len(customer_emails_cycle)]]
                 q_body = q_tpl.format(name=short_name)
-                question, _ = ProductQuestion.objects.update_or_create(
+                question, _ = _save_or_get(
+                    ProductQuestion.objects,
+                    force_overwrite,
                     product=product,
                     user=asker,
                     body=q_body,
@@ -1337,7 +1448,9 @@ class Command(BaseCommand):
                 )
                 for ans_email, a_tpl in ans_list:
                     a_body = a_tpl.format(name=short_name)
-                    ProductAnswer.objects.update_or_create(
+                    _save_or_get(
+                        ProductAnswer.objects,
+                        force_overwrite,
                         question=question,
                         user=users_by_email[ans_email],
                         body=a_body,
@@ -1351,7 +1464,9 @@ class Command(BaseCommand):
             ("RAZER-VV3P", "linh.le@nexa.vn", "Chuột Viper V3 Pro màu trắng bao giờ về thêm hàng tại kho Hà Nội vậy shop?"),
         ]
         for sku, ask_email, q_body in pending_questions:
-            ProductQuestion.objects.update_or_create(
+            _save_or_get(
+                ProductQuestion.objects,
+                force_overwrite,
                 product=variants_by_sku[sku].product,
                 user=users_by_email[ask_email],
                 body=q_body,
@@ -1391,7 +1506,9 @@ class Command(BaseCommand):
             ("community.question_answered", "ProductQuestion", "LOGI-GPX2", {"answered_by": "khoa.staff@nexa.vn"}),
         ]
         for idx, (action, entity_type, entity_id, changes) in enumerate(audit_specs):
-            al, _ = AuditLog.objects.update_or_create(
+            al, al_created = _save_or_get(
+                AuditLog.objects,
+                force_overwrite,
                 request_id=deterministic_uuid(f"audit-{action}-{entity_id}-{idx}"),
                 defaults={
                     "actor": staff_actor,
@@ -1401,7 +1518,8 @@ class Command(BaseCommand):
                     "changes": changes,
                 },
             )
-            AuditLog.objects.filter(pk=al.pk).update(created_at=now - timedelta(hours=idx * 6))
+            if al_created or force_overwrite:
+                AuditLog.objects.filter(pk=al.pk).update(created_at=now - timedelta(hours=idx * 6))
 
         outbox_specs = [
             ("order.created", "NX-20261101-001", OutboxEvent.Status.SENT, {"order_number": "NX-20261101-001", "grand_total": 5770000}),
@@ -1418,7 +1536,9 @@ class Command(BaseCommand):
             ("inventory.low_stock", "RAZER-ATLAS", OutboxEvent.Status.PENDING, {"sku": "RAZER-ATLAS", "available": 6}),
         ]
         for idx, (topic, agg_id, ob_status, payload) in enumerate(outbox_specs):
-            ob, _ = OutboxEvent.objects.update_or_create(
+            ob, ob_created = _save_or_get(
+                OutboxEvent.objects,
+                force_overwrite,
                 event_key=deterministic_uuid(f"outbox-{topic}-{agg_id}"),
                 defaults={
                     "topic": topic,
@@ -1429,7 +1549,8 @@ class Command(BaseCommand):
                     "processed_at": now - timedelta(hours=idx * 4) if ob_status == OutboxEvent.Status.SENT else None,
                 },
             )
-            OutboxEvent.objects.filter(pk=ob.pk).update(created_at=now - timedelta(hours=idx * 5))
+            if ob_created or force_overwrite:
+                OutboxEvent.objects.filter(pk=ob.pk).update(created_at=now - timedelta(hours=idx * 5))
 
         # 11. Django Admin LogEntry
         product_ct = ContentType.objects.get_for_model(Product)

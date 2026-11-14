@@ -18,6 +18,7 @@ from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR.parent / '.env')
 load_dotenv(BASE_DIR.parent / 'commerceos-demo' / '.env')
 
 
@@ -172,7 +173,7 @@ USE_I18N = True
 
 USE_TZ = True
 
-
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 

@@ -101,3 +101,92 @@ class AdminDashboardApiTests(APITestCase):
                 self.assertIn("count", res.data, ep)
                 self.assertIn("results", res.data, ep)
 
+    def test_admin_order_cod_lifecycle_and_inventory_summary(self):
+        from catalog.models import Category, Product, ProductVariant
+        from orders.models import OrderStatus, ShippingMethod
+        from orders.services import create_order
+        from accounts.models import Address
+        from carts.models import Cart, CartItem
+
+        admin_user = User.objects.create_superuser("ops-admin@example.test", "Admin!Password123")
+        customer = User.objects.create_user("buyer@example.test", "Customer!Password123")
+        address = Address.objects.create(
+            user=customer,
+            recipient_name="Buyer",
+            phone="0901234567",
+            address_line="123 Le Loi",
+            ward="Ben Nghe",
+            province="TP.HCM",
+            is_default=True,
+        )
+        shipping = ShippingMethod.objects.create(
+            code="standard",
+            name="Giao tiêu chuẩn",
+            base_fee=30000,
+            min_days=2,
+            max_days=4,
+            is_active=True,
+        )
+        from common.test_factories import catalog
+        product, variant = catalog()
+        product.status = "active"
+        product.save(update_fields=["status"])
+        balance = InventoryBalance.objects.create(variant=variant, on_hand=10, reserved=0, low_stock_threshold=5)
+
+        import uuid
+        cart = Cart.objects.create(user=customer)
+        CartItem.objects.create(cart=cart, variant=variant, quantity=2)
+        order, _ = create_order(
+            customer,
+            {
+                "address_id": address.id,
+                "shipping_method_id": shipping.id,
+                "checkout_key": uuid.uuid4(),
+            },
+        )
+        balance.refresh_from_db()
+        self.assertEqual(balance.on_hand, 10)
+        self.assertEqual(balance.reserved, 2)
+
+        self.authenticate(admin_user)
+
+        # Verify /api/admin/inventory/ includes whole-table summary KPIs
+        inv_res = self.client.get("/api/admin/inventory/")
+        self.assertEqual(inv_res.status_code, status.HTTP_200_OK)
+        self.assertIn("summary", inv_res.data)
+        self.assertEqual(inv_res.data["summary"]["total_on_hand"], 10)
+        self.assertEqual(inv_res.data["summary"]["total_reserved"], 2)
+        self.assertEqual(inv_res.data["summary"]["total_available"], 8)
+
+        # Transition pending -> confirmed (extends reservation hold)
+        res_confirm = self.client.post(
+            f"/api/admin/orders/{order.public_id}/status/",
+            {"status": "confirmed", "note": "Admin xác nhận đơn"},
+            format="json",
+        )
+        self.assertEqual(res_confirm.status_code, status.HTTP_200_OK)
+
+        # Transition confirmed -> packing -> shipped -> delivered (consumes reservation, deducts on_hand, marks COD payment succeeded)
+        for next_st in ["packing", "shipped", "delivered"]:
+            res_st = self.client.post(
+                f"/api/admin/orders/{order.public_id}/status/",
+                {"status": next_st},
+                format="json",
+            )
+            self.assertEqual(res_st.status_code, status.HTTP_200_OK)
+
+        balance.refresh_from_db()
+        self.assertEqual(balance.on_hand, 8)
+        self.assertEqual(balance.reserved, 0)
+        reservation = InventoryReservation.objects.get(order=order, variant=variant)
+        self.assertEqual(reservation.status, InventoryReservation.Status.CONSUMED)
+        self.assertTrue(InventoryMovement.objects.filter(variant=variant, kind=InventoryMovement.Kind.SALE).exists())
+
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.DELIVERED)
+        payment = Payment.objects.get(order=order)
+        self.assertEqual(payment.status, Payment.Status.SUCCEEDED)
+        self.assertIsNotNone(payment.paid_at)
+        self.assertTrue(AuditLog.objects.filter(entity_id=order.order_number, action="order.status_transition").exists())
+
+

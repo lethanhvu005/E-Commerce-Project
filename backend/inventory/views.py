@@ -1,4 +1,6 @@
 from django.db import IntegrityError, transaction
+from django.db.models import Count, F, IntegerField, Q, Sum, Value
+from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -54,9 +56,25 @@ def inventory(request):
             .prefetch_related("variant__product__images")
             .order_by("variant__sku")
         )
+        agg = InventoryBalance.objects.aggregate(
+            total_on_hand=Coalesce(Sum("on_hand"), Value(0), output_field=IntegerField()),
+            total_reserved=Coalesce(Sum("reserved"), Value(0), output_field=IntegerField()),
+            total_skus=Count("variant_id"),
+            low_stock_count=Count(
+                "variant_id",
+                filter=Q(on_hand__lte=F("reserved") + F("low_stock_threshold")),
+            ),
+            out_of_stock_count=Count(
+                "variant_id",
+                filter=Q(on_hand__lte=F("reserved")),
+            ),
+        )
+        agg["total_available"] = max(0, agg["total_on_hand"] - agg["total_reserved"])
         paginator = AdminInventoryPagination()
         page = paginator.paginate_queryset(balances, request)
-        return paginator.get_paginated_response(InventoryBalanceSerializer(page, many=True).data)
+        response = paginator.get_paginated_response(InventoryBalanceSerializer(page, many=True).data)
+        response.data["summary"] = agg
+        return response
     serializer = InventoryAdjustmentSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     data = serializer.validated_data

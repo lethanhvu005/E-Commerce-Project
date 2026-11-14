@@ -13,8 +13,8 @@ from accounts.models import Address
 from carts.models import Cart
 from carts.services import cart_totals, compute_discount, get_voucher_error
 from catalog.models import Product
-from inventory.models import InventoryBalance, InventoryReservation
-from operations.models import OutboxEvent
+from inventory.models import InventoryBalance, InventoryMovement, InventoryReservation
+from operations.models import AuditLog, OutboxEvent
 from payments.models import Payment
 from promotions.models import Voucher, VoucherRedemption
 
@@ -264,3 +264,145 @@ def cancel_order(order, user, reason):
     order.save(update_fields=["status", "updated_at"])
     OrderStatusHistory.objects.create(order=order, from_status=old_status, to_status=OrderStatus.CANCELLED, actor=user, reason=reason)
     return order
+
+
+VALID_ADMIN_TRANSITIONS = {
+    OrderStatus.PENDING: {OrderStatus.CONFIRMED, OrderStatus.CANCELLED},
+    OrderStatus.CONFIRMED: {OrderStatus.PACKING, OrderStatus.CANCELLED},
+    OrderStatus.PACKING: {OrderStatus.SHIPPED, OrderStatus.CANCELLED},
+    OrderStatus.SHIPPED: {OrderStatus.DELIVERED},
+    OrderStatus.DELIVERED: set(),
+    OrderStatus.CANCELLED: set(),
+    OrderStatus.EXPIRED: set(),
+}
+
+
+def _consume_order_reservations(order, actor, now, reason):
+    active_reservations = list(
+        order.reservations.select_for_update()
+        .filter(status=InventoryReservation.Status.ACTIVE)
+        .order_by("variant_id")
+    )
+    for reservation in active_reservations:
+        balance = InventoryBalance.objects.select_for_update().get(variant_id=reservation.variant_id)
+        if balance.on_hand < reservation.quantity:
+            raise ValidationError(
+                {"inventory": [f"Tồn kho thực tế của SKU {reservation.variant.sku} không đủ để xuất kho."]}
+            )
+        balance.on_hand -= reservation.quantity
+        balance.reserved = max(0, balance.reserved - reservation.quantity)
+        balance.save(update_fields=["on_hand", "reserved", "updated_at"])
+        reservation.status = InventoryReservation.Status.CONSUMED
+        reservation.closed_at = now
+        reservation.save(update_fields=["status", "closed_at"])
+        event_key = uuid.uuid5(uuid.NAMESPACE_DNS, f"order-sale-{order.public_id}-{reservation.variant_id}")
+        InventoryMovement.objects.get_or_create(
+            event_key=event_key,
+            defaults={
+                "variant_id": reservation.variant_id,
+                "order": order,
+                "actor": actor,
+                "kind": InventoryMovement.Kind.SALE,
+                "quantity_delta": -reservation.quantity,
+                "reason": reason or f"Xuất kho giao đơn hàng {order.order_number}",
+            },
+        )
+
+
+@transaction.atomic
+def transition_order_status(order, to_status, actor, reason="", confirm_cod_payment=False):
+    order = Order.objects.select_for_update().get(pk=order.pk)
+    old_status = order.status
+    allowed = VALID_ADMIN_TRANSITIONS.get(old_status, set())
+    if to_status not in allowed:
+        raise ValidationError(
+            {"status": [f"Không thể chuyển trạng thái đơn hàng từ '{old_status}' sang '{to_status}'."]}
+        )
+
+    now = timezone.now()
+    default_reason = reason.strip() if reason else f"Cập nhật trạng thái đơn sang {to_status}"
+
+    if to_status == OrderStatus.CANCELLED:
+        canceled = cancel_order(order, actor, default_reason)
+        AuditLog.objects.create(
+            actor=actor,
+            action="order.status_transition",
+            entity_type="Order",
+            entity_id=order.order_number,
+            changes={"from": old_status, "to": OrderStatus.CANCELLED, "reason": default_reason},
+        )
+        return canceled
+
+    if to_status == OrderStatus.CONFIRMED:
+        if hasattr(order, "voucher_redemption") and order.voucher_redemption.status == VoucherRedemption.Status.RESERVED:
+            order.voucher_redemption.status = VoucherRedemption.Status.USED
+            order.voucher_redemption.save(update_fields=["status", "updated_at"])
+        order.reservations.filter(status=InventoryReservation.Status.ACTIVE).update(
+            expires_at=now + timedelta(days=7)
+        )
+
+    if to_status in {OrderStatus.SHIPPED, OrderStatus.DELIVERED}:
+        _consume_order_reservations(order, actor, now, default_reason)
+
+    if to_status == OrderStatus.DELIVERED or confirm_cod_payment:
+        order.payments.filter(status=Payment.Status.PENDING).update(
+            status=Payment.Status.SUCCEEDED,
+            paid_at=now,
+        )
+
+    order.status = to_status
+    order.save(update_fields=["status", "updated_at"])
+    OrderStatusHistory.objects.create(
+        order=order,
+        from_status=old_status,
+        to_status=to_status,
+        actor=actor,
+        reason=default_reason,
+    )
+    AuditLog.objects.create(
+        actor=actor,
+        action="order.status_transition",
+        entity_type="Order",
+        entity_id=order.order_number,
+        changes={"from": old_status, "to": to_status, "reason": default_reason},
+    )
+    OutboxEvent.objects.create(
+        topic=f"order.{to_status}",
+        aggregate_id=str(order.public_id),
+        payload={"order_number": order.order_number, "status": to_status},
+    )
+    return order
+
+
+@transaction.atomic
+def confirm_order_payment(order, actor, provider_reference=""):
+    order = Order.objects.select_for_update().get(pk=order.pk)
+    payment = order.payments.select_for_update().order_by("-created_at", "-id").first()
+    if not payment:
+        raise ValidationError({"payment": ["Đơn hàng chưa có bản ghi thanh toán."]})
+    if payment.status == Payment.Status.SUCCEEDED:
+        return payment
+    if payment.status != Payment.Status.PENDING:
+        raise ValidationError(
+            {"payment": [f"Không thể xác nhận thu tiền cho giao dịch ở trạng thái '{payment.status}'."]}
+        )
+    now = timezone.now()
+    payment.status = Payment.Status.SUCCEEDED
+    payment.paid_at = now
+    if provider_reference:
+        payment.provider_reference = provider_reference.strip()
+    payment.save(update_fields=["status", "paid_at", "provider_reference"])
+    AuditLog.objects.create(
+        actor=actor,
+        action="payment.confirmed",
+        entity_type="Order",
+        entity_id=order.order_number,
+        changes={"payment_id": payment.id, "amount": int(payment.amount), "provider": payment.provider},
+    )
+    OutboxEvent.objects.create(
+        topic="payment.succeeded",
+        aggregate_id=str(order.public_id),
+        payload={"order_number": order.order_number, "provider": payment.provider, "amount": int(payment.amount)},
+    )
+    return payment
+

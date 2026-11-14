@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db.models import Avg, Count, DecimalField, F, Q, Sum, Value
 from django.db.models.functions import Coalesce, TruncDate
+from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.pagination import PageNumberPagination
@@ -12,7 +13,9 @@ from .serializers import AuditLogSerializer
 from catalog.models import Product
 from community.models import ProductQuestion, Review
 from inventory.models import InventoryBalance
+from inventory.serializers import InventoryBalanceSerializer
 from orders.models import Order, OrderStatus
+from orders.services import confirm_order_payment, release_expired_reservations, transition_order_status
 from payments.models import Payment
 from promotions.models import Voucher, VoucherRedemption
 
@@ -56,10 +59,14 @@ def dashboard(request):
             output_field=DecimalField(max_digits=14, decimal_places=0),
         ),
     )["value"]
-    low_stock = InventoryBalance.objects.filter(
-        on_hand__gt=F("reserved"),
-        on_hand__lte=F("reserved") + F("low_stock_threshold"),
-    ).count()
+    low_stock_qs = (
+        InventoryBalance.objects.select_related("variant__product__category")
+        .prefetch_related("variant__product__images")
+        .filter(on_hand__lte=F("reserved") + F("low_stock_threshold"))
+        .order_by(F("on_hand") - F("reserved"), "variant__sku")
+    )
+    low_stock = low_stock_qs.count()
+    low_stock_items = InventoryBalanceSerializer(low_stock_qs[:6], many=True).data
     recent_orders = list(
         Order.objects.select_related("user")
         .order_by("-created_at", "-id")
@@ -73,6 +80,7 @@ def dashboard(request):
             "products_count": Product.objects.count(),
             "customers_count": get_user_model().objects.filter(is_staff=False).count(),
             "low_stock_count": low_stock,
+            "low_stock_items": low_stock_items,
             "orders_by_status": list(Order.objects.values("status").annotate(count=Count("id")).order_by("status")),
             "recent_orders": recent_orders,
         }
@@ -107,6 +115,7 @@ def admin_orders(request):
         return denied
     queryset = (
         Order.objects.select_related("user", "shipping_method", "voucher")
+        .prefetch_related("payments")
         .annotate(items_count=Coalesce(Sum("items__quantity"), Value(0)))
         .order_by("-created_at", "-id")
     )
@@ -121,23 +130,85 @@ def admin_orders(request):
         )
     paginator = AdminListPagination()
     page = paginator.paginate_queryset(queryset, request)
-    data = [
-        {
-            "id": o.id,
-            "public_id": str(o.public_id),
-            "order_number": o.order_number,
-            "customer_email": o.user.email,
-            "customer_name": o.user.get_full_name() or o.user.email,
-            "created_at": o.created_at,
-            "items_count": o.items_count,
-            "grand_total": o.grand_total,
-            "status": o.status,
-            "shipping_method": o.shipping_method_snapshot,
-            "voucher_code": o.voucher_code_snapshot,
-        }
-        for o in page
-    ]
+    data = []
+    for o in page:
+        latest_payment = next(iter(o.payments.all()), None)
+        data.append(
+            {
+                "id": o.id,
+                "public_id": str(o.public_id),
+                "order_number": o.order_number,
+                "customer_email": o.user.email,
+                "customer_name": o.user.get_full_name() or o.user.email,
+                "created_at": o.created_at,
+                "items_count": o.items_count,
+                "grand_total": o.grand_total,
+                "status": o.status,
+                "shipping_method": o.shipping_method_snapshot,
+                "voucher_code": o.voucher_code_snapshot,
+                "payment_status": latest_payment.status if latest_payment else None,
+                "payment_provider": latest_payment.provider if latest_payment else None,
+            }
+        )
     return paginator.get_paginated_response(data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def admin_order_status(request, public_id):
+    denied = require_permissions(request, ["orders.change_order"])
+    if denied:
+        return denied
+    order = get_object_or_404(Order, public_id=public_id)
+    next_status = (request.data.get("status") or "").strip()
+    reason = (request.data.get("reason") or "").strip()
+    confirm_cod = bool(request.data.get("confirm_cod_payment", False))
+    updated = transition_order_status(
+        order,
+        to_status=next_status,
+        actor=request.user,
+        reason=reason,
+        confirm_cod_payment=confirm_cod,
+    )
+    latest_payment = updated.payments.order_by("-created_at", "-id").first()
+    return Response(
+        {
+            "public_id": str(updated.public_id),
+            "order_number": updated.order_number,
+            "status": updated.status,
+            "payment_status": latest_payment.status if latest_payment else None,
+        }
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def admin_order_confirm_payment(request, public_id):
+    denied = require_permissions(request, ["payments.change_payment"])
+    if denied:
+        return denied
+    order = get_object_or_404(Order, public_id=public_id)
+    provider_ref = (request.data.get("provider_reference") or "").strip()
+    payment = confirm_order_payment(order, actor=request.user, provider_reference=provider_ref)
+    return Response(
+        {
+            "public_id": str(order.public_id),
+            "order_number": order.order_number,
+            "payment_id": payment.id,
+            "payment_status": payment.status,
+            "paid_at": payment.paid_at,
+        }
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def admin_release_expired_reservations(request):
+    denied = require_permissions(request, ["inventory.change_inventorybalance"])
+    if denied:
+        return denied
+    released_count = release_expired_reservations()
+    return Response({"released_count": released_count})
 
 
 @api_view(["GET"])

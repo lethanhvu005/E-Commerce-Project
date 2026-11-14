@@ -34,11 +34,15 @@ export default function AdminDashboardPage() {
       setData(dashboard);
       const sortedSeries = [...(analytics?.daily_series || [])].reverse();
       setDailySeries(sortedSeries);
-      setLowStock(
-        balances
-          .filter((x) => Number(x.available) <= Number(x.low_stock_threshold))
-          .slice(0, 6)
-      );
+      if (Array.isArray(dashboard?.low_stock_items)) {
+        setLowStock(dashboard.low_stock_items);
+      } else {
+        setLowStock(
+          balances
+            .filter((x) => Number(x.available) <= Number(x.low_stock_threshold))
+            .slice(0, 6)
+        );
+      }
     } catch (err) {
       setError(err.message || "Không thể tải dữ liệu quản trị.");
     } finally {

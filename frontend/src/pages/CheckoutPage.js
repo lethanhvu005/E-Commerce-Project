@@ -48,6 +48,7 @@ export default function CheckoutPage() {
   // Flow & Feedback States
   const [loading, setLoading] = useState(true);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState(null);
   const [placingOrder, setPlacingOrder] = useState(false);
   const [error, setError] = useState(null);
   const [toastMsg, setToastMsg] = useState("");
@@ -95,9 +96,15 @@ export default function CheckoutPage() {
 
   // Call Checkout Preview whenever address or shipping method changes
   useEffect(() => {
-    if (!selectedAddressId || !selectedMethodId) return;
+    if (!selectedAddressId || !selectedMethodId) {
+      setPreview(null);
+      return;
+    }
 
     let isMounted = true;
+    setPreview(null);
+    setPreviewError(null);
+    setError(null);
     setPreviewLoading(true);
 
     orderService.checkoutPreview({
@@ -106,10 +113,17 @@ export default function CheckoutPage() {
       note: "",
     })
       .then((data) => {
-        if (isMounted) setPreview(data);
+        if (isMounted) {
+          setPreview(data);
+          setPreviewError(null);
+        }
       })
       .catch((err) => {
-        if (isMounted) setError(err);
+        if (isMounted) {
+          setPreview(null);
+          setPreviewError(err);
+          setError(err);
+        }
       })
       .finally(() => {
         if (isMounted) setPreviewLoading(false);
@@ -144,6 +158,11 @@ export default function CheckoutPage() {
     }
     if (!selectedMethodId) {
       setToastMsg("Vui lòng chọn phương thức vận chuyển.");
+      return;
+    }
+
+    if (!preview || previewError) {
+      setToastMsg("Không thể đặt hàng khi báo giá vận chuyển chưa hợp lệ.");
       return;
     }
 
@@ -212,15 +231,7 @@ export default function CheckoutPage() {
 
       {error && <ErrorBox error={error} variant="inline" />}
 
-      <div
-        className="checkout-grid"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) 380px",
-          gap: "24px",
-          alignItems: "start",
-        }}
-      >
+      <div className="checkout-grid">
         {/* Left Form Column */}
         <form onSubmit={handlePlaceOrder}>
           {/* Step 1: Delivery Address */}
@@ -470,10 +481,23 @@ export default function CheckoutPage() {
             type="button"
             className="btn btn-violet full"
             style={{ width: "100%", marginTop: "20px", padding: "15px", fontSize: "14px" }}
-            disabled={placingOrder || !selectedAddressId || !selectedMethodId || previewLoading}
+            disabled={
+              placingOrder ||
+              !selectedAddressId ||
+              !selectedMethodId ||
+              previewLoading ||
+              Boolean(previewError) ||
+              !preview
+            }
             onClick={handlePlaceOrder}
           >
-            {placingOrder ? "Đang xử lý đặt hàng..." : `Đặt hàng · ${money(preview?.grand_total || cart.total)} ↗`}
+            {placingOrder
+              ? "Đang xử lý đặt hàng..."
+              : previewLoading
+              ? "Đang tính phí vận chuyển..."
+              : preview
+              ? `Đặt hàng · ${money(preview.grand_total || preview.total)} ↗`
+              : "Không thể báo giá đơn hàng"}
           </button>
 
           <p style={{ fontSize: "11px", color: "var(--muted)", textAlign: "center", marginTop: "12px", lineHeight: "1.4" }}>

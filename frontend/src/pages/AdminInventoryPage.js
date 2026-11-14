@@ -11,8 +11,11 @@ export default function AdminInventoryPage() {
   const navigate = useNavigate();
 
   const [balances, setBalances] = useState([]);
+  const [summary, setSummary] = useState(null);
   const [movements, setMovements] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [movementsError, setMovementsError] = useState(null);
+  const [auditError, setAuditError] = useState(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -30,16 +33,38 @@ export default function AdminInventoryPage() {
   const loadAdminData = async () => {
     setLoading(true);
     setError(null);
+    setMovementsError(null);
+    setAuditError(null);
     try {
-      const [balRes, movRes, audRes] = await Promise.all([
+      const [balOutcome, movOutcome, audOutcome] = await Promise.allSettled([
         adminService.getInventoryBalances(),
-        adminService.getInventoryMovements().catch(() => ({ results: [] })),
-        adminService.getAuditLogs().catch(() => ({ results: [] })),
+        adminService.getInventoryMovements(),
+        adminService.getAuditLogs(),
       ]);
 
-      setBalances(balRes.results || balRes || []);
-      setMovements(movRes.results || movRes || []);
-      setAuditLogs(audRes.results || audRes || []);
+      if (balOutcome.status === "fulfilled") {
+        const balRes = balOutcome.value;
+        setBalances(balRes.results || balRes || []);
+        setSummary(balRes.summary || null);
+      } else {
+        setError(balOutcome.reason);
+      }
+
+      if (movOutcome.status === "fulfilled") {
+        const movRes = movOutcome.value;
+        setMovements(movRes.results || movRes || []);
+      } else {
+        setMovements([]);
+        setMovementsError(movOutcome.reason);
+      }
+
+      if (audOutcome.status === "fulfilled") {
+        const audRes = audOutcome.value;
+        setAuditLogs(audRes.results || audRes || []);
+      } else {
+        setAuditLogs([]);
+        setAuditError(audOutcome.reason);
+      }
     } catch (err) {
       setError(err);
     } finally {
@@ -96,12 +121,18 @@ export default function AdminInventoryPage() {
     }
   };
 
-  const totalOnHand = balances.reduce((sum, b) => sum + (Number(b.on_hand) || 0), 0);
-  const totalReserved = balances.reduce((sum, b) => sum + (Number(b.reserved) || 0), 0);
-  const totalAvailable = balances.reduce((sum, b) => sum + (Number(b.available) || 0), 0);
-  const lowStockCount = balances.filter(
-    (b) => b.low_stock_threshold != null && Number(b.available) <= Number(b.low_stock_threshold)
-  ).length;
+  const totalOnHand =
+    summary?.total_on_hand ?? balances.reduce((sum, b) => sum + (Number(b.on_hand) || 0), 0);
+  const totalReserved =
+    summary?.total_reserved ?? balances.reduce((sum, b) => sum + (Number(b.reserved) || 0), 0);
+  const totalAvailable =
+    summary?.total_available ?? balances.reduce((sum, b) => sum + (Number(b.available) || 0), 0);
+  const totalSkus = summary?.total_skus ?? balances.length;
+  const lowStockCount =
+    summary?.low_stock_count ??
+    balances.filter(
+      (b) => b.low_stock_threshold != null && Number(b.available) <= Number(b.low_stock_threshold)
+    ).length;
 
   const filteredBalances = balances.filter((b) => {
     if (!search.trim()) return true;
@@ -142,7 +173,7 @@ export default function AdminInventoryPage() {
         <div className="kpi">
           <small>Tồn khả dụng (Available)</small>
           <strong>{totalAvailable}</strong>
-          <span className="change">Sẵn sàng xuất bán ({balances.length} SKU)</span>
+          <span className="change">Sẵn sàng xuất bán ({totalSkus} SKU)</span>
           <span className="kpi-icon">
             <AdminIcon name="products" size={18} />
           </span>
@@ -225,9 +256,12 @@ export default function AdminInventoryPage() {
                   </thead>
                   <tbody>
                     {filteredBalances.map((b) => {
+                      const availNum = Number(b.available) || 0;
+                      const isOut = availNum <= 0;
                       const isLow =
+                        !isOut &&
                         b.low_stock_threshold != null &&
-                        Number(b.available) <= Number(b.low_stock_threshold);
+                        availNum <= Number(b.low_stock_threshold);
                       return (
                         <tr key={b.variant_id}>
                           <td>
@@ -254,8 +288,8 @@ export default function AdminInventoryPage() {
                           </td>
                           <td>{b.low_stock_threshold}</td>
                           <td>
-                            <span className={`pill ${isLow ? "yellow" : "green"}`}>
-                              {isLow ? "Sắp hết" : "Bình thường"}
+                            <span className={`pill ${isOut ? "red" : isLow ? "yellow" : "green"}`}>
+                              {isOut ? "Hết hàng" : isLow ? "Sắp hết" : "Bình thường"}
                             </span>
                           </td>
                           <td>{dateTime(b.updated_at)}</td>
@@ -286,79 +320,85 @@ export default function AdminInventoryPage() {
         )}
 
         {activeTab === "movements" && (
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>SKU</th>
-                  <th>Loại biến động</th>
-                  <th>Số lượng thay đổi</th>
-                  <th>Lý do</th>
-                  <th>Thời gian</th>
-                </tr>
-              </thead>
-              <tbody>
-                {movements.map((m, idx) => (
-                  <tr key={m.event_key || idx}>
-                    <td>
-                      <strong>{m.sku}</strong>
-                    </td>
-                    <td>
-                      <span className={`pill ${m.quantity_delta > 0 ? "green" : "blue"}`}>
-                        {m.kind === "receipt" ? "Nhập kho" : m.kind === "sale" ? "Xuất bán" : m.kind}
-                      </span>
-                    </td>
-                    <td>
-                      <strong style={{ color: m.quantity_delta > 0 ? "#178959" : "#c63f58" }}>
-                        {m.quantity_delta > 0 ? `+${m.quantity_delta}` : m.quantity_delta}
-                      </strong>
-                    </td>
-                    <td>{m.reason}</td>
-                    <td>{dateTime(m.created_at)}</td>
+          <>
+            {movementsError && <ErrorBox error={movementsError} onRetry={loadAdminData} />}
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>Loại biến động</th>
+                    <th>Số lượng thay đổi</th>
+                    <th>Lý do</th>
+                    <th>Thời gian</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {movements.map((m, idx) => (
+                    <tr key={m.event_key || idx}>
+                      <td>
+                        <strong>{m.sku}</strong>
+                      </td>
+                      <td>
+                        <span className={`pill ${m.quantity_delta > 0 ? "green" : "blue"}`}>
+                          {m.kind === "receipt" ? "Nhập kho" : m.kind === "sale" ? "Xuất bán" : m.kind}
+                        </span>
+                      </td>
+                      <td>
+                        <strong style={{ color: m.quantity_delta > 0 ? "#178959" : "#c63f58" }}>
+                          {m.quantity_delta > 0 ? `+${m.quantity_delta}` : m.quantity_delta}
+                        </strong>
+                      </td>
+                      <td>{m.reason}</td>
+                      <td>{dateTime(m.created_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
 
         {activeTab === "audit" && (
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Người thực hiện</th>
-                  <th>Hành động</th>
-                  <th>Thực thể</th>
-                  <th>Chi tiết thay đổi</th>
-                  <th>Thời gian</th>
-                </tr>
-              </thead>
-              <tbody>
-                {auditLogs.map((a) => (
-                  <tr key={a.id}>
-                    <td>
-                      <strong>{a.actor_email || "Hệ thống"}</strong>
-                    </td>
-                    <td>
-                      <span className="pill blue">{a.action}</span>
-                    </td>
-                    <td>
-                      {a.entity_type} #{a.entity_id}
-                    </td>
-                    <td>
-                      <code>
-                        {typeof a.changes === "object"
-                          ? JSON.stringify(a.changes)
-                          : String(a.changes)}
-                      </code>
-                    </td>
-                    <td>{dateTime(a.created_at)}</td>
+          <>
+            {auditError && <ErrorBox error={auditError} onRetry={loadAdminData} />}
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Người thực hiện</th>
+                    <th>Hành động</th>
+                    <th>Thực thể</th>
+                    <th>Chi tiết thay đổi</th>
+                    <th>Thời gian</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {auditLogs.map((a) => (
+                    <tr key={a.id}>
+                      <td>
+                        <strong>{a.actor_email || "Hệ thống"}</strong>
+                      </td>
+                      <td>
+                        <span className="pill blue">{a.action}</span>
+                      </td>
+                      <td>
+                        {a.entity_type} #{a.entity_id}
+                      </td>
+                      <td>
+                        <code>
+                          {typeof a.changes === "object"
+                            ? JSON.stringify(a.changes)
+                            : String(a.changes)}
+                        </code>
+                      </td>
+                      <td>{dateTime(a.created_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </section>
 

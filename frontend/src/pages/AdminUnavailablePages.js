@@ -22,11 +22,30 @@ function moderationLabel(status) {
   return MODERATION_LABELS[status] || status;
 }
 
+const NEXT_ORDER_STATUS_OPTIONS = {
+  pending: [
+    ["confirmed", "Xác nhận đơn"],
+    ["cancelled", "Hủy đơn"],
+  ],
+  confirmed: [
+    ["packing", "Đóng gói"],
+    ["cancelled", "Hủy đơn"],
+  ],
+  packing: [
+    ["shipped", "Giao vận chuyển"],
+    ["cancelled", "Hủy đơn"],
+  ],
+  shipped: [["delivered", "Đã giao & Thu COD"]],
+  delivered: [],
+  cancelled: [],
+  expired: [],
+};
+
 const configs = {
   orders: [
     "Quản lý đơn hàng",
     "Dữ liệu đơn hàng truy vấn trực tiếp từ bảng orders trong PostgreSQL.",
-    ["Mã đơn", "Khách hàng", "Ngày tạo", "Số SP", "Tổng tiền", "Trạng thái", "Vận chuyển"],
+    ["Mã đơn", "Khách hàng", "Ngày tạo", "Số SP", "Tổng tiền", "Trạng thái", "Thanh toán", "Thao tác"],
   ],
   customers: [
     "Quản lý khách hàng",
@@ -147,6 +166,33 @@ export function AdminUnavailablePage({ type }) {
     loadData();
   }, [loadData]);
 
+  const handleOrderStatusTransition = async (order, nextStatus) => {
+    if (!nextStatus) return;
+    setError("");
+    try {
+      await adminService.updateOrderStatus(order.public_id, {
+        status: nextStatus,
+        reason: `Cập nhật từ cổng Admin sang ${nextStatus}`,
+        confirm_cod_payment: nextStatus === "delivered",
+      });
+      await loadData();
+    } catch (err) {
+      setError(err.message || "Không thể chuyển trạng thái đơn hàng.");
+    }
+  };
+
+  const handleConfirmPayment = async (order) => {
+    setError("");
+    try {
+      await adminService.confirmOrderPayment(order.public_id, {
+        provider_reference: `COD-${order.order_number}`,
+      });
+      await loadData();
+    } catch (err) {
+      setError(err.message || "Không thể xác nhận thanh toán.");
+    }
+  };
+
   return (
     <>
       <div className="admin-intro">
@@ -212,18 +258,62 @@ export function AdminUnavailablePage({ type }) {
                         : row.status === "pending" || row.status === "packing"
                         ? "yellow"
                         : "blue";
+                    const nextActions = NEXT_ORDER_STATUS_OPTIONS[row.status] || [];
+                    const isPaid = row.payment_status === "succeeded";
                     return (
                       <tr key={row.id || row.order_number}>
-                        <td><strong>#{row.order_number}</strong></td>
+                        <td>
+                          <strong>#{row.order_number}</strong>
+                          <small style={{ display: "block", color: "var(--muted)" }}>{row.shipping_method}</small>
+                        </td>
                         <td>
                           <strong>{row.customer_name}</strong>
-                          <small>{row.customer_email}</small>
+                          <small style={{ display: "block", color: "var(--muted)" }}>{row.customer_email}</small>
                         </td>
                         <td>{dateTime(row.created_at)}</td>
                         <td>{row.items_count}</td>
                         <td><strong>{money(row.grand_total)}</strong></td>
                         <td><span className={`pill ${pillColor}`}>{orderStatusLabel(row.status)}</span></td>
-                        <td>{row.shipping_method}</td>
+                        <td>
+                          <span className={`pill ${isPaid ? "green" : row.payment_status === "pending" ? "yellow" : "red"}`}>
+                            {isPaid ? "Đã thu tiền" : row.payment_status === "pending" ? "Chờ thu COD" : row.payment_status || "—"}
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+                            {nextActions.length > 0 ? (
+                              <select
+                                className="select"
+                                defaultValue=""
+                                onChange={(e) => {
+                                  handleOrderStatusTransition(row, e.target.value);
+                                  e.target.value = "";
+                                }}
+                              >
+                                <option value="" disabled>
+                                  Chuyển trạng thái...
+                                </option>
+                                {nextActions.map(([val, label]) => (
+                                  <option key={val} value={val}>
+                                    {label}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span style={{ fontSize: "11.5px", color: "var(--muted)" }}>Hoàn tất</span>
+                            )}
+                            {row.payment_status === "pending" && row.status !== "cancelled" && row.status !== "expired" && (
+                              <button
+                                type="button"
+                                className="admin-select"
+                                style={{ cursor: "pointer", fontWeight: 700, fontSize: "11px" }}
+                                onClick={() => handleConfirmPayment(row)}
+                              >
+                                ✓ Thu COD
+                              </button>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     );
                   }

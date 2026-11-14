@@ -1979,8 +1979,16 @@ html[data-theme] .main-with-mobile .nexa-auth-page .ux-benefits {
   align-items: start;
 }
 
+.checkout-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 24px;
+  align-items: start;
+}
+
 @media (max-width: 900px) {
-  .order-detail-grid {
+  .order-detail-grid,
+  .checkout-grid {
     grid-template-columns: 1fr;
   }
 }

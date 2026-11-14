@@ -132,3 +132,47 @@ class AdminCatalogApiTests(APITestCase):
         )
         self.assertEqual(image.status_code, status.HTTP_201_CREATED)
         self.assertTrue(image.data["is_cover"])
+
+
+class SeedFrontendDemoCommandTests(TestCase):
+    def test_seed_command_blocks_when_debug_is_false(self):
+        from django.core.management import CommandError, call_command
+        from django.test import override_settings
+
+        with override_settings(DEBUG=False):
+            with self.assertRaises(CommandError):
+                call_command("seed_frontend_demo")
+
+    def test_seed_command_is_idempotent_and_preserves_existing_business_data(self):
+        from django.core.management import call_command
+        from django.test import override_settings
+        from inventory.models import InventoryBalance, InventoryReservation
+        from orders.models import Order
+
+        with override_settings(DEBUG=True):
+            call_command("seed_frontend_demo")
+            self.assertEqual(Product.objects.count(), 24)
+            self.assertEqual(Order.objects.count(), 30)
+            self.assertFalse(User.objects.filter(is_superuser=True).exists())
+
+            # Modify an existing variant price and inventory balance
+            variant = ProductVariant.objects.get(sku="NEXA-X75")
+            variant.price = 1990000
+            variant.save(update_fields=["price"])
+            balance = InventoryBalance.objects.get(variant=variant)
+            balance.on_hand = 123
+            balance.save(update_fields=["on_hand"])
+
+            # Re-run seed command without --force-overwrite: existing data must be preserved
+            call_command("seed_frontend_demo")
+            variant.refresh_from_db()
+            balance.refresh_from_db()
+            self.assertEqual(variant.price, 1990000)
+            self.assertEqual(balance.on_hand, 123)
+            self.assertEqual(Product.objects.count(), 24)
+            self.assertEqual(Order.objects.count(), 30)
+
+            # Active reservations use 30-minute window
+            active_res = InventoryReservation.objects.filter(status=InventoryReservation.Status.ACTIVE).first()
+            self.assertIsNotNone(active_res)
+
