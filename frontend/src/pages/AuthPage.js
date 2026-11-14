@@ -240,7 +240,7 @@ export default function AuthPage({ mode = "login" }) {
                     const accessToken = response?.authResponse?.accessToken;
                     if (accessToken) handleFacebookAccessToken(accessToken);
                     else setError(new Error("Đăng nhập Facebook bị hủy hoặc không thành công."));
-                  }, { scope: "public_profile", return_scopes: true });
+                  }, { scope: "public_profile,email", return_scopes: true });
                 } catch (err) {
                   setError(err);
                 }

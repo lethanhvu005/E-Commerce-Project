@@ -1,0 +1,107 @@
+name: CI Security & Code Audit (#28)
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Chỉ quét và in kết quả, không tự động tạo GitHub Issues'
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Lint & Security Scan
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip-audit]') && github.actor != 'github-actions[bot]'"
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Python Audit Tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff bandit pip-audit
+
+      - name: Run Ruff Linter
+        run: |
+          ruff check backend/ --output-format=json > ruff-report.json || true
+
+      - name: Run Bandit Security Scanner
+        run: |
+          bandit -r backend/ -ll -f json -o bandit-report.json || true
+
+      - name: Run Pip-Audit Dependency Scanner
+        run: |
+          pip-audit -r backend/requirements.txt -f json -o pip-audit-report.json || true
+
+      - name: Run NPM Audit
+        run: |
+          npm audit --prefix frontend --json > npm-audit-report.json || true
+
+      - name: Normalize & Deduplicate Findings
+        run: |
+          python .github/scripts/collect_findings.py .
+
+      - name: Upload Findings Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-findings
+          path: findings.json
+          retention-days: 7
+
+  report-issues:
+    name: Deduplicate & Report Issues
+    needs: audit
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download Findings Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: audit-findings
+
+      - name: Report New Findings to GitHub Issues
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        run: |
+          python .github/scripts/report_issues.py findings.json

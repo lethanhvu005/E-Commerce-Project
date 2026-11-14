@@ -353,7 +353,7 @@ class AccountAuthApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
 
-    def test_facebook_login_works_without_email_permission(self):
+    def test_facebook_login_rejects_profile_without_real_email(self):
         from unittest.mock import patch
         from django.test import override_settings
 
@@ -370,9 +370,7 @@ class AccountAuthApiTests(APITestCase):
                     format="json",
                 )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        user = User.objects.get(facebook_sub="facebook-user-without-email")
-        self.assertEqual(user.email, "facebook-facebook-user-without-email@users.nexa.invalid")
-        self.assertIsNone(user.email_verified_at)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(User.objects.filter(facebook_sub="facebook-user-without-email").exists())
 
 

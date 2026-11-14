@@ -323,8 +323,12 @@ def facebook_login(request):
         )
 
     facebook_sub = str(payload.get("id") or "").strip()
-    facebook_email = str(payload.get("email") or "").strip().lower()
-    email = facebook_email or f"facebook-{facebook_sub}@users.nexa.invalid"
+    email = str(payload.get("email") or "").strip().lower()
+    if not email:
+        return Response(
+            {"detail": "Facebook không cung cấp email thật cho tài khoản này."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     first_name = str(payload.get("first_name") or "").strip()
     last_name = str(payload.get("last_name") or "").strip()
@@ -369,7 +373,7 @@ def facebook_login(request):
                         facebook_sub=facebook_sub,
                         first_name=first_name or email.split("@")[0],
                         last_name=last_name,
-                        email_verified_at=now if facebook_email else None,
+                        email_verified_at=now,
                     )
     except IntegrityError:
         user = User.objects.filter(
