@@ -66,3 +66,38 @@ class AdminDashboardApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("revenue_definition", response.data)
         self.assertIn("recent_orders", response.data)
+
+    def test_admin_endpoints_enforce_model_permissions_and_paginate(self):
+        staff = User.objects.create_user("limited-staff@example.test", "Staff!Password123", is_staff=True)
+        self.authenticate(staff)
+        endpoints = [
+            "/api/admin/orders/",
+            "/api/admin/customers/",
+            "/api/admin/promotions/",
+            "/api/admin/reviews/",
+            "/api/admin/questions/",
+            "/api/admin/outbox-events/",
+            "/api/admin/analytics/",
+        ]
+        for ep in endpoints:
+            self.assertEqual(self.client.get(ep).status_code, status.HTTP_403_FORBIDDEN, ep)
+
+        perms = Permission.objects.filter(
+            codename__in=[
+                "view_order",
+                "view_user",
+                "view_voucher",
+                "view_review",
+                "view_productquestion",
+                "view_outboxevent",
+                "view_payment",
+            ]
+        )
+        staff.user_permissions.set(perms)
+        for ep in endpoints:
+            res = self.client.get(ep)
+            self.assertEqual(res.status_code, status.HTTP_200_OK, ep)
+            if ep != "/api/admin/analytics/":
+                self.assertIn("count", res.data, ep)
+                self.assertIn("results", res.data, ep)
+

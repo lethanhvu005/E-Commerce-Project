@@ -2,6 +2,24 @@ import { useCallback, useEffect, useState } from "react";
 import { adminService } from "../api/client";
 import { dateTime, money, orderStatusLabel } from "../api/format";
 
+const MODERATION_LABELS = {
+  published: "Đã duyệt",
+  pending: "Chờ duyệt",
+  rejected: "Từ chối",
+};
+
+const OUTBOX_STATUS_LABELS = {
+  logged: "Đã ghi nhật ký",
+  sent: "Đã gửi",
+  pending: "Chờ xử lý",
+  processing: "Đang xử lý",
+  failed: "Lỗi gửi",
+};
+
+function moderationLabel(status) {
+  return MODERATION_LABELS[status] || status;
+}
+
 const configs = {
   orders: [
     "Quản lý đơn hàng",
@@ -10,8 +28,8 @@ const configs = {
   ],
   customers: [
     "Quản lý khách hàng",
-    "Danh sách người dùng và tổng chi tiêu truy vấn trực tiếp từ bảng users & orders.",
-    ["Khách hàng", "Vai trò", "Đơn hàng", "Tổng chi", "Trạng thái"],
+    "Danh sách người dùng và tổng chi tiêu hợp lệ truy vấn trực tiếp từ bảng users & orders.",
+    ["Khách hàng", "Vai trò", "Đơn hàng hợp lệ", "Tổng chi", "Trạng thái"],
   ],
   promotions: [
     "Mã giảm giá & chương trình",
@@ -38,24 +56,32 @@ const configs = {
 export function AdminUnavailablePage({ type }) {
   const [title, description, headers] = configs[type] || configs.orders;
   const [rows, setRows] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    setPage(1);
+    setSearch("");
+  }, [type]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
+      const params = { q: search.trim(), page };
       let res;
-      if (type === "orders") res = await adminService.getOrders();
-      else if (type === "customers") res = await adminService.getCustomers();
-      else if (type === "promotions") res = await adminService.getPromotions();
-      else if (type === "reviews") res = await adminService.getReviews();
-      else if (type === "support") res = await adminService.getQuestions();
+      if (type === "orders") res = await adminService.getOrders(params);
+      else if (type === "customers") res = await adminService.getCustomers(params);
+      else if (type === "promotions") res = await adminService.getPromotions(params);
+      else if (type === "reviews") res = await adminService.getReviews(params);
+      else if (type === "support") res = await adminService.getQuestions(params);
       else if (type === "settings") {
         const [audits, outbox] = await Promise.all([
-          adminService.getAuditLogs(),
-          adminService.getOutboxEvents(),
+          adminService.getAuditLogs(params),
+          adminService.getOutboxEvents(params),
         ]);
         const auditList = (audits?.results || audits || []).map((a) => ({
           id: `audit-${a.id}`,
@@ -73,24 +99,30 @@ export function AdminUnavailablePage({ type }) {
           detail: `Outbox (${e.attempts} lần thử)`,
           status: e.status,
         }));
-        setRows([...auditList, ...outboxList]);
+        const merged = [...auditList, ...outboxList].sort(
+          (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
+        );
+        setRows(merged);
+        setTotalCount((audits?.count || auditList.length) + (outbox?.count || outboxList.length));
         setLoading(false);
         return;
       }
-      setRows(res?.results || res || []);
+      const list = res?.results || res || [];
+      setRows(list);
+      setTotalCount(res?.count ?? list.length);
     } catch (err) {
       setError(err.message || "Không thể tải dữ liệu từ database.");
     } finally {
       setLoading(false);
     }
-  }, [type]);
+  }, [type, search, page]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  const q = search.trim().toLowerCase();
-  const filteredRows = rows.filter((r) => JSON.stringify(r).toLowerCase().includes(q));
+  const pageSize = type === "settings" ? 100 : 20;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   return (
     <>
@@ -114,8 +146,14 @@ export function AdminUnavailablePage({ type }) {
             className="field"
             placeholder="⌕ Tìm kiếm trong bảng..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
           />
+          <span style={{ fontSize: "12px", color: "var(--muted)", whiteSpace: "nowrap" }}>
+            Tổng: {totalCount} bản ghi
+          </span>
         </div>
         <div className="admin-table-wrap">
           <table className="admin-table">
@@ -133,19 +171,22 @@ export function AdminUnavailablePage({ type }) {
                     Đang truy vấn dữ liệu từ PostgreSQL...
                   </td>
                 </tr>
-              ) : filteredRows.length === 0 ? (
+              ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={headers.length} className="admin-empty">
                     Không có bản ghi phù hợp.
                   </td>
                 </tr>
               ) : (
-                filteredRows.map((row) => {
+                rows.map((row) => {
                   if (type === "orders") {
                     return (
                       <tr key={row.id || row.order_number}>
                         <td><strong>{row.order_number}</strong></td>
-                        <td>{row.customer_name} <small style={{ display: "block", color: "var(--muted)" }}>{row.customer_email}</small></td>
+                        <td>
+                          {row.customer_name}
+                          <small style={{ display: "block", color: "var(--muted)" }}>{row.customer_email}</small>
+                        </td>
                         <td>{dateTime(row.created_at)}</td>
                         <td>{row.items_count}</td>
                         <td><strong>{money(row.grand_total)}</strong></td>
@@ -157,11 +198,18 @@ export function AdminUnavailablePage({ type }) {
                   if (type === "customers") {
                     return (
                       <tr key={row.id || row.email}>
-                        <td><strong>{row.full_name}</strong><small style={{ display: "block", color: "var(--muted)" }}>{row.email}</small></td>
+                        <td>
+                          <strong>{row.full_name}</strong>
+                          <small style={{ display: "block", color: "var(--muted)" }}>{row.email}</small>
+                        </td>
                         <td>{row.role}</td>
                         <td>{row.orders_count}</td>
                         <td><strong>{money(row.total_spent)}</strong></td>
-                        <td><span className={`pill ${row.is_active ? "green" : "red"}`}>{row.is_active ? "Hoạt động" : "Khóa"}</span></td>
+                        <td>
+                          <span className={`pill ${row.is_active ? "green" : "red"}`}>
+                            {row.is_active ? "Hoạt động" : "Khóa"}
+                          </span>
+                        </td>
                       </tr>
                     );
                   }
@@ -172,18 +220,33 @@ export function AdminUnavailablePage({ type }) {
                         <td>{row.kind === "percent" ? "Phần trăm" : row.kind === "free_ship" ? "Freeship" : "Giảm cố định"}</td>
                         <td>{row.kind === "percent" ? `${row.value}%` : row.kind === "free_ship" ? "Miễn phí ship" : money(row.value)}</td>
                         <td>{row.used_count} / {row.usage_limit || "∞"}</td>
-                        <td><span className={`pill ${row.is_active ? "green" : "red"}`}>{row.is_active ? "Đang chạy" : "Tắt"}</span></td>
+                        <td>
+                          <span className={`pill ${row.is_active ? "green" : "red"}`}>
+                            {row.is_active ? "Đang chạy" : "Tắt"}
+                          </span>
+                        </td>
                       </tr>
                     );
                   }
                   if (type === "reviews") {
                     return (
                       <tr key={row.id}>
-                        <td><strong>{row.author}</strong></td>
+                        <td>
+                          <strong>{row.author}</strong>
+                          {row.is_verified_buyer && (
+                            <small style={{ display: "block", color: "#10b981", fontWeight: 600 }}>
+                              ✓ Đã mua hàng
+                            </small>
+                          )}
+                        </td>
                         <td>{row.product_name}</td>
                         <td style={{ color: "#f5b324" }}>{"★".repeat(row.stars)}</td>
                         <td>{row.body}</td>
-                        <td><span className={`pill ${row.status === "published" ? "green" : "yellow"}`}>{row.status}</span></td>
+                        <td>
+                          <span className={`pill ${row.status === "published" ? "green" : row.status === "rejected" ? "red" : "yellow"}`}>
+                            {moderationLabel(row.status)}
+                          </span>
+                        </td>
                       </tr>
                     );
                   }
@@ -195,7 +258,11 @@ export function AdminUnavailablePage({ type }) {
                         <td>{row.product_name}</td>
                         <td>{row.body}</td>
                         <td>{row.answers_count} phản hồi</td>
-                        <td><span className="pill green">{row.status}</span></td>
+                        <td>
+                          <span className={`pill ${row.status === "published" ? "green" : row.status === "rejected" ? "red" : "yellow"}`}>
+                            {moderationLabel(row.status)}
+                          </span>
+                        </td>
                       </tr>
                     );
                   }
@@ -205,7 +272,11 @@ export function AdminUnavailablePage({ type }) {
                       <td><strong>{row.actor}</strong></td>
                       <td>{row.entity}</td>
                       <td>{row.detail}</td>
-                      <td><span className="pill blue">{row.status}</span></td>
+                      <td>
+                        <span className="pill blue">
+                          {OUTBOX_STATUS_LABELS[row.status] || row.status}
+                        </span>
+                      </td>
                     </tr>
                   );
                 })
@@ -213,6 +284,31 @@ export function AdminUnavailablePage({ type }) {
             </tbody>
           </table>
         </div>
+        {totalPages > 1 && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "12px" }}>
+            <span style={{ fontSize: "12px", color: "var(--muted)" }}>
+              Trang {page} / {totalPages}
+            </span>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button
+                type="button"
+                className="admin-select"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                ← Trước
+              </button>
+              <button
+                type="button"
+                className="admin-select"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Sau →
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
@@ -221,14 +317,24 @@ export function AdminUnavailablePage({ type }) {
 export function AdminAnalyticsPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const loadAnalytics = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await adminService.getAnalytics();
+      setData(res);
+    } catch (err) {
+      setError(err.message || "Không thể tải dữ liệu báo cáo & phân tích.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    adminService
-      .getAnalytics()
-      .then(setData)
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+    loadAnalytics();
+  }, [loadAnalytics]);
 
   const series = data?.daily_series || [];
 
@@ -239,7 +345,15 @@ export function AdminAnalyticsPage() {
           <h1>Báo cáo & phân tích</h1>
           <p>Số liệu tổng hợp truy vấn trực tiếp từ PostgreSQL (bảng orders & payments).</p>
         </div>
+        <button className="admin-select" onClick={loadAnalytics}>
+          ↻ Làm mới báo cáo
+        </button>
       </div>
+      {error && (
+        <div className="admin-hero-note admin-error">
+          ⚠ <strong>Không thể tải dữ liệu:</strong> {error}
+        </div>
+      )}
       <div className="admin-kpis">
         <div className="kpi">
           <small>Doanh thu thực thu</small>
@@ -247,9 +361,9 @@ export function AdminAnalyticsPage() {
           <span className="change green">Từ bảng payments (succeeded)</span>
         </div>
         <div className="kpi">
-          <small>Tổng đơn hàng</small>
+          <small>Tổng đơn hàng hợp lệ</small>
           <strong>{loading ? "—" : data?.orders_count ?? 0}</strong>
-          <span className="change">Từ bảng orders</span>
+          <span className="change">Không tính đơn đã hủy / hết hạn</span>
         </div>
         <div className="kpi">
           <small>Khách hàng</small>
@@ -259,12 +373,12 @@ export function AdminAnalyticsPage() {
         <div className="kpi">
           <small>Giá trị đơn trung bình</small>
           <strong>{loading ? "—" : money(data?.avg_order_value)}</strong>
-          <span className="change">Trung bình grand_total</span>
+          <span className="change">Trung bình đơn hợp lệ</span>
         </div>
       </div>
       <div className="admin-panel">
         <div className="admin-panel-head">
-          <h3>Thống kê doanh thu & đơn hàng theo ngày (từ PostgreSQL)</h3>
+          <h3>Thống kê doanh thu & đơn hàng hợp lệ theo ngày (từ PostgreSQL)</h3>
         </div>
         <div className="admin-table-wrap">
           <table className="admin-table">
@@ -276,7 +390,13 @@ export function AdminAnalyticsPage() {
               </tr>
             </thead>
             <tbody>
-              {series.length === 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={3} className="admin-empty">
+                    Đang tải dữ liệu phân tích...
+                  </td>
+                </tr>
+              ) : series.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="admin-empty">
                     Chưa có dữ liệu đơn hàng.

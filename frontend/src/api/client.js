@@ -234,26 +234,29 @@ export const communityService = {
   createQuestionAnswer: (questionId, data) => api.post(`/questions/${questionId}/answers/`, data),
 };
 
+function buildAdminQuery(params = {}) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") qs.set(key, value);
+  });
+  const query = qs.toString();
+  return query ? `?${query}` : "";
+}
+
 export const adminService = {
   getDashboard: () => api.get("/admin/dashboard/"),
   getAnalytics: () => api.get("/admin/analytics/"),
-  getOrders: () => api.get("/admin/orders/"),
-  getCustomers: () => api.get("/admin/customers/"),
-  getPromotions: () => api.get("/admin/promotions/"),
-  getReviews: () => api.get("/admin/reviews/"),
-  getQuestions: () => api.get("/admin/questions/"),
-  getOutboxEvents: () => api.get("/admin/outbox-events/"),
-  getProducts: (params = {}) => {
-    const qs = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== "") qs.set(key, value);
-    });
-    return api.get(`/admin/products/?${qs.toString()}`);
-  },
+  getOrders: (params) => api.get(`/admin/orders/${buildAdminQuery(params)}`),
+  getCustomers: (params) => api.get(`/admin/customers/${buildAdminQuery(params)}`),
+  getPromotions: (params) => api.get(`/admin/promotions/${buildAdminQuery(params)}`),
+  getReviews: (params) => api.get(`/admin/reviews/${buildAdminQuery(params)}`),
+  getQuestions: (params) => api.get(`/admin/questions/${buildAdminQuery(params)}`),
+  getOutboxEvents: (params) => api.get(`/admin/outbox-events/${buildAdminQuery(params)}`),
+  getProducts: (params = {}) => api.get(`/admin/products/${buildAdminQuery(params)}`),
   createProduct: (payload) => api.post("/admin/products/", payload),
   updateProduct: (productId, payload) => api.patch(`/admin/products/${productId}/`, payload),
-  getInventoryBalances: () => api.get("/admin/inventory/"),
+  getInventoryBalances: (params) => api.get(`/admin/inventory/${buildAdminQuery(params)}`),
   adjustInventory: (payload) => api.post("/admin/inventory/", payload),
-  getInventoryMovements: () => api.get("/admin/inventory/movements/"),
-  getAuditLogs: () => api.get("/admin/audit-logs/"),
+  getInventoryMovements: (params) => api.get(`/admin/inventory/movements/${buildAdminQuery(params)}`),
+  getAuditLogs: (params) => api.get(`/admin/audit-logs/${buildAdminQuery(params)}`),
 };
