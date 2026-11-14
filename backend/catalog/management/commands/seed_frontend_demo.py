@@ -333,15 +333,79 @@ class Command(BaseCommand):
             )
             vouchers_by_code[code] = v
 
-        # 5. Auth Groups, Users, and Addresses (No hardcoded superuser passwords or long-lived DRF Tokens)
-        admin_group, _ = Group.objects.get_or_create(name="Quản trị viên hệ thống")
-        ops_group, _ = Group.objects.get_or_create(name="Nhân viên vận hành & kho")
-        cs_group, _ = Group.objects.get_or_create(name="Chăm sóc khách hàng")
-        all_perms = list(Permission.objects.all())
-        if all_perms:
-            admin_group.permissions.set(all_perms)
-            ops_group.permissions.set(all_perms)
-            cs_group.permissions.set(all_perms[:20])
+        # 5. Auth Groups, Users, and Addresses (Least-privilege RBAC matrix; no customer in staff groups)
+        ROLE_PERMISSION_MATRIX = {
+            "Nhân viên vận hành & kho": [
+                ("inventory", "view_inventorybalance"),
+                ("inventory", "change_inventorybalance"),
+                ("inventory", "view_inventorymovement"),
+                ("inventory", "view_inventoryreservation"),
+                ("orders", "view_order"),
+                ("orders", "change_order"),
+                ("catalog", "view_product"),
+                ("catalog", "view_productvariant"),
+            ],
+            "Chăm sóc khách hàng": [
+                ("orders", "view_order"),
+                ("community", "view_review"),
+                ("community", "change_review"),
+                ("community", "view_productquestion"),
+                ("community", "change_productquestion"),
+                ("community", "view_productanswer"),
+                ("community", "add_productanswer"),
+                ("community", "change_productanswer"),
+            ],
+            "Quản trị viên hệ thống": [
+                ("catalog", "view_product"),
+                ("catalog", "add_product"),
+                ("catalog", "change_product"),
+                ("catalog", "view_productvariant"),
+                ("catalog", "add_productvariant"),
+                ("catalog", "change_productvariant"),
+                ("catalog", "view_productimage"),
+                ("catalog", "add_productimage"),
+                ("catalog", "change_productimage"),
+                ("inventory", "view_inventorybalance"),
+                ("inventory", "change_inventorybalance"),
+                ("inventory", "view_inventorymovement"),
+                ("inventory", "view_inventoryreservation"),
+                ("orders", "view_order"),
+                ("orders", "change_order"),
+                ("payments", "view_payment"),
+                ("payments", "change_payment"),
+                ("promotions", "view_voucher"),
+                ("promotions", "add_voucher"),
+                ("promotions", "change_voucher"),
+                ("community", "view_review"),
+                ("community", "change_review"),
+                ("community", "view_productquestion"),
+                ("community", "change_productquestion"),
+                ("community", "view_productanswer"),
+                ("community", "add_productanswer"),
+                ("community", "change_productanswer"),
+                ("accounts", "view_user"),
+                ("accounts", "change_user"),
+                ("operations", "view_auditlog"),
+                ("operations", "view_outboxevent"),
+            ],
+        }
+
+        groups_by_name = {}
+        for group_name, perm_pairs in ROLE_PERMISSION_MATRIX.items():
+            grp, _ = Group.objects.get_or_create(name=group_name)
+            perm_objs = []
+            for app_label, codename in perm_pairs:
+                perm = Permission.objects.filter(
+                    content_type__app_label=app_label, codename=codename
+                ).first()
+                if perm is not None:
+                    perm_objs.append(perm)
+            grp.permissions.set(perm_objs)
+            groups_by_name[group_name] = grp
+
+        admin_group = groups_by_name["Quản trị viên hệ thống"]
+        ops_group = groups_by_name["Nhân viên vận hành & kho"]
+        cs_group = groups_by_name["Chăm sóc khách hàng"]
 
         seed_password = os.environ.get("SEED_DEMO_PASSWORD", "").strip()
         user_specs = [
@@ -389,11 +453,15 @@ class Command(BaseCommand):
                 user.save(update_fields=updated_fields)
 
             if user.is_superuser:
-                user.groups.add(admin_group, ops_group)
+                user.groups.set([admin_group])
             elif user.is_staff:
-                user.groups.add(ops_group, cs_group)
+                if email == "lethanhvu005@gmail.com":
+                    user.groups.set([admin_group])
+                else:
+                    user.groups.set([ops_group, cs_group])
             else:
-                user.groups.add(cs_group)
+                # Customers (is_staff=False) must NEVER belong to any staff permission group
+                user.groups.clear()
 
             users_by_email[email] = user
 

@@ -222,6 +222,8 @@ class AccountAuthApiTests(APITestCase):
 
         mock_payload = {
             "aud": "test-google-client-id.apps.googleusercontent.com",
+            "iss": "https://accounts.google.com",
+            "sub": "google-sub-1234567890",
             "email": "GoogleUser@Example.test",
             "email_verified": "true",
             "given_name": "Minh",
@@ -239,7 +241,65 @@ class AccountAuthApiTests(APITestCase):
         self.assertIn("refresh", res.data)
         self.assertEqual(res.data["user"]["email"], "googleuser@example.test")
         user = User.objects.get(email="googleuser@example.test")
+        self.assertEqual(user.google_sub, "google-sub-1234567890")
         self.assertIsNotNone(user.email_verified_at)
         self.assertEqual(user.first_name, "Minh")
         self.assertEqual(user.last_name, "Nguyễn")
+
+        # Subsequent login with same sub but changed Google email still resolves to bound user
+        changed_email_payload = {**mock_payload, "email": "new-google-email@example.test"}
+        with override_settings(GOOGLE_CLIENT_ID="test-google-client-id.apps.googleusercontent.com"):
+            with patch("accounts.views.verify_google_oauth_payload", return_value=changed_email_payload):
+                res2 = self.client.post(
+                    "/api/auth/google/",
+                    {"access_token": "mock-google-access-token"},
+                    format="json",
+                )
+        self.assertEqual(res2.status_code, status.HTTP_200_OK)
+        self.assertEqual(res2.data["user"]["id"], user.id)
+
+    def test_google_login_blocks_staff_and_existing_password_accounts_and_invalid_iss(self):
+        from unittest.mock import patch
+        from django.test import override_settings
+
+        staff = User.objects.create_user("staff-oauth@example.test", "Staff!Password123", is_staff=True)
+        pwd_user = User.objects.create_user("pwd-oauth@example.test", "Customer!Password123")
+
+        with override_settings(GOOGLE_CLIENT_ID="test-google-client-id.apps.googleusercontent.com"):
+            # 1. Block staff account auto-linking
+            staff_payload = {
+                "aud": "test-google-client-id.apps.googleusercontent.com",
+                "iss": "https://accounts.google.com",
+                "sub": "google-sub-staff-001",
+                "email": staff.email,
+                "email_verified": "true",
+            }
+            with patch("accounts.views.verify_google_oauth_payload", return_value=staff_payload):
+                res_staff = self.client.post("/api/auth/google/", {"access_token": "tok"}, format="json")
+            self.assertEqual(res_staff.status_code, status.HTTP_403_FORBIDDEN)
+
+            # 2. Block existing password account auto-linking
+            pwd_payload = {
+                "aud": "test-google-client-id.apps.googleusercontent.com",
+                "iss": "https://accounts.google.com",
+                "sub": "google-sub-pwd-001",
+                "email": pwd_user.email,
+                "email_verified": "true",
+            }
+            with patch("accounts.views.verify_google_oauth_payload", return_value=pwd_payload):
+                res_pwd = self.client.post("/api/auth/google/", {"access_token": "tok"}, format="json")
+            self.assertEqual(res_pwd.status_code, status.HTTP_409_CONFLICT)
+
+            # 3. Reject invalid issuer (iss)
+            bad_iss_payload = {
+                "aud": "test-google-client-id.apps.googleusercontent.com",
+                "iss": "https://evil-issuer.example.com",
+                "sub": "google-sub-evil-001",
+                "email": "new-oauth@example.test",
+                "email_verified": "true",
+            }
+            with patch("accounts.views.verify_google_oauth_payload", return_value=bad_iss_payload):
+                res_iss = self.client.post("/api/auth/google/", {"access_token": "tok"}, format="json")
+            self.assertEqual(res_iss.status_code, status.HTTP_401_UNAUTHORIZED)
+
 

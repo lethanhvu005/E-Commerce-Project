@@ -67,6 +67,7 @@ def release_expired_reservations(now=None, variant_ids=None):
     filters = {
         "status": InventoryReservation.Status.ACTIVE,
         "expires_at__lte": now,
+        "order__status": OrderStatus.PENDING,
     }
     if variant_ids is not None:
         filters["variant_id__in"] = list(variant_ids)
@@ -82,10 +83,13 @@ def release_expired_reservations(now=None, variant_ids=None):
     expired_count = 0
     for order_id in due_order_ids:
         order = Order.objects.select_for_update().get(pk=order_id)
+        if order.status != OrderStatus.PENDING:
+            # Never release stock of confirmed/packing/shipped/delivered orders
+            continue
         due_reservations = list(
             order.reservations.select_for_update()
             .filter(status=InventoryReservation.Status.ACTIVE, expires_at__lte=now)
-            .order_by("variant_id")
+            .order_by("variant_id", "id")
         )
         if not due_reservations:
             continue
@@ -121,6 +125,13 @@ def release_expired_reservations(now=None, variant_ids=None):
                 to_status=OrderStatus.EXPIRED,
                 actor=None,
                 reason="Đơn hàng hết hạn giữ chỗ tồn kho",
+            )
+            AuditLog.objects.create(
+                actor=None,
+                action="order.expired",
+                entity_type="Order",
+                entity_id=order.order_number,
+                changes={"from": OrderStatus.PENDING, "to": OrderStatus.EXPIRED, "expired_reservations": len(due_reservations)},
             )
     return expired_count
 
@@ -177,8 +188,8 @@ def create_order(user, data):
         if existing.request_hash != digest:
             raise ValidationError({"checkout_key": ["Khóa này đã được dùng với dữ liệu khác."]}, code="conflict")
         return existing, False
-    release_expired_reservations()
     address, shipping, cart, items, subtotal, discount, shipping_fee, shipping_discount, grand_total = checkout_values(user, data, lock=True)
+    release_expired_reservations(variant_ids=[item.variant_id for item in items])
 
     locked_voucher = None
     if cart.voucher_id:

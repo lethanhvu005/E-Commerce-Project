@@ -176,3 +176,7 @@ class SeedFrontendDemoCommandTests(TestCase):
             active_res = InventoryReservation.objects.filter(status=InventoryReservation.Status.ACTIVE).first()
             self.assertIsNotNone(active_res)
 
+            # Non-staff customers must not belong to any staff groups
+            self.assertEqual(User.objects.filter(is_staff=False, groups__isnull=False).count(), 0)
+            call_command("audit_rbac_permissions")
+

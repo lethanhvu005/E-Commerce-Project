@@ -28,6 +28,9 @@ from .serializers import (
 from .throttles import LoginRateThrottle, RegisterRateThrottle
 
 
+VALID_GOOGLE_ISSUERS = {"accounts.google.com", "https://accounts.google.com"}
+
+
 def _fetch_google_json(url, headers=None):
     req = Request(url, headers=headers or {})
     with urlopen(req, timeout=8) as resp:
@@ -41,6 +44,9 @@ def verify_google_oauth_payload(*, credential="", access_token="", expected_clie
         aud = token_info.get("aud") or ""
         if expected_client_id and aud != expected_client_id:
             raise ValueError("Google ID token không khớp Client ID của hệ thống.")
+        iss = (token_info.get("iss") or "").strip()
+        if iss and iss not in VALID_GOOGLE_ISSUERS:
+            raise ValueError("Google ID token có nhà phát hành (iss) không hợp lệ.")
         return token_info
 
     if access_token:
@@ -53,6 +59,8 @@ def verify_google_oauth_payload(*, credential="", access_token="", expected_clie
             "https://www.googleapis.com/oauth2/v3/userinfo",
             headers={"Authorization": f"Bearer {access_token}"},
         )
+        if not user_info.get("sub") and token_info.get("sub"):
+            user_info["sub"] = token_info["sub"]
         return user_info
 
     raise ValueError("Thiếu thông tin xác thực Google.")
@@ -120,6 +128,20 @@ def google_login(request):
             status=status.HTTP_401_UNAUTHORIZED,
         )
 
+    iss = (payload.get("iss") or "").strip()
+    if iss and iss not in VALID_GOOGLE_ISSUERS:
+        return Response(
+            {"detail": "Nhà phát hành (iss) của Google token không hợp lệ."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    google_sub = (payload.get("sub") or "").strip()
+    if not google_sub:
+        return Response(
+            {"detail": "Google token thiếu định danh người dùng (sub)."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
     email = (payload.get("email") or "").strip().lower()
     email_verified = str(payload.get("email_verified", "")).lower() in ("true", "1")
     if not email or not email_verified:
@@ -135,35 +157,86 @@ def google_login(request):
         first_name = parts[-1] if parts else ""
         last_name = " ".join(parts[:-1]) if len(parts) > 1 else ""
 
-    with transaction.atomic():
-        user = User.objects.select_for_update().filter(email=email).first()
-        now = timezone.now()
+    now = timezone.now()
+    try:
+        with transaction.atomic():
+            # 1. Look up by durable Google `sub` first
+            user = User.objects.select_for_update().filter(google_sub=google_sub).first()
+            if user is not None:
+                if not user.is_active:
+                    return Response(
+                        {"detail": "Tài khoản đã bị vô hiệu hóa."},
+                        status=status.HTTP_401_UNAUTHORIZED,
+                    )
+                if user.is_staff or user.is_superuser:
+                    return Response(
+                        {"detail": "Tài khoản quản trị/nhân viên không được phép đăng nhập qua Google OAuth."},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+                update_fields = []
+                if user.email_verified_at is None:
+                    user.email_verified_at = now
+                    update_fields.append("email_verified_at")
+                if first_name and not user.first_name:
+                    user.first_name = first_name
+                    update_fields.append("first_name")
+                if last_name and not user.last_name:
+                    user.last_name = last_name
+                    update_fields.append("last_name")
+                if update_fields:
+                    user.save(update_fields=update_fields)
+            else:
+                # 2. Check if an account with this email already exists
+                existing_by_email = User.objects.select_for_update().filter(email=email).first()
+                if existing_by_email is not None:
+                    if existing_by_email.is_staff or existing_by_email.is_superuser:
+                        return Response(
+                            {
+                                "detail": "Tài khoản quản trị/nhân viên không được phép tự động liên kết hoặc đăng nhập qua Google OAuth."
+                            },
+                            status=status.HTTP_403_FORBIDDEN,
+                        )
+                    if existing_by_email.google_sub and existing_by_email.google_sub != google_sub:
+                        return Response(
+                            {"detail": "Email này đã được liên kết với một định danh Google khác."},
+                            status=status.HTTP_409_CONFLICT,
+                        )
+                    if existing_by_email.has_usable_password():
+                        return Response(
+                            {
+                                "detail": "Email này đã được đăng ký bằng mật khẩu. Vui lòng đăng nhập bằng mật khẩu để bảo mật tài khoản."
+                            },
+                            status=status.HTTP_409_CONFLICT,
+                        )
+                    if not existing_by_email.is_active:
+                        return Response(
+                            {"detail": "Tài khoản đã bị vô hiệu hóa."},
+                            status=status.HTTP_401_UNAUTHORIZED,
+                        )
+                    # Existing passwordless OAuth account without google_sub bound yet
+                    existing_by_email.google_sub = google_sub
+                    update_fields = ["google_sub"]
+                    if existing_by_email.email_verified_at is None:
+                        existing_by_email.email_verified_at = now
+                        update_fields.append("email_verified_at")
+                    existing_by_email.save(update_fields=update_fields)
+                    user = existing_by_email
+                else:
+                    user = User.objects.create_user(
+                        email=email,
+                        password=None,
+                        google_sub=google_sub,
+                        first_name=first_name or email.split("@")[0],
+                        last_name=last_name,
+                        email_verified_at=now,
+                    )
+    except IntegrityError:
+        user = User.objects.filter(google_sub=google_sub, is_active=True, is_staff=False, is_superuser=False).first()
         if user is None:
-            user = User.objects.create_user(
-                email=email,
-                password=None,
-                first_name=first_name or email.split("@")[0],
-                last_name=last_name,
-                email_verified_at=now,
+            return Response(
+                {"detail": "Không thể hoàn tất đăng nhập Google do xung đột dữ liệu tài khoản. Vui lòng thử lại."},
+                status=status.HTTP_409_CONFLICT,
             )
-        else:
-            if not user.is_active:
-                return Response(
-                    {"detail": "Tài khoản đã bị vô hiệu hóa."},
-                    status=status.HTTP_401_UNAUTHORIZED,
-                )
-            update_fields = []
-            if user.email_verified_at is None:
-                user.email_verified_at = now
-                update_fields.append("email_verified_at")
-            if first_name and not user.first_name:
-                user.first_name = first_name
-                update_fields.append("first_name")
-            if last_name and not user.last_name:
-                user.last_name = last_name
-                update_fields.append("last_name")
-            if update_fields:
-                user.save(update_fields=update_fields)
 
     refresh = RefreshToken.for_user(user)
     return Response(

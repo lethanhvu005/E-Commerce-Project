@@ -198,6 +198,27 @@ class OrderApiTests(APITestCase):
         self.assertEqual(balance.reserved, 0)
         self.assertEqual(order_obj.voucher_redemption.status, VoucherRedemption.Status.RELEASED)
 
+    def test_confirmed_or_packing_orders_are_never_released_by_expiry_job(self):
+        created = self.client.post("/api/orders/", self.payload(), format="json")
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED)
+        order_obj = Order.objects.get(public_id=created.data["public_id"])
+        Order.objects.filter(pk=order_obj.pk).update(status=OrderStatus.CONFIRMED)
+        past = timezone.now() - timedelta(minutes=45)
+        InventoryReservation.objects.filter(order=order_obj).update(
+            created_at=past - timedelta(minutes=30),
+            expires_at=past,
+        )
+
+        call_command("release_expired_reservations")
+
+        order_obj.refresh_from_db()
+        self.assertEqual(order_obj.status, OrderStatus.CONFIRMED)
+        reservation = InventoryReservation.objects.get(order=order_obj)
+        self.assertEqual(reservation.status, InventoryReservation.Status.ACTIVE)
+        balance = InventoryBalance.objects.get(variant=self.variant)
+        self.assertEqual(balance.reserved, 2)
+
+
 
 class ConcurrentCheckoutTests(TransactionTestCase):
     reset_sequences = True
