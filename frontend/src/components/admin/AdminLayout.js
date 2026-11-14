@@ -47,10 +47,11 @@ export default function AdminLayout() {
   const handleTopSearch = (e) => {
     e.preventDefault();
     const q = topSearch.trim();
+    const querySuffix = q ? `?q=${encodeURIComponent(q)}` : "";
     if (q.toUpperCase().startsWith("NX-")) {
-      navigate("/admin/orders");
+      navigate(`/admin/orders${querySuffix}`);
     } else {
-      navigate("/admin/products");
+      navigate(`/admin/products${querySuffix}`);
     }
   };
 

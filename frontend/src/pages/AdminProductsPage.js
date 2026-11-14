@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { adminService, catalogService } from "../api/client";
-import { money } from "../api/format";
+import { money, productImage } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import { AdminIcon } from "../components/admin/AdminIcons";
 
@@ -9,10 +10,12 @@ const statusLabelMap = { active: "Đang bán", draft: "Bản nháp", archived: "
 
 export default function AdminProductsPage() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const urlQuery = searchParams.get("q") || "";
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [brands, setBrands] = useState([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(urlQuery);
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const [count, setCount] = useState(0);
@@ -24,6 +27,11 @@ export default function AdminProductsPage() {
   const permissions = useMemo(() => new Set(user?.permissions || []), [user]);
   const canAdd = user?.is_staff && (permissions.has("catalog.add_product") || permissions.size === 0);
   const canChange = user?.is_staff && (permissions.has("catalog.change_product") || permissions.size === 0);
+
+  useEffect(() => {
+    setSearch(urlQuery);
+    setPage(1);
+  }, [urlQuery]);
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -63,7 +71,7 @@ export default function AdminProductsPage() {
       <div className="admin-tabs">{[["", "Tất cả"], ["active", "Đang bán"], ["draft", "Bản nháp"], ["archived", "Đã lưu trữ"]].map(([value, label]) => <button key={label} className={`admin-tab${status === value ? " active" : ""}`} onClick={() => { setStatus(value); setPage(1); }}>{label}</button>)}</div>
       <div className="admin-toolbar"><input className="field" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Tìm tên, slug hoặc SKU..." /><span>{count} sản phẩm</span></div>
       <div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Sản phẩm</th><th>SKU</th><th>Danh mục</th><th>Giá bán</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>
-        {loading ? <tr><td colSpan="6" className="admin-empty">Đang tải dữ liệu...</td></tr> : products.length ? products.map((product) => <tr key={product.id}><td><div className="mini-product"><span className="mini-img"><AdminIcon name="products" size={17} /></span><span><strong>{product.name}</strong><small>{brands.find((item) => item.id === product.brand_id)?.name || product.slug}</small></span></div></td><td><strong>{product.variants?.[0]?.sku || "—"}</strong></td><td>{categories.find((item) => item.id === product.category_id)?.name || product.category_id}</td><td><strong>{product.variants?.length ? money(product.variants[0].price) : "—"}</strong></td><td><span className={`pill ${product.status === "active" ? "green" : product.status === "draft" ? "yellow" : "blue"}`}>{statusLabelMap[product.status] || product.status}</span></td><td>{canChange ? <select className="select" value={product.status} onChange={(e) => changeStatus(product, e.target.value)}><option value="draft">Bản nháp</option><option value="active">Đang bán</option><option value="archived">Đã lưu trữ</option></select> : "Chỉ xem"}</td></tr>) : <tr><td colSpan="6" className="admin-empty">Không có sản phẩm phù hợp.</td></tr>}
+        {loading ? <tr><td colSpan="6" className="admin-empty">Đang tải dữ liệu...</td></tr> : products.length ? products.map((product) => <tr key={product.id}><td><div className="mini-product"><span className="mini-img"><img src={productImage(product)} alt={product.name} className="admin-mini-thumb" /></span><span><strong>{product.name}</strong><small>{brands.find((item) => item.id === product.brand_id)?.name || product.slug}</small></span></div></td><td><strong>{product.variants?.[0]?.sku || "—"}</strong></td><td>{categories.find((item) => item.id === product.category_id)?.name || product.category_id}</td><td><strong>{product.variants?.length ? money(product.variants[0].price) : "—"}</strong></td><td><span className={`pill ${product.status === "active" ? "green" : product.status === "draft" ? "yellow" : "blue"}`}>{statusLabelMap[product.status] || product.status}</span></td><td>{canChange ? <select className="select" value={product.status} onChange={(e) => changeStatus(product, e.target.value)}><option value="draft">Bản nháp</option><option value="active">Đang bán</option><option value="archived">Đã lưu trữ</option></select> : "Chỉ xem"}</td></tr>) : <tr><td colSpan="6" className="admin-empty">Không có sản phẩm phù hợp.</td></tr>}
       </tbody></table></div>
       <div className="admin-pagination"><button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>← Trước</button><span>Trang {page}</span><button disabled={page * 20 >= count} onClick={() => setPage((p) => p + 1)}>Sau →</button></div>
     </section>

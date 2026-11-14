@@ -2218,3 +2218,68 @@ html[data-theme] .main-with-mobile .nexa-auth-page .ux-benefits {
   font-size: 13.5px !important;
   line-height: 1.6 !important;
 }
+
+/* Dark Mode overrides for Reviews & Q&A cards */
+html[data-theme="dark"] .nexa-review-card {
+  background: #141f35;
+  border-color: #263653;
+}
+
+html[data-theme="dark"] .nexa-review-card:hover {
+  border-color: #3a527a;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="dark"] .nexa-qa-author-name {
+  color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] .nexa-review-body {
+  color: #cbd5e1 !important;
+}
+
+html[data-theme="dark"] .nexa-qa-section {
+  border-top-color: #263653;
+}
+
+html[data-theme="dark"] .nexa-qa-card {
+  background: #141f35;
+  border-color: #263653;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+}
+
+html[data-theme="dark"] .nexa-qa-role-tag,
+html[data-theme="dark"] .nexa-qa-date {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="dark"] .nexa-qa-question-body {
+  background: #1c2b47;
+}
+
+html[data-theme="dark"] .nexa-qa-question-body p {
+  color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] .nexa-qa-answers {
+  border-left-color: #33486b;
+}
+
+html[data-theme="dark"] .nexa-qa-answer {
+  background: #18253e;
+  border-color: #294168;
+  border-left-color: #3b82f6;
+}
+
+html[data-theme="dark"] .nexa-qa-answer-head strong {
+  color: #f1f5f9 !important;
+}
+
+html[data-theme="dark"] .nexa-qa-official-badge {
+  background: rgba(59, 130, 246, 0.22);
+  color: #93c5fd;
+}
+
+html[data-theme="dark"] .nexa-qa-answer-text {
+  color: #cbd5e1 !important;
+}

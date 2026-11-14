@@ -21,14 +21,26 @@ const SKU_IMAGE_MAP = {
   "key-k2": "/assets/images/categories/keyboards.png",
   "nexa-s98": "/assets/images/categories/keyboards.png",
   "cor-k70": "/assets/images/categories/keyboards.png",
+  "razer-hv3": "/assets/images/categories/keyboards.png",
+  "logi-prox-tkl": "/assets/images/categories/keyboards.png",
+  "key-q1pro": "/assets/images/categories/keyboards.png",
+  "logi-gpx2-hs": "/assets/images/categories/headset.png",
   "logi-gpx2": "/assets/images/categories/mouse.png",
   "logi-g502": "/assets/images/categories/mouse.png",
+  "razer-vv3p": "/assets/images/categories/mouse.png",
+  "nexa-pulse8k": "/assets/images/categories/mouse.png",
+  "cor-m75": "/assets/images/categories/mouse.png",
   "razer-bsv2": "/assets/images/categories/headset.png",
   "hyx-cloud3": "/assets/images/categories/headset.png",
+  "nexa-aura71": "/assets/images/categories/headset.png",
   "asus-vg27aq": "/assets/images/categories/monitor.png",
   "nexa-v27": "/assets/images/categories/monitor.png",
+  "asus-xg27": "/assets/images/categories/monitor.png",
+  "nexa-opt24": "/assets/images/categories/monitor.png",
   "nexa-mat": "/assets/images/categories/pad.png",
+  "razer-atlas": "/assets/images/categories/pad.png",
   "nexa-chair": "/assets/images/categories/desk.png",
+  "cor-tc100": "/assets/images/categories/desk.png",
 };
 
 export function inferImageFromMeta(item) {
@@ -40,20 +52,20 @@ export function inferImageFromMeta(item) {
     return CATEGORY_IMAGE_MAP[catCode];
   }
 
-  // 2. Check SKU
-  const rawSku = String(item?.sku || item?.sku_snapshot || "").toLowerCase();
+  // 2. Check SKU (longest prefix first to avoid logi-gpx2 matching logi-gpx2-hs)
+  const rawSku = String(item?.sku || item?.sku_snapshot || item?.variants?.[0]?.sku || "").toLowerCase();
   for (const [skuPrefix, imgPath] of Object.entries(SKU_IMAGE_MAP)) {
     if (rawSku.includes(skuPrefix)) return imgPath;
   }
 
-  // 3. Check product name / slug keywords
-  const text = `${item?.name || ""} ${item?.product_name || ""} ${item?.product_name_snapshot || ""} ${item?.slug || ""} ${item?.product_slug || ""}`.toLowerCase();
-  if (/mouse|chuột|chuot|superlight|g502|gpx/.test(text)) return "/assets/images/categories/mouse.png";
-  if (/headset|tai nghe|tai-nghe|blackshark|cloud|bsv2/.test(text)) return "/assets/images/categories/headset.png";
-  if (/monitor|màn hình|man-hinh|vision|vg27|v27|qhd/.test(text)) return "/assets/images/categories/monitor.png";
-  if (/chair|ghế|ghe|ergo/.test(text)) return "/assets/images/categories/desk.png";
-  if (/mat|pad|lót bàn|phu-kien|desk mat/.test(text)) return "/assets/images/categories/pad.png";
-  if (/keyboard|bàn phím|ban-phim|k70|x75|s98|keychron|k2/.test(text)) return "/assets/images/categories/keyboards.png";
+  // 3. Check product name / slug / category_name keywords
+  const text = `${item?.name || ""} ${item?.product_name || ""} ${item?.product_name_snapshot || ""} ${item?.slug || ""} ${item?.product_slug || ""} ${item?.category_name || ""}`.toLowerCase();
+  if (/headset|tai nghe|tai-nghe|blackshark|cloud|bsv2|aura/.test(text)) return "/assets/images/categories/headset.png";
+  if (/mouse|chuột|chuot|superlight|g502|gpx|viper|pulse|m75/.test(text)) return "/assets/images/categories/mouse.png";
+  if (/monitor|màn hình|man-hinh|vision|vg27|v27|xg27|optix|qhd|oled/.test(text)) return "/assets/images/categories/monitor.png";
+  if (/chair|ghế|ghe|ergo|tc100/.test(text)) return "/assets/images/categories/desk.png";
+  if (/mat|pad|lót bàn|phu-kien|phụ kiện|desk mat|atlas/.test(text)) return "/assets/images/categories/pad.png";
+  if (/keyboard|bàn phím|ban-phim|k70|x75|s98|keychron|k2|q1|huntsman|tkl/.test(text)) return "/assets/images/categories/keyboards.png";
 
   return "/assets/images/categories/keyboards.png";
 }

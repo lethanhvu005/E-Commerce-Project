@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { adminService } from "../api/client";
-import { dateTime, money, orderStatusLabel } from "../api/format";
+import { dateTime, money, orderStatusLabel, productImage } from "../api/format";
 import { AdminIcon } from "../components/admin/AdminIcons";
 
 const MODERATION_LABELS = {
@@ -56,20 +57,22 @@ const configs = {
 
 export function AdminUnavailablePage({ type }) {
   const [title, description, headers] = configs[type] || configs.orders;
+  const [searchParams] = useSearchParams();
+  const urlQuery = searchParams.get("q") || "";
   const [rows, setRows] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [search, setSearch] = useState(urlQuery);
+  const [debouncedSearch, setDebouncedSearch] = useState(urlQuery.trim());
 
   useEffect(() => {
     setPage(1);
-    setSearch("");
-    setDebouncedSearch("");
-  }, [type]);
+    setSearch(urlQuery);
+    setDebouncedSearch(urlQuery.trim());
+  }, [type, urlQuery]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -268,7 +271,20 @@ export function AdminUnavailablePage({ type }) {
                             </small>
                           )}
                         </td>
-                        <td>{row.product_name}</td>
+                        <td>
+                          <div className="mini-product">
+                            <span className="mini-img">
+                              <img
+                                src={productImage(row)}
+                                alt={row.product_name}
+                                className="admin-mini-thumb"
+                              />
+                            </span>
+                            <span>
+                              <strong>{row.product_name}</strong>
+                            </span>
+                          </div>
+                        </td>
                         <td style={{ color: "#f5b324" }}>{"★".repeat(row.stars)}</td>
                         <td>{row.body}</td>
                         <td>
@@ -284,7 +300,20 @@ export function AdminUnavailablePage({ type }) {
                       <tr key={row.id}>
                         <td><strong>#Q{row.id}</strong></td>
                         <td>{row.customer}</td>
-                        <td>{row.product_name}</td>
+                        <td>
+                          <div className="mini-product">
+                            <span className="mini-img">
+                              <img
+                                src={productImage(row)}
+                                alt={row.product_name}
+                                className="admin-mini-thumb"
+                              />
+                            </span>
+                            <span>
+                              <strong>{row.product_name}</strong>
+                            </span>
+                          </div>
+                        </td>
                         <td>{row.body}</td>
                         <td>{row.answers_count} phản hồi</td>
                         <td>

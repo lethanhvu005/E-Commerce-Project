@@ -260,11 +260,20 @@ html[data-theme="dark"] .admin-lowstock-title {
 
 .mini-product .mini-img {
   color: #2b76eb;
+  overflow: hidden;
+  padding: 2px;
 }
 
 html[data-theme="dark"] .mini-product .mini-img {
   background: #25354f;
   color: #7eb6ff;
+}
+
+.admin-mini-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .admin-status-bars {

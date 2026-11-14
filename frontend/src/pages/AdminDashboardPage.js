@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { adminService } from "../api/client";
-import { dateTime, money, orderStatusLabel } from "../api/format";
+import { dateTime, money, orderStatusLabel, productImage } from "../api/format";
 import { AdminIcon } from "../components/admin/AdminIcons";
 
 const statusColors = {
@@ -339,11 +339,17 @@ export default function AdminDashboardPage() {
               <div className="admin-lowstock-item" key={item.variant_id}>
                 <div className="mini-product">
                   <div className="mini-img">
-                    <AdminIcon name="products" size={18} />
+                    <img
+                      src={productImage(item)}
+                      alt={item.product_name || item.sku}
+                      className="admin-mini-thumb"
+                    />
                   </div>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <b className="admin-lowstock-title">SKU: {item.sku}</b>
+                  <b className="admin-lowstock-title">
+                    {item.product_name ? `${item.product_name} (${item.sku})` : `SKU: ${item.sku}`}
+                  </b>
                   <small className="admin-lowstock-sub">
                     Tồn thực tế: {item.on_hand} · Đang giữ: {item.reserved} · Ngưỡng: {item.low_stock_threshold}
                   </small>

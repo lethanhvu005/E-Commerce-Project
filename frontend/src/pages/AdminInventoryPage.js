@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { adminService } from "../api/client";
-import { dateTime } from "../api/format";
+import { dateTime, productImage } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import { ErrorBox, Loading, Toast } from "../components/Feedback";
 import { AdminIcon } from "../components/admin/AdminIcons";
@@ -103,9 +103,14 @@ export default function AdminInventoryPage() {
     (b) => b.low_stock_threshold != null && Number(b.available) <= Number(b.low_stock_threshold)
   ).length;
 
-  const filteredBalances = balances.filter((b) =>
-    !search.trim() || String(b.sku || "").toLowerCase().includes(search.trim().toLowerCase())
-  );
+  const filteredBalances = balances.filter((b) => {
+    if (!search.trim()) return true;
+    const q = search.trim().toLowerCase();
+    return (
+      String(b.sku || "").toLowerCase().includes(q) ||
+      String(b.product_name || "").toLowerCase().includes(q)
+    );
+  });
 
   return (
     <>
@@ -228,11 +233,15 @@ export default function AdminInventoryPage() {
                           <td>
                             <div className="mini-product">
                               <span className="mini-img">
-                                <AdminIcon name="products" size={17} />
+                                <img
+                                  src={productImage(b)}
+                                  alt={b.product_name || b.sku}
+                                  className="admin-mini-thumb"
+                                />
                               </span>
                               <span>
-                                <strong>{b.sku}</strong>
-                                <small>Variant #{b.variant_id}</small>
+                                <strong>{b.product_name || b.sku}</strong>
+                                <small>{b.product_name ? `SKU: ${b.sku}` : `Variant #${b.variant_id}`}</small>
                               </span>
                             </div>
                           </td>

@@ -5,11 +5,30 @@ from .models import InventoryBalance, InventoryMovement
 
 class InventoryBalanceSerializer(serializers.ModelSerializer):
     sku = serializers.CharField(source="variant.sku", read_only=True)
+    product_name = serializers.CharField(source="variant.product.name", read_only=True)
+    category_name = serializers.CharField(source="variant.product.category.name", read_only=True)
+    image_key = serializers.SerializerMethodField()
     available = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = InventoryBalance
-        fields = ["variant_id", "sku", "on_hand", "reserved", "available", "low_stock_threshold", "updated_at"]
+        fields = [
+            "variant_id",
+            "sku",
+            "product_name",
+            "category_name",
+            "image_key",
+            "on_hand",
+            "reserved",
+            "available",
+            "low_stock_threshold",
+            "updated_at",
+        ]
+
+    def get_image_key(self, obj):
+        images = list(obj.variant.product.images.all())
+        cover = next((img for img in images if img.is_cover), images[0] if images else None)
+        return cover.object_key if cover else obj.variant.product.category.image_key
 
 
 class InventoryAdjustmentSerializer(serializers.Serializer):

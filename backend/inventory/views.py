@@ -49,7 +49,11 @@ def inventory(request):
     if denied:
         return denied
     if request.method == "GET":
-        balances = InventoryBalance.objects.select_related("variant").order_by("variant__sku")
+        balances = (
+            InventoryBalance.objects.select_related("variant__product__category")
+            .prefetch_related("variant__product__images")
+            .order_by("variant__sku")
+        )
         paginator = AdminInventoryPagination()
         page = paginator.paginate_queryset(balances, request)
         return paginator.get_paginated_response(InventoryBalanceSerializer(page, many=True).data)
