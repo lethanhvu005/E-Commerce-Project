@@ -57,21 +57,31 @@ export function AdminUnavailablePage({ type }) {
   const [title, description, headers] = configs[type] || configs.orders;
   const [rows, setRows] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   useEffect(() => {
     setPage(1);
     setSearch("");
+    setDebouncedSearch("");
   }, [type]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const params = { q: search.trim(), page };
+      const params = { q: debouncedSearch, page };
       let res;
       if (type === "orders") res = await adminService.getOrders(params);
       else if (type === "customers") res = await adminService.getCustomers(params);
@@ -79,9 +89,16 @@ export function AdminUnavailablePage({ type }) {
       else if (type === "reviews") res = await adminService.getReviews(params);
       else if (type === "support") res = await adminService.getQuestions(params);
       else if (type === "settings") {
+        const safeFetch = (fn) =>
+          fn(params).catch((err) => {
+            if (err && err.status === 404 && page > 1) {
+              return { count: 0, results: [] };
+            }
+            throw err;
+          });
         const [audits, outbox] = await Promise.all([
-          adminService.getAuditLogs(params),
-          adminService.getOutboxEvents(params),
+          safeFetch(adminService.getAuditLogs),
+          safeFetch(adminService.getOutboxEvents),
         ]);
         const auditList = (audits?.results || audits || []).map((a) => ({
           id: `audit-${a.id}`,
@@ -102,27 +119,29 @@ export function AdminUnavailablePage({ type }) {
         const merged = [...auditList, ...outboxList].sort(
           (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
         );
+        const auditTotal = audits?.count ?? auditList.length;
+        const outboxTotal = outbox?.count ?? outboxList.length;
         setRows(merged);
-        setTotalCount((audits?.count || auditList.length) + (outbox?.count || outboxList.length));
+        setTotalCount(auditTotal + outboxTotal);
+        setTotalPages(Math.max(1, Math.ceil(Math.max(auditTotal, outboxTotal) / 50)));
         setLoading(false);
         return;
       }
       const list = res?.results || res || [];
+      const countVal = res?.count ?? list.length;
       setRows(list);
-      setTotalCount(res?.count ?? list.length);
+      setTotalCount(countVal);
+      setTotalPages(Math.max(1, Math.ceil(countVal / 20)));
     } catch (err) {
       setError(err.message || "Không thể tải dữ liệu từ database.");
     } finally {
       setLoading(false);
     }
-  }, [type, search, page]);
+  }, [type, debouncedSearch, page]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  const pageSize = type === "settings" ? 100 : 20;
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   return (
     <>
