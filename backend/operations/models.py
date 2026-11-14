@@ -52,3 +52,22 @@ class OutboxEvent(models.Model):
             models.Index(fields=['locked_at'], condition=Q(status='processing'), name='outbox_processing_idx'),
         ]
         constraints = [models.CheckConstraint(condition=Q(status__in=['pending', 'processing', 'sent', 'failed']), name='outbox_status_valid')]
+
+
+class OutboxDeliveryReceipt(models.Model):
+    """Idempotency receipt proving an OutboxEvent was delivered at most once per event_key."""
+
+    event = models.OneToOneField(
+        OutboxEvent,
+        on_delete=models.CASCADE,
+        related_name="delivery_receipt",
+    )
+    event_key = models.UUIDField(unique=True)
+    topic = models.CharField(max_length=100)
+    destination = models.CharField(max_length=120, default="local")
+    delivered_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["topic", "-delivered_at"], name="outbox_receipt_topic_idx"),
+        ]

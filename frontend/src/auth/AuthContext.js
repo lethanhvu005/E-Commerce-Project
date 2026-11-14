@@ -43,6 +43,12 @@ export function AuthProvider({ children }) {
     return loadUser();
   };
 
+  const loginWithFacebook = async (payload) => {
+    const tokens = await authService.loginWithFacebook(payload);
+    saveTokens({ access: tokens.access, refresh: tokens.refresh });
+    return loadUser();
+  };
+
   const register = async (payload) => {
     await authService.register(payload);
     return login({ email: payload.email, password: payload.password });
@@ -67,6 +73,7 @@ export function AuthProvider({ children }) {
     loading,
     login,
     loginWithGoogle,
+    loginWithFacebook,
     register,
     logout,
     reloadUser: loadUser,

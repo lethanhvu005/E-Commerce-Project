@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext } from "react-router-dom";
 import { cartService, catalogService, wishlistService } from "../api/client";
-import { assetUrl, categoryImage, fallbackProductImage, money, productImage } from "../api/format";
+import { assetUrl, categoryImage, money, productImage } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import ProductCard from "../components/ProductCard";
 import { QuickViewModal, Tilt3DCard } from "../components/Motion3D";
@@ -55,41 +55,41 @@ function HeroWaves({ index }) {
   );
 }
 
-function getCampaignMeta(banner, index) {
+function getCampaignMeta(banner) {
   const key = `${banner?.desktop_image_key || ""} ${banner?.link_path || ""} ${banner?.title || ""}`.toLowerCase();
-  const rawDark = assetUrl(banner?.desktop_image_key);
-  const rawLight = assetUrl(banner?.mobile_image_key);
+  const desktopImg = assetUrl(banner?.desktop_image_key) || "";
+  const mobileImg = assetUrl(banner?.mobile_image_key) || desktopImg;
 
-  if (key.includes("keys") || key.includes("ban-phim") || key.includes("phím") || index === 1) {
+  if (key.includes("keys") || key.includes("ban-phim") || key.includes("phím")) {
     return {
       campaignClass: "campaign-keys",
-      darkImg: rawDark && !rawDark.includes("-day") ? rawDark : "/assets/images/campaign/cobalt-keys-lettered.png",
-      lightImg: rawLight && rawLight.includes("-day") ? rawLight : "/assets/images/campaign/cobalt-keys-day.png",
+      desktopImg,
+      mobileImg,
       eyebrow: "DÀNH CHO NHỮNG ĐIỀU BẠN TẠO NÊN",
       indexLabel: "BỘ SƯU TẬP BÀN PHÍM",
       noteLines: ["Thiết kế tinh gọn.", "Cảm hứng bất tận."],
-      alt: "Ảnh ý tưởng bàn phím giữa những cánh hoa xanh cobalt",
+      alt: banner?.title || "Banner bàn phím NEXA",
     };
   }
-  if (key.includes("motion") || key.includes("chuot") || key.includes("chuyển động") || index === 2) {
+  if (key.includes("motion") || key.includes("chuot") || key.includes("chuột") || key.includes("chuyển động")) {
     return {
       campaignClass: "campaign-motion",
-      darkImg: rawDark && !rawDark.includes("-day") ? rawDark : "/assets/images/campaign/cobalt-motion.png",
-      lightImg: rawLight && rawLight.includes("-day") ? rawLight : "/assets/images/campaign/cobalt-motion-day.png",
+      desktopImg,
+      mobileImg,
       eyebrow: "CÔNG NGHỆ HÒA VÀO NHỊP SỐNG",
       indexLabel: "BỘ SƯU TẬP CHUỘT",
       noteLines: ["Chuyển động tự nhiên.", "Trải nghiệm liền mạch."],
-      alt: "Ảnh ý tưởng chuột giữa những cánh hoa xanh cobalt",
+      alt: banner?.title || "Banner chuột gaming NEXA",
     };
   }
   return {
     campaignClass: "campaign-sound",
-    darkImg: rawDark && !rawDark.includes("-day") ? rawDark : "/assets/images/campaign/cobalt-sound-wide.png",
-    lightImg: rawLight && rawLight.includes("-day") ? rawLight : "/assets/images/campaign/cobalt-sound-wide-day.png",
-    eyebrow: "ÂM THANH ĐỒNG HÀNH CÙNG BẠN",
-    indexLabel: "BỘ SƯU TẬP TAI NGHE",
-    noteLines: ["Chạm vào âm nhạc.", "Chạm đến cảm xúc."],
-    alt: "Ảnh ý tưởng tai nghe giữa những cánh hoa xanh cobalt",
+    desktopImg,
+    mobileImg,
+    eyebrow: "BỘ SƯU TẬP NỔI BẬT",
+    indexLabel: "CHIẾN DỊCH NEXA",
+    noteLines: ["Thiết kế chuẩn xác.", "Trải nghiệm trọn vẹn."],
+    alt: banner?.title || "Banner bộ sưu tập NEXA",
   };
 }
 
@@ -137,46 +137,100 @@ export default function HomePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const outlet = useOutletContext() || {};
-  const { theme = "dark", wishlistIds = new Set(), refreshWishlist, refreshCartCount } = outlet;
+  const { wishlistIds = new Set(), refreshWishlist, refreshCartCount } = outlet;
 
+  const HOME_PAGE_SIZE = 12;
   const [data, setData] = useState({
     banners: null,
     categories: null,
     brands: null,
-    products: null,
     collections: null,
   });
+  const [productsState, setProductsState] = useState({ items: null, count: 0 });
+  const [highlights, setHighlights] = useState(null);
+  const [allProductsCount, setAllProductsCount] = useState(null);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [failedImages, setFailedImages] = useState({});
+  const productReqRef = useRef(0);
+
   const [slide, setSlide] = useState(0);
   const [paused, setPaused] = useState(false);
   const [activeCategory, setActiveCategory] = useState("");
-  const [productPage, setProductPage] = useState(0);
+  const [productPage, setProductPage] = useState(1);
   const [error, setError] = useState(null);
   const [toastMsg, setToastMsg] = useState("");
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [heroTilt, setHeroTilt] = useState({ tx: 0, ty: 0, rx: 0, ry: 0 });
 
-  const loadHome = useCallback(() => {
+  const markImageFailed = useCallback((key) => {
+    setFailedImages((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
+  }, []);
+
+  const loadHomeMeta = useCallback(() => {
     setError(null);
-    Promise.all([
+    return Promise.all([
       catalogService.getHomeBanners(),
       catalogService.getCategories(),
       catalogService.getBrands(),
       catalogService.getCollections(),
-      catalogService.getProducts({ page_size: 48, ordering: "-created_at" }),
     ])
-      .then(([banners, categories, brands, collections, products]) =>
+      .then(([banners, categories, brands, collections]) =>
         setData({
           banners: banners.results || banners || [],
           categories: categories.results || categories || [],
           brands: brands.results || brands || [],
           collections: collections.results || collections || [],
-          products: products.results || products || [],
         })
       )
       .catch(setError);
   }, []);
 
-  useEffect(() => loadHome(), [loadHome]);
+  const loadFeaturedProducts = useCallback((categorySlug, pageNumber) => {
+    const reqId = ++productReqRef.current;
+    setProductsLoading(true);
+    setError(null);
+    const params = {
+      page: pageNumber,
+      page_size: HOME_PAGE_SIZE,
+      ordering: "-created_at",
+    };
+    if (categorySlug) {
+      params.category = categorySlug;
+    }
+    return catalogService
+      .getProducts(params)
+      .then((res) => {
+        if (reqId !== productReqRef.current) return;
+        const items = res?.results || (Array.isArray(res) ? res : []);
+        const count = typeof res?.count === "number" ? res.count : items.length;
+        setProductsState({ items, count });
+        if (!categorySlug) {
+          setAllProductsCount(count);
+          if (pageNumber === 1) {
+            setHighlights(items);
+          }
+        }
+      })
+      .catch((err) => {
+        if (reqId === productReqRef.current) setError(err);
+      })
+      .finally(() => {
+        if (reqId === productReqRef.current) setProductsLoading(false);
+      });
+  }, []);
+
+  const loadHome = useCallback(() => {
+    loadHomeMeta();
+    loadFeaturedProducts(activeCategory, productPage);
+  }, [loadHomeMeta, loadFeaturedProducts, activeCategory, productPage]);
+
+  useEffect(() => {
+    loadHomeMeta();
+  }, [loadHomeMeta]);
+
+  useEffect(() => {
+    loadFeaturedProducts(activeCategory, productPage);
+  }, [activeCategory, productPage, loadFeaturedProducts]);
 
   useEffect(() => {
     if (paused || !data.banners || data.banners.length < 2) return undefined;
@@ -187,36 +241,24 @@ export default function HomePage() {
     return () => window.clearInterval(timer);
   }, [paused, data.banners]);
 
-  const HOME_PRODUCTS_PER_VIEW = 20;
-
-  const filteredProducts = useMemo(() => {
-    if (!data.products) return null;
-    return activeCategory
-      ? data.products.filter((item) => item.category?.slug === activeCategory)
-      : data.products;
-  }, [activeCategory, data.products]);
-
   const totalProductPages = useMemo(() => {
-    if (!filteredProducts || filteredProducts.length === 0) return 1;
-    return Math.ceil(filteredProducts.length / HOME_PRODUCTS_PER_VIEW);
-  }, [filteredProducts]);
+    if (!productsState.count) return 1;
+    return Math.max(1, Math.ceil(productsState.count / HOME_PAGE_SIZE));
+  }, [productsState.count]);
 
-  const visibleProducts = useMemo(() => {
-    if (!filteredProducts) return null;
-    const safePage = Math.min(productPage, Math.max(0, totalProductPages - 1));
-    const start = safePage * HOME_PRODUCTS_PER_VIEW;
-    return filteredProducts.slice(start, start + HOME_PRODUCTS_PER_VIEW);
-  }, [filteredProducts, productPage, totalProductPages]);
+  const visibleProducts = productsState.items;
 
   const spotlightProduct = useMemo(() => {
-    if (!data.products || data.products.length === 0) return null;
-    return data.products.find((p) => p.badge) || data.products[0];
-  }, [data.products]);
+    const source = highlights || productsState.items;
+    if (!source || source.length === 0) return null;
+    return source.find((p) => p.badge) || source[0];
+  }, [highlights, productsState.items]);
 
   const newestThree = useMemo(() => {
-    if (!data.products || data.products.length === 0) return [];
-    return data.products.slice(0, 3);
-  }, [data.products]);
+    const source = highlights || productsState.items;
+    if (!source || source.length === 0) return [];
+    return source.slice(0, 3);
+  }, [highlights, productsState.items]);
 
   const handleWishlist = async (product) => {
     if (!user) return navigate("/login", { state: { from: { pathname: "/" } } });
@@ -332,9 +374,10 @@ export default function HomePage() {
           <>
             <div className="slider-viewport nexa-slider-stage">
               {data.banners.map((banner, index) => {
-                const meta = getCampaignMeta(banner, index);
+                const meta = getCampaignMeta(banner);
                 const title = splitTitle(banner.title);
-                const activeImageSrc = theme === "light" ? meta.lightImg : meta.darkImg;
+                const bannerImgKey = `banner-${banner.id ?? index}`;
+                const hasBannerImg = Boolean((meta.desktopImg || meta.mobileImg) && !failedImages[bannerImgKey]);
                 const isActive = index === slide;
                 const prevIndex = (slide - 1 + bannerCount) % bannerCount;
                 const stateClass = isActive
@@ -352,18 +395,28 @@ export default function HomePage() {
                     <HeroWaves index={index} />
                     <div className="gear-stage">
                       <span className="nexa-stage-aura" aria-hidden="true" />
-                      <img
-                        className="hero-product-image"
-                        src={activeImageSrc}
-                        data-dark-src={meta.darkImg}
-                        data-light-src={meta.lightImg}
-                        width="1536"
-                        height="1024"
-                        alt={meta.alt || banner.title}
-                        fetchPriority={index === 0 ? "high" : undefined}
-                        loading={index === 0 ? undefined : "lazy"}
-                        decoding="async"
-                      />
+                      {hasBannerImg ? (
+                        <picture>
+                          {meta.mobileImg && meta.mobileImg !== meta.desktopImg && (
+                            <source media="(max-width: 767px)" srcSet={meta.mobileImg} />
+                          )}
+                          <img
+                            className="hero-product-image"
+                            src={meta.desktopImg || meta.mobileImg}
+                            width="1536"
+                            height="1024"
+                            alt={meta.alt || banner.title}
+                            fetchPriority={index === 0 ? "high" : undefined}
+                            loading={index === 0 ? undefined : "lazy"}
+                            decoding="async"
+                            onError={() => markImageFailed(bannerImgKey)}
+                          />
+                        </picture>
+                      ) : (
+                        <div className="image-empty hero-image-empty" role="img" aria-label={meta.alt || banner.title}>
+                          <span>Chưa có ảnh banner</span>
+                        </div>
+                      )}
                       <span className="campaign-caption">NEXA / ẢNH Ý TƯỞNG</span>
                     </div>
 
@@ -504,10 +557,17 @@ export default function HomePage() {
                     scale={1.03}
                   >
                     <span className="category-index">{String(index + 1).padStart(2, "0")}</span>
-                    {image ? (
-                      <img className="nexa-3d-float-img" src={image} alt={category.name} />
+                    {image && !failedImages[`cat-${category.id}`] ? (
+                      <img
+                        className="nexa-3d-float-img"
+                        src={image}
+                        alt={category.name}
+                        onError={() => markImageFailed(`cat-${category.id}`)}
+                      />
                     ) : (
-                      <span className="image-empty category-image-empty">Chưa có ảnh</span>
+                      <span className="image-empty category-image-empty" role="img" aria-label={category.name}>
+                        Chưa có ảnh
+                      </span>
                     )}
                     <div>
                       <strong>{category.name}</strong>
@@ -597,20 +657,20 @@ export default function HomePage() {
                   <button
                     type="button"
                     className="nexa-pager-btn"
-                    disabled={productPage <= 0}
-                    onClick={() => setProductPage((p) => Math.max(0, p - 1))}
+                    disabled={productPage <= 1}
+                    onClick={() => setProductPage((p) => Math.max(1, p - 1))}
                     aria-label="Trang trước"
                   >
                     ‹
                   </button>
                   <span className="nexa-pager-count">
-                    {productPage + 1} / {totalProductPages}
+                    {productPage} / {totalProductPages}
                   </span>
                   <button
                     type="button"
                     className="nexa-pager-btn"
-                    disabled={productPage >= totalProductPages - 1}
-                    onClick={() => setProductPage((p) => Math.min(totalProductPages - 1, p + 1))}
+                    disabled={productPage >= totalProductPages}
+                    onClick={() => setProductPage((p) => Math.min(totalProductPages, p + 1))}
                     aria-label="Trang tiếp theo"
                   >
                     ›
@@ -628,10 +688,10 @@ export default function HomePage() {
                 className={!activeCategory ? "active" : ""}
                 onClick={() => {
                   setActiveCategory("");
-                  setProductPage(0);
+                  setProductPage(1);
                 }}
               >
-                Tất cả ({data.products?.length || 0})
+                Tất cả{allProductsCount != null ? ` (${allProductsCount})` : ""}
               </button>
               {data.categories.slice(0, 6).map((category) => (
                 <button
@@ -639,17 +699,18 @@ export default function HomePage() {
                   className={activeCategory === category.slug ? "active" : ""}
                   onClick={() => {
                     setActiveCategory(category.slug);
-                    setProductPage(0);
+                    setProductPage(1);
                   }}
                   key={category.id}
                 >
                   {category.name}
+                  {category.product_count != null ? ` (${category.product_count})` : ""}
                 </button>
               ))}
             </div>
           )}
 
-          {!visibleProducts && !error ? (
+          {(productsLoading || !visibleProducts) && !error ? (
             <Loading label="Đang tải sản phẩm..." />
           ) : visibleProducts?.length ? (
             <div className="gear-product-grid home-grid-5 nexa-stagger-grid">
@@ -671,7 +732,7 @@ export default function HomePage() {
               actionText="Xem tất cả"
               onAction={() => {
                 setActiveCategory("");
-                setProductPage(0);
+                setProductPage(1);
               }}
             />
           )}
@@ -701,15 +762,18 @@ export default function HomePage() {
               <span className="gear-kicker">
                 {spotlightProduct.brand?.name || "NEXA"} / {spotlightProduct.category?.name || "GAMING GEAR"}
               </span>
-              <img
-                className="nexa-3d-float-img"
-                src={productImage(spotlightProduct)}
-                alt={spotlightProduct.name}
-                onError={(e) => {
-                  e.currentTarget.onerror = null;
-                  e.currentTarget.src = fallbackProductImage(spotlightProduct);
-                }}
-              />
+              {productImage(spotlightProduct) && !failedImages[`spot-${spotlightProduct.id}`] ? (
+                <img
+                  className="nexa-3d-float-img"
+                  src={productImage(spotlightProduct)}
+                  alt={spotlightProduct.name}
+                  onError={() => markImageFailed(`spot-${spotlightProduct.id}`)}
+                />
+              ) : (
+                <span className="image-empty" role="img" aria-label={spotlightProduct.name}>
+                  Chưa có ảnh
+                </span>
+              )}
               <span>
                 <strong>{spotlightProduct.name}</strong>
                 <b>{spotlightProduct.min_price != null ? money(spotlightProduct.min_price) : ""} ↗</b>
@@ -728,26 +792,32 @@ export default function HomePage() {
               </div>
             </div>
             <div className="gear-new-list">
-              {newestThree.map((item) => (
-                <Link className="gear-new-item" to={`/products/${item.slug}`} key={item.id}>
-                  <img
-                    src={productImage(item)}
-                    alt={item.name}
-                    onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = fallbackProductImage(item);
-                    }}
-                  />
-                  <div>
-                    <small>
-                      {item.brand?.name || "NEXA"} · {item.category?.name}
-                    </small>
-                    <h3>{item.short_name || item.name}</h3>
-                    <strong>{item.min_price != null ? money(item.min_price) : "Liên hệ"}</strong>
-                  </div>
-                  <span aria-hidden="true">↗</span>
-                </Link>
-              ))}
+              {newestThree.map((item) => {
+                const thumb = productImage(item);
+                return (
+                  <Link className="gear-new-item" to={`/products/${item.slug}`} key={item.id}>
+                    {thumb && !failedImages[`new-${item.id}`] ? (
+                      <img
+                        src={thumb}
+                        alt={item.name}
+                        onError={() => markImageFailed(`new-${item.id}`)}
+                      />
+                    ) : (
+                      <span className="image-empty" role="img" aria-label={item.name}>
+                        Chưa có ảnh
+                      </span>
+                    )}
+                    <div>
+                      <small>
+                        {item.brand?.name || "NEXA"} · {item.category?.name}
+                      </small>
+                      <h3>{item.short_name || item.name}</h3>
+                      <strong>{item.min_price != null ? money(item.min_price) : "Liên hệ"}</strong>
+                    </div>
+                    <span aria-hidden="true">↗</span>
+                  </Link>
+                );
+              })}
             </div>
           </section>
         )}

@@ -12,7 +12,9 @@ export default function CartPage() {
   const { refreshCartCount } = outlet;
 
   const [cart, setCart] = useState(null);
-  const [freeShipThreshold, setFreeShipThreshold] = useState(0);
+  const [shippingMethods, setShippingMethods] = useState([]);
+  const [shippingLoading, setShippingLoading] = useState(true);
+  const [shippingError, setShippingError] = useState(null);
   const [voucherCode, setVoucherCode] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -34,14 +36,27 @@ export default function CartPage() {
   }, [refreshCartCount]);
 
   useEffect(() => {
+    let active = true;
+    setShippingLoading(true);
+    setShippingError(null);
     orderService
       .getShippingMethods()
       .then((res) => {
+        if (!active) return;
         const list = res?.results || res || [];
-        const std = list.find((m) => m.free_threshold != null && Number(m.free_threshold) > 0);
-        if (std) setFreeShipThreshold(Number(std.free_threshold));
+        setShippingMethods(Array.isArray(list) ? list : []);
       })
-      .catch(() => {});
+      .catch((err) => {
+        if (!active) return;
+        setShippingError(err);
+        setShippingMethods([]);
+      })
+      .finally(() => {
+        if (active) setShippingLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -145,12 +160,18 @@ export default function CartPage() {
   const items = cart?.items || [];
   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
   const subtotalNum = Number(cart?.subtotal || 0);
+  const thresholdMethod = shippingMethods.find(
+    (m) => m.free_threshold != null && Number(m.free_threshold) > 0
+  );
+  const freeShipThreshold = thresholdMethod ? Number(thresholdMethod.free_threshold) : null;
   const shipProgress =
-    freeShipThreshold > 0
+    freeShipThreshold && freeShipThreshold > 0
       ? Math.min(100, Math.round((subtotalNum / freeShipThreshold) * 100))
-      : 100;
+      : null;
   const remainingForFreeShip =
-    freeShipThreshold > 0 ? Math.max(0, freeShipThreshold - subtotalNum) : 0;
+    freeShipThreshold && freeShipThreshold > 0
+      ? Math.max(0, freeShipThreshold - subtotalNum)
+      : null;
 
   return (
     <div className="container">
@@ -194,21 +215,56 @@ export default function CartPage() {
         <div className="cart-layout nexa-cart-grid">
           {/* Left: Cart Items List */}
           <section className="whitebox">
-            {/* Free Shipping Progress Bar */}
+            {/* Shipping Policy & Progress Bar (#26) */}
             <div className="nexa-freeship-bar">
-              <div className="nexa-freeship-text">
-                {remainingForFreeShip === 0 ? (
-                  <span>🎉 Đơn hàng của bạn đã đủ điều kiện hưởng ưu đãi <b>Miễn phí vận chuyển</b>!</span>
-                ) : (
+              {shippingLoading ? (
+                <div className="nexa-freeship-text">
+                  <span>Đang tải thông tin phí và ngưỡng miễn phí vận chuyển...</span>
+                </div>
+              ) : shippingError ? (
+                <div className="nexa-freeship-text">
+                  <span>Chưa tải được chính sách vận chuyển. Phí giao hàng sẽ được tính ở bước Thanh toán.</span>
+                </div>
+              ) : freeShipThreshold ? (
+                <>
+                  <div className="nexa-freeship-text">
+                    {remainingForFreeShip === 0 ? (
+                      <span>
+                        🎉 Đạt ngưỡng miễn phí vận chuyển cho phương thức{" "}
+                        <b>{thresholdMethod.name}</b>!
+                      </span>
+                    ) : (
+                      <span>
+                        Mua thêm <b>{money(remainingForFreeShip)}</b> để miễn phí vận chuyển{" "}
+                        <b>{thresholdMethod.name}</b> (từ {money(freeShipThreshold)})
+                      </span>
+                    )}
+                    <b>{shipProgress}%</b>
+                  </div>
+                  <div className="nexa-freeship-track">
+                    <div className="nexa-freeship-fill" style={{ width: `${shipProgress}%` }} />
+                  </div>
+                </>
+              ) : (
+                <div className="nexa-freeship-text">
                   <span>
-                    Mua thêm <b>{money(remainingForFreeShip)}</b> để đạt mốc ưu đãi vận chuyển {money(freeShipThreshold)}
+                    🚚 Các phương thức giao hàng hiện áp dụng phí theo tuyến; tổng phí chính thức sẽ tính khi Thanh toán.
                   </span>
-                )}
-                <b>{shipProgress}%</b>
-              </div>
-              <div className="nexa-freeship-track">
-                <div className="nexa-freeship-fill" style={{ width: `${shipProgress}%` }} />
-              </div>
+                </div>
+              )}
+
+              {shippingMethods.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "8px", fontSize: "11.5px", color: "var(--muted)" }}>
+                  {shippingMethods.map((m) => (
+                    <span key={m.id || m.code}>
+                      • <b>{m.name}</b>: {money(m.base_fee)}
+                      {m.free_threshold != null && Number(m.free_threshold) > 0
+                        ? ` (miễn phí từ ${money(m.free_threshold)})`
+                        : " (chưa hỗ trợ miễn phí theo ngưỡng)"}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             <h3>Danh sách sản phẩm ({items.length})</h3>
@@ -291,6 +347,10 @@ export default function CartPage() {
               <span>Tạm tính ({itemCount} món)</span>
               <strong>{money(cart.subtotal)}</strong>
             </div>
+            <div className="summary-row" style={{ fontSize: "12px", color: "var(--muted)" }}>
+              <span>Phí vận chuyển</span>
+              <span>Tính khi thanh toán</span>
+            </div>
 
             {Number(cart.discount_total || 0) > 0 && (
               <div className="summary-row" style={{ color: "#16b882" }}>
@@ -332,9 +392,12 @@ export default function CartPage() {
             </div>
 
             <div className="summary-row total">
-              <span>Tổng cộng</span>
+              <span>Tổng tạm tính</span>
               <strong>{money(cart.total)}</strong>
             </div>
+            <p style={{ fontSize: "11.5px", color: "var(--muted)", margin: "6px 0 0", lineHeight: 1.45 }}>
+              Đây là mức giá tạm tính chưa bao gồm phí vận chuyển. Tổng thanh toán cuối cùng sẽ được xác nhận ở bước Thanh toán.
+            </p>
 
             <button
               type="button"

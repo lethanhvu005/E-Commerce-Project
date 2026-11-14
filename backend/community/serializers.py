@@ -56,11 +56,12 @@ class ReviewUpdateSerializer(serializers.ModelSerializer):
 
 class AnswerSerializer(serializers.ModelSerializer):
     author = serializers.CharField(source="user.get_full_name", read_only=True)
+    is_staff_answer = serializers.BooleanField(source="user.is_staff", read_only=True)
 
     class Meta:
         model = ProductAnswer
-        fields = ["id", "body", "author", "status", "created_at"]
-        read_only_fields = ["id", "author", "status", "created_at"]
+        fields = ["id", "body", "author", "is_staff_answer", "status", "created_at"]
+        read_only_fields = ["id", "author", "is_staff_answer", "status", "created_at"]
 
     def validate_body(self, value):
         return _validate_trimmed_body(value, 5, "Nội dung câu trả lời")

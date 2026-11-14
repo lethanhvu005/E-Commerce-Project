@@ -46,7 +46,17 @@ def active_products():
 @authentication_classes([])
 @permission_classes([AllowAny])
 def categories(request):
-    queryset = Category.objects.filter(is_active=True).order_by("sort_order", "id")
+    queryset = (
+        Category.objects.filter(is_active=True)
+        .annotate(
+            product_count=Count(
+                "products",
+                filter=Q(products__status=Product.Status.ACTIVE, products__brand__is_active=True),
+                distinct=True,
+            )
+        )
+        .order_by("sort_order", "id")
+    )
     return Response({"results": CategorySerializer(queryset, many=True).data})
 
 

@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from catalog.models import ProductVariant
-from operations.models import AuditLog
+from operations.models import AuditLog, OutboxEvent
 from .models import InventoryBalance, InventoryMovement
 from .serializers import InventoryAdjustmentSerializer, InventoryBalanceSerializer, InventoryMovementSerializer
 
@@ -103,6 +103,18 @@ def inventory(request):
         AuditLog.objects.create(
             actor=request.user, action="inventory.adjust", entity_type="ProductVariant",
             entity_id=str(variant.id), changes={"quantity_delta": data["quantity_delta"], "reason": data["reason"]},
+        )
+        OutboxEvent.objects.create(
+            event_key=data["event_key"],
+            topic="inventory.adjusted",
+            aggregate_id=str(variant.id),
+            payload={
+                "movement_id": movement.id,
+                "variant_id": variant.id,
+                "sku": variant.sku,
+                "quantity_delta": data["quantity_delta"],
+                "on_hand": balance.on_hand,
+            },
         )
     return Response(InventoryMovementSerializer(movement).data, status=status.HTTP_201_CREATED)
 

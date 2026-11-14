@@ -118,6 +118,10 @@ class GoogleLoginSerializer(serializers.Serializer):
         return attrs
 
 
+class FacebookLoginSerializer(serializers.Serializer):
+    access_token = serializers.CharField(trim_whitespace=False)
+
+
 class AddressSerializer(serializers.ModelSerializer):
     recipient = serializers.CharField(source="recipient_name", max_length=150)
     address = serializers.CharField(source="address_line", max_length=300)

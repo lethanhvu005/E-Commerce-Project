@@ -16,6 +16,8 @@ const statusColors = {
 
 export default function AdminDashboardPage() {
   const [data, setData] = useState(null);
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [analyticsError, setAnalyticsError] = useState("");
   const [dailySeries, setDailySeries] = useState([]);
   const [lowStock, setLowStock] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,27 +26,53 @@ export default function AdminDashboardPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
+    setAnalyticsError("");
     try {
-      const [dashboard, inventory, analytics] = await Promise.all([
+      const [dashRes, invRes, anaRes] = await Promise.allSettled([
         adminService.getDashboard(),
         adminService.getInventoryBalances(),
-        adminService.getAnalytics().catch(() => null),
+        adminService.getAnalytics(),
       ]);
+
+      if (dashRes.status !== "fulfilled") {
+        throw dashRes.reason;
+      }
+      const dashboard = dashRes.value;
+      const inventory = invRes.status === "fulfilled" ? invRes.value : [];
       const balances = inventory?.results || inventory || [];
       setData(dashboard);
-      const sortedSeries = [...(analytics?.daily_series || [])].reverse();
-      setDailySeries(sortedSeries);
+
+      if (anaRes.status === "fulfilled" && anaRes.value) {
+        const analytics = anaRes.value;
+        setAnalyticsData(analytics);
+        const sortedSeries = [...(analytics.daily_series || [])].reverse();
+        setDailySeries(sortedSeries);
+      } else {
+        setAnalyticsData(null);
+        setDailySeries([]);
+        if (anaRes.status === "rejected") {
+          setAnalyticsError(
+            anaRes.reason?.message || "Không thể tải chuỗi doanh thu theo ngày."
+          );
+        }
+      }
+
       if (Array.isArray(dashboard?.low_stock_items)) {
         setLowStock(dashboard.low_stock_items);
       } else {
         setLowStock(
           balances
-            .filter((x) => Number(x.available) <= Number(x.low_stock_threshold))
+            .filter(
+              (x) =>
+                Number(x.available) > 0 &&
+                x.low_stock_threshold != null &&
+                Number(x.available) <= Number(x.low_stock_threshold)
+            )
             .slice(0, 6)
         );
       }
     } catch (err) {
-      setError(err.message || "Không thể tải dữ liệu quản trị.");
+      setError(err?.message || "Không thể tải dữ liệu quản trị.");
     } finally {
       setLoading(false);
     }
@@ -55,7 +83,7 @@ export default function AdminDashboardPage() {
   }, [load]);
 
   const maxDayRev = useMemo(
-    () => Math.max(1, ...dailySeries.map((d) => Number(d.revenue || 0))),
+    () => Math.max(1, ...dailySeries.map((d) => Number(d.paid_revenue ?? d.revenue ?? 0))),
     [dailySeries]
   );
 
@@ -102,9 +130,10 @@ export default function AdminDashboardPage() {
 
     const dots = dailySeries.map((d, i) => {
       const x = padX + i * stepX;
-      const ratio = Number(d.revenue || 0) / maxDayRev;
+      const rev = Number(d.paid_revenue ?? d.revenue ?? 0);
+      const ratio = rev / maxDayRev;
       const y = padY + usableH - ratio * usableH;
-      return { x, y, day: String(d.day).slice(5), revenue: d.revenue, orders: d.orders };
+      return { x, y, day: String(d.day).slice(5), revenue: rev, orders: d.orders };
     });
 
     const line = dots.map((p) => `${p.x},${p.y}`).join(" ");
@@ -135,9 +164,15 @@ export default function AdminDashboardPage() {
 
       <div className="admin-kpis">
         <div className="kpi">
-          <small>Doanh thu thực thu</small>
-          <strong>{loading ? "—" : money(data?.revenue)}</strong>
-          <span className="change green">↑ Thanh toán thành công</span>
+          <small>Doanh thu đã thanh toán</small>
+          <strong>
+            {loading ? "—" : money(analyticsData?.paid_revenue ?? data?.paid_revenue ?? data?.revenue)}
+          </strong>
+          <span className="change green">
+            {analyticsData
+              ? `GMV ${money(analyticsData.gross_order_value)} · Hoàn ${money(analyticsData.refund_amount)}`
+              : "↑ Thanh toán thành công"}
+          </span>
           <span className="kpi-icon green">
             <AdminIcon name="revenue" size={18} />
           </span>
@@ -192,7 +227,11 @@ export default function AdminDashboardPage() {
             </Link>
           </div>
 
-          {dailySeries.length > 0 ? (
+          {analyticsError ? (
+            <div className="admin-hero-note admin-error" style={{ marginBottom: 0 }}>
+              ⚠ {analyticsError}
+            </div>
+          ) : dailySeries.length > 0 ? (
             <div className="admin-svg-chart-wrap">
               <svg viewBox="0 0 560 165" className="admin-svg-chart" role="img" aria-label="Biểu đồ doanh thu theo ngày">
                 <defs>
@@ -304,9 +343,25 @@ export default function AdminDashboardPage() {
                     return (
                       <tr key={order.public_id}>
                         <td>
-                          <strong>#{order.order_number}</strong>
+                          <Link
+                            className="text-link"
+                            to={`/admin/orders?q=${encodeURIComponent(order.order_number)}`}
+                          >
+                            <strong>#{order.order_number}</strong>
+                          </Link>
                         </td>
-                        <td>{order.user__email}</td>
+                        <td>
+                          {order.user__email ? (
+                            <Link
+                              className="text-link"
+                              to={`/admin/customers?q=${encodeURIComponent(order.user__email)}`}
+                            >
+                              {order.user__email}
+                            </Link>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
                         <td>{dateTime(order.created_at)}</td>
                         <td>
                           <strong>{money(order.grand_total)}</strong>
@@ -351,9 +406,12 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <b className="admin-lowstock-title">
+                  <Link
+                    className="admin-lowstock-title text-link"
+                    to={`/admin/inventory?q=${encodeURIComponent(item.sku)}`}
+                  >
                     {item.product_name ? `${item.product_name} (${item.sku})` : `SKU: ${item.sku}`}
-                  </b>
+                  </Link>
                   <small className="admin-lowstock-sub">
                     Tồn thực tế: {item.on_hand} · Đang giữ: {item.reserved} · Ngưỡng: {item.low_stock_threshold}
                   </small>

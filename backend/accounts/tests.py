@@ -302,4 +302,77 @@ class AccountAuthApiTests(APITestCase):
                 res_iss = self.client.post("/api/auth/google/", {"access_token": "tok"}, format="json")
             self.assertEqual(res_iss.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_facebook_config_and_login_create_verified_customer(self):
+        from unittest.mock import patch
+        from django.test import override_settings
+
+        profile = {
+            "id": "facebook-user-123",
+            "email": "FacebookUser@example.test",
+            "first_name": "An",
+            "last_name": "Nguyen",
+        }
+        with override_settings(FACEBOOK_APP_ID="facebook-app-123", FACEBOOK_APP_SECRET="secret"):
+            config = self.client.get("/api/auth/facebook/config/")
+            self.assertEqual(config.status_code, status.HTTP_200_OK)
+            self.assertEqual(config.data, {"app_id": "facebook-app-123", "enabled": True})
+
+            with patch("accounts.views.verify_facebook_access_token", return_value=profile):
+                response = self.client.post(
+                    "/api/auth/facebook/",
+                    {"access_token": "facebook-access-token"},
+                    format="json",
+                )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
+        user = User.objects.get(email="facebookuser@example.test")
+        self.assertEqual(user.facebook_sub, "facebook-user-123")
+        self.assertFalse(user.has_usable_password())
+        self.assertIsNotNone(user.email_verified_at)
+
+    def test_facebook_login_rejects_existing_password_account(self):
+        from unittest.mock import patch
+        from django.test import override_settings
+
+        User.objects.create_user("existing@example.test", "Customer!Password123")
+        profile = {
+            "id": "facebook-user-existing",
+            "email": "existing@example.test",
+            "first_name": "Existing",
+            "last_name": "User",
+        }
+        with override_settings(FACEBOOK_APP_ID="facebook-app-123", FACEBOOK_APP_SECRET="secret"):
+            with patch("accounts.views.verify_facebook_access_token", return_value=profile):
+                response = self.client.post(
+                    "/api/auth/facebook/",
+                    {"access_token": "facebook-access-token"},
+                    format="json",
+                )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+
+    def test_facebook_login_works_without_email_permission(self):
+        from unittest.mock import patch
+        from django.test import override_settings
+
+        profile = {
+            "id": "facebook-user-without-email",
+            "first_name": "No",
+            "last_name": "Email",
+        }
+        with override_settings(FACEBOOK_APP_ID="facebook-app-123", FACEBOOK_APP_SECRET="secret"):
+            with patch("accounts.views.verify_facebook_access_token", return_value=profile):
+                response = self.client.post(
+                    "/api/auth/facebook/",
+                    {"access_token": "facebook-access-token"},
+                    format="json",
+                )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        user = User.objects.get(facebook_sub="facebook-user-without-email")
+        self.assertEqual(user.email, "facebook-facebook-user-without-email@users.nexa.invalid")
+        self.assertIsNone(user.email_verified_at)
+
 

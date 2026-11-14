@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { AdminIcon } from "./AdminIcons";
 import "../../admin-react.css";
@@ -14,15 +14,32 @@ const items = [
   ["promotions", "promotions", "Ưu đãi"],
   ["reviews", "reviews", "Đánh giá"],
   ["support", "support", "Hỗ trợ"],
-  ["settings", "settings", "Cài đặt"],
+  ["settings", "settings", "Nhật ký & Sự kiện"],
 ];
+
+const SEARCHABLE_ADMIN_PATHS = new Set([
+  "/admin/products",
+  "/admin/orders",
+  "/admin/inventory",
+  "/admin/customers",
+  "/admin/promotions",
+  "/admin/reviews",
+  "/admin/support",
+  "/admin/settings",
+]);
 
 export default function AdminLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem("nexa_theme") || "light");
-  const [topSearch, setTopSearch] = useState("");
+  const [topSearch, setTopSearch] = useState(() => searchParams.get("q") || "");
+
+  useEffect(() => {
+    setTopSearch(searchParams.get("q") || "");
+  }, [searchParams]);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -47,9 +64,21 @@ export default function AdminLayout() {
   const handleTopSearch = (e) => {
     e.preventDefault();
     const q = topSearch.trim();
+    if (SEARCHABLE_ADMIN_PATHS.has(location.pathname)) {
+      const next = new URLSearchParams(searchParams);
+      if (q) next.set("q", q);
+      else next.delete("q");
+      next.delete("page");
+      next.delete("audit_page");
+      next.delete("outbox_page");
+      setSearchParams(next);
+      return;
+    }
     const querySuffix = q ? `?q=${encodeURIComponent(q)}` : "";
     if (q.toUpperCase().startsWith("NX-")) {
       navigate(`/admin/orders${querySuffix}`);
+    } else if (q.includes("@")) {
+      navigate(`/admin/customers${querySuffix}`);
     } else {
       navigate(`/admin/products${querySuffix}`);
     }

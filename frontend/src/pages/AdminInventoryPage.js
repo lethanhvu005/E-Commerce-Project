@@ -1,22 +1,32 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { adminService } from "../api/client";
 import { dateTime, productImage } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import { ErrorBox, Loading, Toast } from "../components/Feedback";
 import { AdminIcon } from "../components/admin/AdminIcons";
 
+const VALID_TABS = new Set(["balances", "movements", "audit"]);
+
 export default function AdminInventoryPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const urlQuery = searchParams.get("q") || "";
+  const rawTab = searchParams.get("tab") || "balances";
+  const activeTab = VALID_TABS.has(rawTab) ? rawTab : "balances";
+  const page = Math.max(1, Number.parseInt(searchParams.get("page") || "1", 10) || 1);
 
   const [balances, setBalances] = useState([]);
+  const [balancesCount, setBalancesCount] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
   const [summary, setSummary] = useState(null);
   const [movements, setMovements] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [movementsError, setMovementsError] = useState(null);
   const [auditError, setAuditError] = useState(null);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(urlQuery);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [toastMsg, setToastMsg] = useState("");
@@ -28,23 +38,49 @@ export default function AdminInventoryPage() {
   const [adjustmentKey, setAdjustmentKey] = useState(null);
   const [adjusting, setAdjusting] = useState(false);
 
-  const [activeTab, setActiveTab] = useState("balances");
+  const updateParams = useCallback(
+    (patch, replace = false) => {
+      const next = new URLSearchParams(searchParams);
+      Object.entries(patch).forEach(([k, v]) => {
+        if (
+          v === undefined ||
+          v === null ||
+          v === "" ||
+          (k === "tab" && v === "balances") ||
+          (k === "page" && Number(v) <= 1)
+        ) {
+          next.delete(k);
+        } else {
+          next.set(k, String(v));
+        }
+      });
+      setSearchParams(next, { replace });
+    },
+    [searchParams, setSearchParams]
+  );
 
-  const loadAdminData = async () => {
+  useEffect(() => {
+    setSearch(urlQuery);
+  }, [urlQuery]);
+
+  const loadAdminData = useCallback(async () => {
     setLoading(true);
     setError(null);
     setMovementsError(null);
     setAuditError(null);
     try {
       const [balOutcome, movOutcome, audOutcome] = await Promise.allSettled([
-        adminService.getInventoryBalances(),
-        adminService.getInventoryMovements(),
-        adminService.getAuditLogs(),
+        adminService.getInventoryBalances({ page, ...(urlQuery ? { q: urlQuery } : {}) }),
+        adminService.getInventoryMovements({ ...(urlQuery ? { q: urlQuery } : {}) }),
+        adminService.getAuditLogs({ ...(urlQuery ? { q: urlQuery } : {}) }),
       ]);
 
       if (balOutcome.status === "fulfilled") {
         const balRes = balOutcome.value;
-        setBalances(balRes.results || balRes || []);
+        const rows = balRes.results || balRes || [];
+        setBalances(rows);
+        setBalancesCount(typeof balRes.count === "number" ? balRes.count : rows.length);
+        setHasNextPage(Boolean(balRes.next));
         setSummary(balRes.summary || null);
       } else {
         setError(balOutcome.reason);
@@ -70,7 +106,7 @@ export default function AdminInventoryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, urlQuery]);
 
   useEffect(() => {
     if (!user) {
@@ -87,7 +123,16 @@ export default function AdminInventoryPage() {
       return;
     }
     loadAdminData();
-  }, [user, navigate]);
+  }, [user, navigate, loadAdminData]);
+
+  useEffect(() => {
+    const normalized = search.trim();
+    if (normalized === urlQuery) return undefined;
+    const timer = setTimeout(() => {
+      updateParams({ q: normalized, page: 1 }, true);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [search, urlQuery, updateParams]);
 
   const handleAdjustStock = async (e) => {
     e.preventDefault();
@@ -158,7 +203,7 @@ export default function AdminInventoryPage() {
         </button>
       </div>
 
-      {error && <ErrorBox error={error} />}
+      {error && <ErrorBox error={error} onRetry={loadAdminData} />}
 
       <div className="admin-kpis">
         <div className="kpi">
@@ -203,21 +248,21 @@ export default function AdminInventoryPage() {
           <button
             type="button"
             className={`admin-tab${activeTab === "balances" ? " active" : ""}`}
-            onClick={() => setActiveTab("balances")}
+            onClick={() => updateParams({ tab: "balances", page: 1 })}
           >
-            Danh sách tồn kho theo SKU ({balances.length})
+            Danh sách tồn kho theo SKU ({balancesCount || balances.length})
           </button>
           <button
             type="button"
             className={`admin-tab${activeTab === "movements" ? " active" : ""}`}
-            onClick={() => setActiveTab("movements")}
+            onClick={() => updateParams({ tab: "movements" })}
           >
             Lịch sử biến động kho ({movements.length})
           </button>
           <button
             type="button"
             className={`admin-tab${activeTab === "audit" ? " active" : ""}`}
-            onClick={() => setActiveTab("audit")}
+            onClick={() => updateParams({ tab: "audit" })}
           >
             Nhật ký Audit ({auditLogs.length})
           </button>
@@ -228,12 +273,12 @@ export default function AdminInventoryPage() {
             <div className="admin-toolbar">
               <input
                 className="field"
-                placeholder="Tìm mã SKU..."
+                placeholder="Tìm mã SKU hoặc tên sản phẩm..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
               <span style={{ fontSize: "11.5px", color: "#78869d" }}>
-                Hiển thị {filteredBalances.length} / {balances.length} mã SKU
+                Hiển thị {filteredBalances.length} / {balancesCount || balances.length} mã SKU
               </span>
             </div>
 
@@ -314,6 +359,17 @@ export default function AdminInventoryPage() {
                     })}
                   </tbody>
                 </table>
+              </div>
+            )}
+            {(page > 1 || hasNextPage) && (
+              <div className="admin-pagination">
+                <button disabled={page <= 1} onClick={() => updateParams({ page: page - 1 })}>
+                  ← Trước
+                </button>
+                <span>Trang {page}</span>
+                <button disabled={!hasNextPage} onClick={() => updateParams({ page: page + 1 })}>
+                  Sau →
+                </button>
               </div>
             )}
           </>

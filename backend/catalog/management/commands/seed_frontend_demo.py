@@ -387,6 +387,7 @@ class Command(BaseCommand):
                 ("accounts", "change_user"),
                 ("operations", "view_auditlog"),
                 ("operations", "view_outboxevent"),
+                ("operations", "change_outboxevent"),
             ],
         }
 

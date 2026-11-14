@@ -4,9 +4,16 @@ from .models import Brand, Category, Collection, HomeBanner, Product, ProductFea
 
 
 class CategorySerializer(serializers.ModelSerializer):
+    product_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Category
-        fields = ["id", "name", "code", "slug", "image_key", "sort_order"]
+        fields = ["id", "name", "code", "slug", "image_key", "sort_order", "product_count"]
+
+    def get_product_count(self, obj):
+        if hasattr(obj, "product_count"):
+            return obj.product_count
+        return obj.products.filter(status=Product.Status.ACTIVE, brand__is_active=True).count()
 
 
 class BrandSerializer(serializers.ModelSerializer):

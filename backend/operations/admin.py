@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import AuditLog, OutboxEvent
+from .models import AuditLog, OutboxDeliveryReceipt, OutboxEvent
 
 
 class ImmutableOperationsAdmin(admin.ModelAdmin):
@@ -26,4 +26,10 @@ class AuditLogAdmin(ImmutableOperationsAdmin):
 @admin.register(OutboxEvent)
 class OutboxEventAdmin(ImmutableOperationsAdmin):
     list_display = ("topic", "aggregate_id", "processed_at", "created_at")
+    list_filter = ("topic",)
+
+
+@admin.register(OutboxDeliveryReceipt)
+class OutboxDeliveryReceiptAdmin(ImmutableOperationsAdmin):
+    list_display = ("event_key", "topic", "destination", "delivered_at")
     list_filter = ("topic",)

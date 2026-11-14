@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { adminService } from "../api/client";
 import { dateTime, money, orderStatusLabel, productImage } from "../api/format";
+import { useAuth } from "../auth/AuthContext";
 import { AdminIcon } from "../components/admin/AdminIcons";
+import {
+  CustomerDetailModal,
+  CustomerStatusModal,
+  QuestionModerationModal,
+  RejectReasonModal,
+  VoucherModal,
+} from "../components/admin/AdminModals";
+import { ErrorBox } from "../components/Feedback";
 
 const MODERATION_LABELS = {
   published: "Đã duyệt",
@@ -11,12 +20,18 @@ const MODERATION_LABELS = {
 };
 
 const OUTBOX_STATUS_LABELS = {
-  logged: "Đã ghi nhật ký",
-  sent: "Đã gửi",
   pending: "Chờ xử lý",
   processing: "Đang xử lý",
+  sent: "Đã gửi",
   failed: "Lỗi gửi",
 };
+
+function hasPerm(user, perm) {
+  if (!user) return false;
+  if (user.is_superuser) return true;
+  if (!user.is_staff) return false;
+  return Array.isArray(user.permissions) && user.permissions.includes(perm);
+}
 
 function moderationLabel(status) {
   return MODERATION_LABELS[status] || status;
@@ -41,7 +56,41 @@ const NEXT_ORDER_STATUS_OPTIONS = {
   expired: [],
 };
 
-const configs = {
+const STATUS_FILTERS = {
+  orders: [
+    ["", "Tất cả"],
+    ["pending", "Chờ xác nhận"],
+    ["confirmed", "Đã xác nhận"],
+    ["packing", "Đang đóng gói"],
+    ["shipped", "Đang giao"],
+    ["delivered", "Đã giao"],
+    ["cancelled", "Đã hủy"],
+  ],
+  customers: [
+    ["", "Tất cả"],
+    ["active", "Đang hoạt động"],
+    ["locked", "Đang khóa"],
+  ],
+  promotions: [
+    ["", "Tất cả"],
+    ["active", "Đang chạy"],
+    ["inactive", "Đang tắt"],
+  ],
+  reviews: [
+    ["", "Tất cả"],
+    ["pending", "Chờ duyệt"],
+    ["published", "Đã duyệt"],
+    ["rejected", "Từ chối"],
+  ],
+  support: [
+    ["", "Tất cả"],
+    ["pending", "Chờ duyệt"],
+    ["published", "Đã duyệt"],
+    ["rejected", "Từ chối"],
+  ],
+};
+
+const CONFIGS = {
   orders: [
     "Quản lý đơn hàng",
     "Dữ liệu đơn hàng truy vấn trực tiếp từ bảng orders trong PostgreSQL.",
@@ -49,118 +98,432 @@ const configs = {
   ],
   customers: [
     "Quản lý khách hàng",
-    "Danh sách người dùng và tổng chi tiêu hợp lệ truy vấn trực tiếp từ bảng users & orders.",
-    ["Khách hàng", "Vai trò", "Đơn hàng hợp lệ", "Tổng chi", "Trạng thái"],
+    "Danh sách người dùng, tổng thanh toán hợp lệ và điều khiển khóa/mở tài khoản.",
+    ["Khách hàng", "Vai trò", "Đơn hợp lệ", "Đã thanh toán / GMV", "Trạng thái", "Thao tác"],
   ],
   promotions: [
     "Mã giảm giá & chương trình",
-    "Dữ liệu ưu đãi truy vấn trực tiếp từ bảng vouchers & voucher_redemptions.",
-    ["Mã", "Loại ưu đãi", "Mức giảm", "Lượt dùng", "Trạng thái"],
+    "Quản lý vòng đời mã giảm giá từ bảng vouchers & voucher_redemptions.",
+    ["Mã", "Loại ưu đãi", "Mức giảm", "Lượt dùng", "Hiệu lực", "Trạng thái", "Thao tác"],
   ],
   reviews: [
     "Kiểm duyệt đánh giá",
-    "Dữ liệu đánh giá truy vấn trực tiếp từ bảng reviews trong PostgreSQL.",
-    ["Khách hàng", "Sản phẩm", "Số sao", "Nội dung", "Trạng thái"],
+    "Duyệt hoặc từ chối đánh giá sản phẩm trước khi hiển thị công khai.",
+    ["Khách hàng", "Sản phẩm", "Số sao", "Nội dung", "Trạng thái", "Thao tác"],
   ],
   support: [
     "Hỏi đáp & Chăm sóc khách hàng",
-    "Dữ liệu câu hỏi kỹ thuật truy vấn trực tiếp từ bảng product_questions & product_answers.",
-    ["Mã", "Khách hàng", "Sản phẩm", "Nội dung câu hỏi", "Phản hồi", "Trạng thái"],
-  ],
-  settings: [
-    "Nhật ký kiểm toán & Sự kiện Outbox",
-    "Dữ liệu truy vấn trực tiếp từ bảng audit_logs và outbox_events trong PostgreSQL.",
-    ["Thời gian", "Tác nhân / Topic", "Đối tượng", "Chi tiết", "Trạng thái"],
+    "Kiểm duyệt câu hỏi kỹ thuật và gửi phản hồi chính thức từ nhân viên NEXA.",
+    ["Mã", "Khách hàng", "Sản phẩm", "Nội dung câu hỏi", "Phản hồi", "Trạng thái", "Thao tác"],
   ],
 };
 
-export function AdminUnavailablePage({ type }) {
-  const [title, description, headers] = configs[type] || configs.orders;
-  const [searchParams] = useSearchParams();
+function AdminSettingsLogsPanel() {
+  const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") === "outbox" ? "outbox" : "audit";
   const urlQuery = searchParams.get("q") || "";
-  const [rows, setRows] = useState([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const outboxStatus = searchParams.get("status") || "";
+  const auditPage = Math.max(1, Number.parseInt(searchParams.get("audit_page") || "1", 10) || 1);
+  const outboxPage = Math.max(1, Number.parseInt(searchParams.get("outbox_page") || "1", 10) || 1);
+  const currentPage = activeTab === "outbox" ? outboxPage : auditPage;
+
   const [search, setSearch] = useState(urlQuery);
-  const [debouncedSearch, setDebouncedSearch] = useState(urlQuery.trim());
+  const [rows, setRows] = useState([]);
+  const [count, setCount] = useState(0);
+  const [hasNext, setHasNext] = useState(false);
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [errorObj, setErrorObj] = useState(null);
+  const [notice, setNotice] = useState("");
+  const [retryingId, setRetryingId] = useState(null);
+
+  const canRetryOutbox = hasPerm(user, "operations.change_outboxevent");
+
+  const updateParams = useCallback(
+    (patch, replace = false) => {
+      const next = new URLSearchParams(searchParams);
+      Object.entries(patch).forEach(([key, val]) => {
+        if (
+          val === undefined ||
+          val === null ||
+          val === "" ||
+          (key === "tab" && val === "audit") ||
+          ((key === "audit_page" || key === "outbox_page") && Number(val) <= 1)
+        ) {
+          next.delete(key);
+        } else {
+          next.set(key, String(val));
+        }
+      });
+      setSearchParams(next, { replace });
+    },
+    [searchParams, setSearchParams]
+  );
 
   useEffect(() => {
-    setPage(1);
     setSearch(urlQuery);
-    setDebouncedSearch(urlQuery.trim());
+  }, [urlQuery]);
+
+  useEffect(() => {
+    const normalized = search.trim();
+    if (normalized === urlQuery) return undefined;
+    const timer = setTimeout(() => {
+      updateParams(
+        {
+          q: normalized,
+          ...(activeTab === "outbox" ? { outbox_page: 1 } : { audit_page: 1 }),
+        },
+        true
+      );
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [search, urlQuery, activeTab, updateParams]);
+
+  const loadTab = useCallback(async () => {
+    setLoading(true);
+    setErrorObj(null);
+    try {
+      if (activeTab === "outbox") {
+        const res = await adminService.getOutboxEvents({
+          page: outboxPage,
+          ...(urlQuery ? { q: urlQuery } : {}),
+          ...(outboxStatus ? { status: outboxStatus } : {}),
+        });
+        const list = res?.results || [];
+        setRows(list);
+        setCount(typeof res?.count === "number" ? res.count : list.length);
+        setHasNext(Boolean(res?.next));
+        setSummary(res?.summary || null);
+      } else {
+        const res = await adminService.getAuditLogs({
+          page: auditPage,
+          ...(urlQuery ? { q: urlQuery } : {}),
+        });
+        const list = res?.results || [];
+        setRows(list);
+        setCount(typeof res?.count === "number" ? res.count : list.length);
+        setHasNext(Boolean(res?.next));
+      }
+    } catch (err) {
+      setRows([]);
+      setErrorObj(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeTab, auditPage, outboxPage, urlQuery, outboxStatus]);
+
+  useEffect(() => {
+    loadTab();
+  }, [loadTab]);
+
+  const handleRetryEvent = async (row) => {
+    setRetryingId(row.id);
+    setNotice("");
+    setErrorObj(null);
+    try {
+      await adminService.retryOutboxEvent(row.id);
+      setNotice(`Đã đưa sự kiện #${row.id} (${row.topic}) vào hàng đợi gửi lại.`);
+      await loadTab();
+    } catch (err) {
+      setErrorObj(err);
+    } finally {
+      setRetryingId(null);
+    }
+  };
+
+  const pageParamKey = activeTab === "outbox" ? "outbox_page" : "audit_page";
+  const totalPages = Math.max(1, Math.ceil(count / 50));
+
+  return (
+    <>
+      <div className="admin-intro">
+        <div>
+          <h1>Nhật ký & Sự kiện hệ thống</h1>
+          <p>Theo dõi độc lập nhật ký kiểm toán thao tác (Audit Logs) và hàng đợi Outbox Events trong PostgreSQL.</p>
+        </div>
+        <button className="admin-select admin-refresh-btn" onClick={loadTab}>
+          <AdminIcon name="refresh" size={14} />
+          <span>Làm mới từ Database</span>
+        </button>
+      </div>
+
+      {notice && <div className="admin-hero-note">✓ {notice}</div>}
+
+      {errorObj && (
+        errorObj.status === 404 && currentPage > 1 ? (
+          <div className="admin-hero-note admin-error" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <span>⚠ Trang {currentPage} vượt quá số trang hiện có.</span>
+            <button type="button" className="btn btn-quiet" onClick={() => updateParams({ [pageParamKey]: 1 })}>
+              Về trang 1
+            </button>
+          </div>
+        ) : (
+          <ErrorBox error={errorObj} onRetry={loadTab} variant="inline" />
+        )
+      )}
+
+      <div className="admin-panel">
+        <div className="admin-tabs">
+          <button
+            type="button"
+            className={`admin-tab${activeTab === "audit" ? " active" : ""}`}
+            onClick={() => updateParams({ tab: "audit" })}
+          >
+            Nhật ký Audit Logs
+          </button>
+          <button
+            type="button"
+            className={`admin-tab${activeTab === "outbox" ? " active" : ""}`}
+            onClick={() => updateParams({ tab: "outbox" })}
+          >
+            Hàng đợi Outbox Events
+          </button>
+        </div>
+
+        {activeTab === "outbox" && summary && (
+          <div className="admin-summary-pills">
+            {["pending", "processing", "sent", "failed"].map((st) => (
+              <span key={st} className={`pill ${st === "failed" ? "red" : st === "sent" ? "green" : st === "processing" ? "yellow" : "blue"}`}>
+                {OUTBOX_STATUS_LABELS[st] || st}: {summary[st] ?? 0}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="admin-toolbar">
+          <input
+            className="field"
+            placeholder={
+              activeTab === "outbox"
+                ? "Tìm theo topic, aggregate_id hoặc trạng thái..."
+                : "Tìm theo hành động, đối tượng hoặc email tác nhân..."
+            }
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {activeTab === "outbox" && (
+            <select
+              className="select"
+              aria-label="Lọc trạng thái Outbox"
+              value={outboxStatus}
+              onChange={(e) => updateParams({ status: e.target.value, outbox_page: 1 })}
+            >
+              <option value="">Tất cả trạng thái</option>
+              <option value="pending">Chờ xử lý</option>
+              <option value="processing">Đang xử lý</option>
+              <option value="sent">Đã gửi</option>
+              <option value="failed">Lỗi gửi (failed)</option>
+            </select>
+          )}
+          <span style={{ fontSize: "12px", color: "var(--muted)", whiteSpace: "nowrap" }}>
+            Tổng: {count} bản ghi
+          </span>
+        </div>
+
+        <div className="admin-table-wrap">
+          {activeTab === "audit" ? (
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Thời gian</th>
+                  <th>Tác nhân</th>
+                  <th>Hành động</th>
+                  <th>Đối tượng</th>
+                  <th>Chi tiết thay đổi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={5} className="admin-empty">Đang truy vấn Audit Logs...</td></tr>
+                ) : rows.length === 0 ? (
+                  <tr><td colSpan={5} className="admin-empty">Không có nhật ký phù hợp.</td></tr>
+                ) : (
+                  rows.map((row) => (
+                    <tr key={row.id}>
+                      <td>{dateTime(row.created_at)}</td>
+                      <td><strong>{row.actor_email || "system"}</strong></td>
+                      <td><span className="pill blue">{row.action}</span></td>
+                      <td>{row.entity_type} #{row.entity_id}</td>
+                      <td><small>{JSON.stringify(row.changes || {})}</small></td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          ) : (
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Thời gian</th>
+                  <th>Topic</th>
+                  <th>Aggregate</th>
+                  <th>Lần thử / Lỗi</th>
+                  <th>Trạng thái</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={6} className="admin-empty">Đang truy vấn Outbox Events...</td></tr>
+                ) : rows.length === 0 ? (
+                  <tr><td colSpan={6} className="admin-empty">Không có sự kiện Outbox phù hợp.</td></tr>
+                ) : (
+                  rows.map((row) => (
+                    <tr key={row.id}>
+                      <td>{dateTime(row.created_at)}</td>
+                      <td><strong>{row.topic}</strong></td>
+                      <td>{row.aggregate_id}</td>
+                      <td>
+                        {row.attempts} lần
+                        {row.last_error_code && (
+                          <small style={{ display: "block", color: "#c63f58" }}>{row.last_error_code}</small>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`pill ${row.status === "sent" ? "green" : row.status === "failed" ? "red" : row.status === "processing" ? "yellow" : "blue"}`}>
+                          {OUTBOX_STATUS_LABELS[row.status] || row.status}
+                        </span>
+                      </td>
+                      <td>
+                        {row.status === "failed" ? (
+                          canRetryOutbox ? (
+                            <button
+                              type="button"
+                              className="admin-select"
+                              disabled={retryingId === row.id}
+                              onClick={() => handleRetryEvent(row)}
+                            >
+                              {retryingId === row.id ? "Đang gửi lại..." : "Thử gửi lại"}
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: "11.5px", color: "var(--muted)" }}>Không đủ quyền</span>
+                          )
+                        ) : (
+                          <span style={{ fontSize: "11.5px", color: "var(--muted)" }}>—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {(currentPage > 1 || hasNext) && (
+          <div className="admin-pagination">
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => updateParams({ [pageParamKey]: currentPage - 1 })}
+            >
+              ← Trước
+            </button>
+            <span>Trang {currentPage} / {totalPages}</span>
+            <button
+              type="button"
+              disabled={!hasNext}
+              onClick={() => updateParams({ [pageParamKey]: currentPage + 1 })}
+            >
+              Sau →
+            </button>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+export function AdminUnavailablePage({ type }) {
+  const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  if (type === "settings") {
+    return <AdminSettingsLogsPanel />;
+  }
+
+  return <AdminEntityModule type={type} user={user} searchParams={searchParams} setSearchParams={setSearchParams} />;
+}
+
+function AdminEntityModule({ type, user, searchParams, setSearchParams }) {
+  const [title, description, headers] = CONFIGS[type] || CONFIGS.orders;
+  const urlQuery = searchParams.get("q") || "";
+  const urlStatus = searchParams.get("status") || "";
+  const page = Math.max(1, Number.parseInt(searchParams.get("page") || "1", 10) || 1);
+
+  const [rows, setRows] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasNext, setHasNext] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [errorObj, setErrorObj] = useState(null);
+  const [notice, setNotice] = useState("");
+  const [search, setSearch] = useState(urlQuery);
+
+  // Module modal states
+  const [voucherModalTarget, setVoucherModalTarget] = useState(null);
+  const [showVoucherCreate, setShowVoucherCreate] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState(null);
+  const [customerDetailId, setCustomerDetailId] = useState(null);
+  const [customerStatusTarget, setCustomerStatusTarget] = useState(null);
+  const [questionDetailTarget, setQuestionDetailTarget] = useState(null);
+
+  const updateParams = useCallback(
+    (patch, replace = false) => {
+      const next = new URLSearchParams(searchParams);
+      Object.entries(patch).forEach(([key, val]) => {
+        if (val === undefined || val === null || val === "" || (key === "page" && Number(val) <= 1)) {
+          next.delete(key);
+        } else {
+          next.set(key, String(val));
+        }
+      });
+      setSearchParams(next, { replace });
+    },
+    [searchParams, setSearchParams]
+  );
+
+  useEffect(() => {
+    setSearch(urlQuery);
   }, [type, urlQuery]);
 
   useEffect(() => {
+    const normalized = search.trim();
+    if (normalized === urlQuery) return undefined;
     const timer = setTimeout(() => {
-      setDebouncedSearch(search.trim());
-    }, 300);
+      updateParams({ q: normalized, page: 1 }, true);
+    }, 250);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, urlQuery, updateParams]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    setError("");
+    setErrorObj(null);
     try {
-      const params = { q: debouncedSearch, page };
+      const params = {
+        page,
+        ...(urlQuery ? { q: urlQuery } : {}),
+        ...(urlStatus ? { status: urlStatus } : {}),
+      };
       let res;
       if (type === "orders") res = await adminService.getOrders(params);
       else if (type === "customers") res = await adminService.getCustomers(params);
       else if (type === "promotions") res = await adminService.getPromotions(params);
       else if (type === "reviews") res = await adminService.getReviews(params);
       else if (type === "support") res = await adminService.getQuestions(params);
-      else if (type === "settings") {
-        const safeFetch = (fn) =>
-          fn(params).catch((err) => {
-            if (err && err.status === 404 && page > 1) {
-              return { count: 0, results: [] };
-            }
-            throw err;
-          });
-        const [audits, outbox] = await Promise.all([
-          safeFetch(adminService.getAuditLogs),
-          safeFetch(adminService.getOutboxEvents),
-        ]);
-        const auditList = (audits?.results || audits || []).map((a) => ({
-          id: `audit-${a.id}`,
-          time: a.created_at,
-          actor: a.actor_email || "system",
-          entity: `${a.entity_type} #${a.entity_id}`,
-          detail: a.action,
-          status: "logged",
-        }));
-        const outboxList = (outbox?.results || outbox || []).map((e) => ({
-          id: `outbox-${e.id}`,
-          time: e.created_at,
-          actor: e.topic,
-          entity: e.aggregate_id,
-          detail: `Outbox (${e.attempts} lần thử)`,
-          status: e.status,
-        }));
-        const merged = [...auditList, ...outboxList].sort(
-          (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
-        );
-        const auditTotal = audits?.count ?? auditList.length;
-        const outboxTotal = outbox?.count ?? outboxList.length;
-        setRows(merged);
-        setTotalCount(auditTotal + outboxTotal);
-        setTotalPages(Math.max(1, Math.ceil(Math.max(auditTotal, outboxTotal) / 50)));
-        setLoading(false);
-        return;
-      }
+
       const list = res?.results || res || [];
-      const countVal = res?.count ?? list.length;
+      const countVal = typeof res?.count === "number" ? res.count : list.length;
       setRows(list);
       setTotalCount(countVal);
-      setTotalPages(Math.max(1, Math.ceil(countVal / 20)));
+      setHasNext(Boolean(res?.next));
     } catch (err) {
-      setError(err.message || "Không thể tải dữ liệu từ database.");
+      setRows([]);
+      setErrorObj(err);
     } finally {
       setLoading(false);
     }
-  }, [type, debouncedSearch, page]);
+  }, [type, urlQuery, urlStatus, page]);
 
   useEffect(() => {
     loadData();
@@ -168,30 +531,90 @@ export function AdminUnavailablePage({ type }) {
 
   const handleOrderStatusTransition = async (order, nextStatus) => {
     if (!nextStatus) return;
-    setError("");
+    setErrorObj(null);
+    setNotice("");
     try {
       await adminService.updateOrderStatus(order.public_id, {
         status: nextStatus,
         reason: `Cập nhật từ cổng Admin sang ${nextStatus}`,
         confirm_cod_payment: nextStatus === "delivered",
       });
+      setNotice(`Đã chuyển đơn #${order.order_number} sang ${orderStatusLabel(nextStatus)}.`);
       await loadData();
     } catch (err) {
-      setError(err.message || "Không thể chuyển trạng thái đơn hàng.");
+      setErrorObj(err);
     }
   };
 
   const handleConfirmPayment = async (order) => {
-    setError("");
+    setErrorObj(null);
+    setNotice("");
     try {
       await adminService.confirmOrderPayment(order.public_id, {
         provider_reference: `COD-${order.order_number}`,
       });
+      setNotice(`Đã xác nhận thu COD cho đơn #${order.order_number}.`);
       await loadData();
     } catch (err) {
-      setError(err.message || "Không thể xác nhận thanh toán.");
+      setErrorObj(err);
     }
   };
+
+  const handleReleaseExpired = async () => {
+    setErrorObj(null);
+    setNotice("");
+    try {
+      const res = await adminService.releaseExpiredReservations();
+      setNotice(`Đã giải phóng ${res?.released_count ?? 0} giữ chỗ đơn hàng hết hạn.`);
+      await loadData();
+    } catch (err) {
+      setErrorObj(err);
+    }
+  };
+
+  const handleToggleVoucher = async (row) => {
+    setErrorObj(null);
+    setNotice("");
+    try {
+      await adminService.setPromotionStatus(row.id, !row.is_active);
+      setNotice(`Đã ${row.is_active ? "tắt" : "kích hoạt"} mã ${row.code}.`);
+      await loadData();
+    } catch (err) {
+      setErrorObj(err);
+    }
+  };
+
+  const handleQuickApprove = async (kind, row) => {
+    setErrorObj(null);
+    setNotice("");
+    try {
+      await adminService.moderateItem(kind, row.id, { status: "published", reason: "" });
+      setNotice(`Đã duyệt ${kind === "reviews" ? "đánh giá" : "câu hỏi"} #${row.id}.`);
+      await loadData();
+    } catch (err) {
+      setErrorObj(err);
+    }
+  };
+
+  const handleConfirmReject = async (target, reason) => {
+    await adminService.moderateItem(target.kind, target.row.id, { status: "rejected", reason });
+    setNotice(`Đã từ chối ${target.kind === "reviews" ? "đánh giá" : "câu hỏi"} #${target.row.id}.`);
+    await loadData();
+  };
+
+  const statusFilterOptions = STATUS_FILTERS[type] || [];
+  const canChangeOrder = hasPerm(user, "orders.change_order");
+  const canConfirmPay = hasPerm(user, "payments.change_payment");
+  const canReleaseExpired = hasPerm(user, "inventory.change_inventorybalance");
+  const canAddVoucher = hasPerm(user, "promotions.add_voucher");
+  const canChangeVoucher = hasPerm(user, "promotions.change_voucher");
+  const canViewCustomerOrders = hasPerm(user, "orders.view_order");
+  const canChangeCustomer = hasPerm(user, "accounts.change_user");
+  const canModerateReview = hasPerm(user, "community.change_review");
+  const canModerateQuestion = hasPerm(user, "community.change_productquestion");
+  const canModerateAnswer = hasPerm(user, "community.change_productanswer");
+  const canReplyQuestion = hasPerm(user, "community.add_productanswer");
+  const totalPages = Math.max(1, Math.ceil(totalCount / 20));
 
   return (
     <>
@@ -200,31 +623,73 @@ export function AdminUnavailablePage({ type }) {
           <h1>{title}</h1>
           <p>{description}</p>
         </div>
-        <button className="admin-select admin-refresh-btn" onClick={loadData}>
-          <AdminIcon name="refresh" size={14} />
-          <span>Làm mới từ Database</span>
-        </button>
-      </div>
-      {error && (
-        <div className="admin-hero-note admin-error">
-          ⚠ <strong>Lỗi tải dữ liệu:</strong> {error}
+        <div className="admin-intro-actions">
+          {type === "promotions" && canAddVoucher && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+              onClick={() => setShowVoucherCreate(true)}
+            >
+              <AdminIcon name="plus" size={15} />
+              <span>Tạo voucher</span>
+            </button>
+          )}
+          {type === "orders" && canReleaseExpired && (
+            <button type="button" className="admin-select" onClick={handleReleaseExpired}>
+              Giải phóng giữ chỗ hết hạn
+            </button>
+          )}
+          <button className="admin-select admin-refresh-btn" onClick={loadData}>
+            <AdminIcon name="refresh" size={14} />
+            <span>Làm mới từ Database</span>
+          </button>
         </div>
+      </div>
+
+      {notice && <div className="admin-hero-note">✓ {notice}</div>}
+
+      {errorObj && (
+        errorObj.status === 404 && page > 1 ? (
+          <div className="admin-hero-note admin-error" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <span>⚠ Trang {page} không tồn tại.</span>
+            <button type="button" className="btn btn-quiet" onClick={() => updateParams({ page: 1 })}>
+              Về trang 1
+            </button>
+          </div>
+        ) : (
+          <ErrorBox error={errorObj} onRetry={loadData} variant="inline" />
+        )
       )}
+
       <div className="admin-panel">
+        {statusFilterOptions.length > 0 && (
+          <div className="admin-tabs">
+            {statusFilterOptions.map(([val, label]) => (
+              <button
+                key={label}
+                type="button"
+                className={`admin-tab${urlStatus === val ? " active" : ""}`}
+                onClick={() => updateParams({ status: val, page: 1 })}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="admin-toolbar">
           <input
             className="field"
             placeholder="⌕ Tìm kiếm trong bảng..."
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
           />
           <span style={{ fontSize: "12px", color: "var(--muted)", whiteSpace: "nowrap" }}>
             Tổng: {totalCount} bản ghi
           </span>
         </div>
+
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
@@ -268,7 +733,15 @@ export function AdminUnavailablePage({ type }) {
                         </td>
                         <td>
                           <strong>{row.customer_name}</strong>
-                          <small style={{ display: "block", color: "var(--muted)" }}>{row.customer_email}</small>
+                          {row.customer_email && (
+                            <Link
+                              className="text-link"
+                              to={`/admin/customers?q=${encodeURIComponent(row.customer_email)}`}
+                              style={{ display: "block", fontSize: 12 }}
+                            >
+                              {row.customer_email}
+                            </Link>
+                          )}
                         </td>
                         <td>{dateTime(row.created_at)}</td>
                         <td>{row.items_count}</td>
@@ -281,7 +754,7 @@ export function AdminUnavailablePage({ type }) {
                         </td>
                         <td>
                           <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
-                            {nextActions.length > 0 ? (
+                            {canChangeOrder && nextActions.length > 0 ? (
                               <select
                                 className="select"
                                 defaultValue=""
@@ -290,19 +763,17 @@ export function AdminUnavailablePage({ type }) {
                                   e.target.value = "";
                                 }}
                               >
-                                <option value="" disabled>
-                                  Chuyển trạng thái...
-                                </option>
+                                <option value="" disabled>Chuyển trạng thái...</option>
                                 {nextActions.map(([val, label]) => (
-                                  <option key={val} value={val}>
-                                    {label}
-                                  </option>
+                                  <option key={val} value={val}>{label}</option>
                                 ))}
                               </select>
                             ) : (
-                              <span style={{ fontSize: "11.5px", color: "var(--muted)" }}>Hoàn tất</span>
+                              <span style={{ fontSize: "11.5px", color: "var(--muted)" }}>
+                                {nextActions.length ? "Chỉ xem" : "Hoàn tất"}
+                              </span>
                             )}
-                            {row.payment_status === "pending" && row.status !== "cancelled" && row.status !== "expired" && (
+                            {canConfirmPay && row.payment_status === "pending" && row.status !== "cancelled" && row.status !== "expired" && (
                               <button
                                 type="button"
                                 className="admin-select"
@@ -317,7 +788,18 @@ export function AdminUnavailablePage({ type }) {
                       </tr>
                     );
                   }
+
                   if (type === "customers") {
+                    const isSelf = row.id === user?.id;
+                    const needsSuper = (row.is_staff || row.is_superuser) && !user?.is_superuser;
+                    const cannotLockSuper = Boolean(row.is_superuser && row.is_active);
+                    const toggleDisabled = !canChangeCustomer || isSelf || needsSuper || cannotLockSuper;
+                    let disabledReason = "";
+                    if (isSelf) disabledReason = "Không thể tự khóa tài khoản của chính bạn";
+                    else if (needsSuper) disabledReason = "Chỉ superuser được thao tác nhân viên/quản trị";
+                    else if (cannotLockSuper) disabledReason = "Không được khóa tài khoản superuser";
+                    else if (!canChangeCustomer) disabledReason = "Không có quyền chỉnh sửa tài khoản";
+
                     return (
                       <tr key={row.id || row.email}>
                         <td>
@@ -325,16 +807,55 @@ export function AdminUnavailablePage({ type }) {
                           <small style={{ display: "block", color: "var(--muted)" }}>{row.email}</small>
                         </td>
                         <td>{row.role}</td>
-                        <td>{row.orders_count}</td>
-                        <td><strong>{money(row.total_spent)}</strong></td>
+                        <td>
+                          {canViewCustomerOrders ? (
+                            <Link
+                              className="text-link"
+                              to={`/admin/orders?q=${encodeURIComponent(row.email)}`}
+                            >
+                              {row.orders_count} đơn ↗
+                            </Link>
+                          ) : (
+                            row.orders_count
+                          )}
+                        </td>
+                        <td>
+                          <strong>{money(row.customer_paid_total ?? row.total_spent)}</strong>
+                          <small style={{ display: "block", color: "var(--muted)" }}>
+                            GMV: {money(row.gross_order_value ?? row.customer_paid_total ?? 0)}
+                          </small>
+                        </td>
                         <td>
                           <span className={`pill ${row.is_active ? "green" : "red"}`}>
                             {row.is_active ? "Hoạt động" : "Khóa"}
                           </span>
                         </td>
+                        <td>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            {canViewCustomerOrders && (
+                              <button
+                                type="button"
+                                className="admin-select"
+                                onClick={() => setCustomerDetailId(row.id)}
+                              >
+                                Chi tiết
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="admin-select"
+                              disabled={toggleDisabled}
+                              title={disabledReason || (row.is_active ? "Khóa tài khoản" : "Mở khóa tài khoản")}
+                              onClick={() => setCustomerStatusTarget(row)}
+                            >
+                              {row.is_active ? "Khóa" : "Mở khóa"}
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     );
                   }
+
                   if (type === "promotions") {
                     return (
                       <tr key={row.id || row.code}>
@@ -343,13 +864,41 @@ export function AdminUnavailablePage({ type }) {
                         <td>{row.kind === "percent" ? `${row.value}%` : row.kind === "free_ship" ? "Miễn phí ship" : money(row.value)}</td>
                         <td>{row.used_count} / {row.usage_limit || "∞"}</td>
                         <td>
+                          <small>
+                            {row.starts_at ? String(row.starts_at).slice(0, 10) : "—"} → {row.ends_at ? String(row.ends_at).slice(0, 10) : "—"}
+                          </small>
+                        </td>
+                        <td>
                           <span className={`pill ${row.is_active ? "green" : "red"}`}>
                             {row.is_active ? "Đang chạy" : "Tắt"}
                           </span>
                         </td>
+                        <td>
+                          {canChangeVoucher ? (
+                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                              <button
+                                type="button"
+                                className="admin-select"
+                                onClick={() => setVoucherModalTarget(row)}
+                              >
+                                Sửa
+                              </button>
+                              <button
+                                type="button"
+                                className="admin-select"
+                                onClick={() => handleToggleVoucher(row)}
+                              >
+                                {row.is_active ? "Tắt" : "Kích hoạt"}
+                              </button>
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: "11.5px", color: "var(--muted)" }}>Chỉ xem</span>
+                          )}
+                        </td>
                       </tr>
                     );
                   }
+
                   if (type === "reviews") {
                     return (
                       <tr key={row.id}>
@@ -364,15 +913,9 @@ export function AdminUnavailablePage({ type }) {
                         <td>
                           <div className="mini-product">
                             <span className="mini-img">
-                              <img
-                                src={productImage(row)}
-                                alt={row.product_name}
-                                className="admin-mini-thumb"
-                              />
+                              <img src={productImage(row)} alt={row.product_name} className="admin-mini-thumb" />
                             </span>
-                            <span>
-                              <strong>{row.product_name}</strong>
-                            </span>
+                            <span><strong>{row.product_name}</strong></span>
                           </div>
                         </td>
                         <td style={{ color: "#f5b324" }}>{"★".repeat(row.stars)}</td>
@@ -382,48 +925,90 @@ export function AdminUnavailablePage({ type }) {
                             {moderationLabel(row.status)}
                           </span>
                         </td>
-                      </tr>
-                    );
-                  }
-                  if (type === "support") {
-                    return (
-                      <tr key={row.id}>
-                        <td><strong>#Q{row.id}</strong></td>
-                        <td>{row.customer}</td>
                         <td>
-                          <div className="mini-product">
-                            <span className="mini-img">
-                              <img
-                                src={productImage(row)}
-                                alt={row.product_name}
-                                className="admin-mini-thumb"
-                              />
-                            </span>
-                            <span>
-                              <strong>{row.product_name}</strong>
-                            </span>
-                          </div>
-                        </td>
-                        <td>{row.body}</td>
-                        <td>{row.answers_count} phản hồi</td>
-                        <td>
-                          <span className={`pill ${row.status === "published" ? "green" : row.status === "rejected" ? "red" : "yellow"}`}>
-                            {moderationLabel(row.status)}
-                          </span>
+                          {canModerateReview ? (
+                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                              {row.status !== "published" && (
+                                <button
+                                  type="button"
+                                  className="admin-select"
+                                  onClick={() => handleQuickApprove("reviews", row)}
+                                >
+                                  Duyệt
+                                </button>
+                              )}
+                              {row.status !== "rejected" && (
+                                <button
+                                  type="button"
+                                  className="admin-select"
+                                  onClick={() => setRejectTarget({ kind: "reviews", row })}
+                                >
+                                  Từ chối
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: "11.5px", color: "var(--muted)" }}>Chỉ xem</span>
+                          )}
                         </td>
                       </tr>
                     );
                   }
+
                   return (
                     <tr key={row.id}>
-                      <td>{dateTime(row.time)}</td>
-                      <td><strong>{row.actor}</strong></td>
-                      <td>{row.entity}</td>
-                      <td>{row.detail}</td>
+                      <td><strong>#Q{row.id}</strong></td>
+                      <td>{row.customer}</td>
                       <td>
-                        <span className="pill blue">
-                          {OUTBOX_STATUS_LABELS[row.status] || row.status}
+                        <div className="mini-product">
+                          <span className="mini-img">
+                            <img src={productImage(row)} alt={row.product_name} className="admin-mini-thumb" />
+                          </span>
+                          <span><strong>{row.product_name}</strong></span>
+                        </div>
+                      </td>
+                      <td>{row.body}</td>
+                      <td>
+                        {row.answers_count} phản hồi
+                        {row.pending_answers_count > 0 && (
+                          <small style={{ display: "block", color: "#d97706" }}>
+                            ({row.pending_answers_count} chờ duyệt)
+                          </small>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`pill ${row.status === "published" ? "green" : row.status === "rejected" ? "red" : "yellow"}`}>
+                          {moderationLabel(row.status)}
                         </span>
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          <button
+                            type="button"
+                            className="admin-select"
+                            onClick={() => setQuestionDetailTarget(row)}
+                          >
+                            Chi tiết / Trả lời
+                          </button>
+                          {canModerateQuestion && row.status !== "published" && (
+                            <button
+                              type="button"
+                              className="admin-select"
+                              onClick={() => handleQuickApprove("questions", row)}
+                            >
+                              Duyệt
+                            </button>
+                          )}
+                          {canModerateQuestion && row.status !== "rejected" && (
+                            <button
+                              type="button"
+                              className="admin-select"
+                              onClick={() => setRejectTarget({ kind: "questions", row })}
+                            >
+                              Từ chối
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -432,135 +1017,297 @@ export function AdminUnavailablePage({ type }) {
             </tbody>
           </table>
         </div>
-        {totalPages > 1 && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "12px" }}>
-            <span style={{ fontSize: "12px", color: "var(--muted)" }}>
-              Trang {page} / {totalPages}
-            </span>
-            <div style={{ display: "flex", gap: "8px" }}>
-              <button
-                type="button"
-                className="admin-select"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                ← Trước
-              </button>
-              <button
-                type="button"
-                className="admin-select"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              >
-                Sau →
-              </button>
-            </div>
+
+        {(page > 1 || hasNext) && (
+          <div className="admin-pagination">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => updateParams({ page: page - 1 })}
+            >
+              ← Trước
+            </button>
+            <span>Trang {page} / {totalPages}</span>
+            <button
+              type="button"
+              disabled={!hasNext}
+              onClick={() => updateParams({ page: page + 1 })}
+            >
+              Sau →
+            </button>
           </div>
         )}
       </div>
+
+      {(showVoucherCreate || voucherModalTarget) && (
+        <VoucherModal
+          voucher={voucherModalTarget}
+          onClose={() => {
+            setShowVoucherCreate(false);
+            setVoucherModalTarget(null);
+          }}
+          onSaved={async (msg) => {
+            setNotice(msg);
+            await loadData();
+          }}
+        />
+      )}
+
+      <RejectReasonModal
+        target={rejectTarget}
+        title={rejectTarget?.kind === "reviews" ? "Từ chối đánh giá" : "Từ chối câu hỏi"}
+        onClose={() => setRejectTarget(null)}
+        onConfirm={handleConfirmReject}
+      />
+
+      <CustomerDetailModal customerId={customerDetailId} onClose={() => setCustomerDetailId(null)} />
+
+      <CustomerStatusModal
+        target={customerStatusTarget}
+        onClose={() => setCustomerStatusTarget(null)}
+        onSaved={async (msg) => {
+          setNotice(msg);
+          await loadData();
+        }}
+      />
+
+      <QuestionModerationModal
+        question={questionDetailTarget}
+        canModerateQuestion={canModerateQuestion}
+        canModerateAnswer={canModerateAnswer}
+        canReplyQuestion={canReplyQuestion}
+        onClose={() => setQuestionDetailTarget(null)}
+        onChanged={loadData}
+      />
     </>
   );
 }
 
+function isoDateDaysAgo(daysAgo) {
+  const now = new Date();
+  now.setDate(now.getDate() - daysAgo);
+  return now.toISOString().slice(0, 10);
+}
+
 export function AdminAnalyticsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlStart = searchParams.get("start_date") || "";
+  const urlEnd = searchParams.get("end_date") || "";
+
+  const [startInput, setStartInput] = useState(urlStart);
+  const [endInput, setEndInput] = useState(urlEnd);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [errorObj, setErrorObj] = useState(null);
+
+  useEffect(() => {
+    setStartInput(urlStart);
+    setEndInput(urlEnd);
+  }, [urlStart, urlEnd]);
 
   const loadAnalytics = useCallback(async () => {
     setLoading(true);
-    setError("");
+    setErrorObj(null);
+    if (urlStart && urlEnd && urlStart > urlEnd) {
+      setLoading(false);
+      setErrorObj(new Error("Ngày bắt đầu không được lớn hơn ngày kết thúc."));
+      return;
+    }
     try {
-      const res = await adminService.getAnalytics();
+      const res = await adminService.getAnalytics({
+        ...(urlStart ? { start_date: urlStart } : {}),
+        ...(urlEnd ? { end_date: urlEnd } : {}),
+      });
       setData(res);
     } catch (err) {
-      setError(err.message || "Không thể tải dữ liệu báo cáo & phân tích.");
+      setErrorObj(err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [urlStart, urlEnd]);
 
   useEffect(() => {
     loadAnalytics();
   }, [loadAnalytics]);
 
+  const applyRange = (start, end) => {
+    const next = new URLSearchParams(searchParams);
+    if (start) next.set("start_date", start);
+    else next.delete("start_date");
+    if (end) next.set("end_date", end);
+    else next.delete("end_date");
+    setSearchParams(next);
+  };
+
+  const handleFilterSubmit = (e) => {
+    e.preventDefault();
+    if (startInput && endInput && startInput > endInput) {
+      setErrorObj(new Error("Ngày bắt đầu không được lớn hơn ngày kết thúc."));
+      return;
+    }
+    applyRange(startInput, endInput);
+  };
+
   const series = data?.daily_series || [];
+  const maxPaid = Math.max(1, ...series.map((d) => Number(d.paid_revenue ?? d.revenue ?? 0)));
 
   return (
     <>
       <div className="admin-intro">
         <div>
-          <h1>Báo cáo & phân tích</h1>
-          <p>Số liệu tổng hợp truy vấn trực tiếp từ PostgreSQL (bảng orders & payments).</p>
+          <h1>
+            Báo cáo & phân tích{" "}
+            <span className="demo-pill">{data?.timezone || "Asia/Ho_Chi_Minh"}</span>
+          </h1>
+          <p>Số liệu doanh thu đối soát giữa bảng orders (GMV hợp lệ) và payments (đã thu / hoàn tiền).</p>
         </div>
         <button className="admin-select admin-refresh-btn" onClick={loadAnalytics}>
           <AdminIcon name="refresh" size={14} />
           <span>Làm mới báo cáo</span>
         </button>
       </div>
-      {error && (
-        <div className="admin-hero-note admin-error">
-          ⚠ <strong>Không thể tải dữ liệu:</strong> {error}
-        </div>
-      )}
+
+      <div className="admin-panel" style={{ marginBottom: 16 }}>
+        <form className="admin-analytics-filters" onSubmit={handleFilterSubmit}>
+          <div>
+            <label className="field-label" htmlFor="analytics-start">Từ ngày</label>
+            <input
+              id="analytics-start"
+              type="date"
+              className="field"
+              value={startInput}
+              onChange={(e) => setStartInput(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="field-label" htmlFor="analytics-end">Đến ngày</label>
+            <input
+              id="analytics-end"
+              type="date"
+              className="field"
+              value={endInput}
+              onChange={(e) => setEndInput(e.target.value)}
+            />
+          </div>
+          <div className="admin-analytics-filter-actions">
+            <button type="submit" className="btn btn-primary">Áp dụng</button>
+            <button
+              type="button"
+              className="btn btn-quiet"
+              onClick={() => applyRange("", "")}
+            >
+              Toàn thời gian
+            </button>
+            <button
+              type="button"
+              className="admin-select"
+              onClick={() => applyRange(isoDateDaysAgo(6), isoDateDaysAgo(0))}
+            >
+              7 ngày
+            </button>
+            <button
+              type="button"
+              className="admin-select"
+              onClick={() => applyRange(isoDateDaysAgo(29), isoDateDaysAgo(0))}
+            >
+              30 ngày
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {errorObj && <ErrorBox error={errorObj} onRetry={loadAnalytics} variant="inline" />}
+
       <div className="admin-kpis">
         <div className="kpi">
-          <small>Doanh thu thực thu</small>
-          <strong>{loading ? "—" : money(data?.revenue)}</strong>
-          <span className="change green">Từ bảng payments (succeeded)</span>
+          <small>Doanh thu đã thanh toán</small>
+          <strong>{loading ? "—" : money(data?.paid_revenue ?? data?.revenue)}</strong>
+          <span className="change green">Từ payments succeeded</span>
           <span className="kpi-icon green">
             <AdminIcon name="revenue" size={18} />
           </span>
         </div>
         <div className="kpi">
-          <small>Tổng đơn hàng hợp lệ</small>
-          <strong>{loading ? "—" : data?.orders_count ?? 0}</strong>
-          <span className="change">Không tính đơn đã hủy / hết hạn</span>
+          <small>Tổng giá trị đơn (GMV)</small>
+          <strong>{loading ? "—" : money(data?.gross_order_value)}</strong>
+          <span className="change">Gồm cả COD chờ thu</span>
           <span className="kpi-icon">
             <AdminIcon name="orders" size={18} />
           </span>
         </div>
         <div className="kpi">
-          <small>Khách hàng</small>
-          <strong>{loading ? "—" : data?.customers_count ?? 0}</strong>
-          <span className="change">Từ bảng users</span>
-          <span className="kpi-icon">
-            <AdminIcon name="customers" size={18} />
+          <small>Hoàn tiền (Refunded)</small>
+          <strong>{loading ? "—" : money(data?.refund_amount)}</strong>
+          <span className="change down">Giao dịch refunded</span>
+          <span className="kpi-icon red">
+            <AdminIcon name="alert" size={18} />
           </span>
         </div>
         <div className="kpi">
-          <small>Giá trị đơn trung bình</small>
-          <strong>{loading ? "—" : money(data?.avg_order_value)}</strong>
-          <span className="change">Trung bình đơn hợp lệ</span>
+          <small>Doanh thu ròng (Net)</small>
+          <strong>{loading ? "—" : money(data?.net_revenue)}</strong>
+          <span className="change">Đơn hợp lệ: {loading ? "—" : data?.orders_count ?? 0} · AOV: {loading ? "—" : money(data?.avg_order_value)}</span>
           <span className="kpi-icon">
             <AdminIcon name="trend" size={18} />
           </span>
         </div>
       </div>
+
+      {series.length > 0 && (
+        <div className="admin-panel" style={{ marginBottom: 16 }}>
+          <div className="admin-panel-head">
+            <h3>Biểu đồ doanh thu đã thanh toán theo ngày ({data?.timezone || "Asia/Ho_Chi_Minh"})</h3>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>
+              Khách hàng: {data?.customers_count ?? 0}
+            </span>
+          </div>
+          <div className="admin-status-bars">
+            {series.map((item) => {
+              const paid = Number(item.paid_revenue ?? item.revenue ?? 0);
+              const pct = Math.max(2, Math.round((paid / maxPaid) * 100));
+              return (
+                <div className="admin-status-row" key={`bar-${item.day}`}>
+                  <strong>{item.day}</strong>
+                  <div className="admin-status-track">
+                    <div className="admin-status-fill" style={{ width: `${paid > 0 ? pct : 0}%` }} />
+                  </div>
+                  <span style={{ textAlign: "right" }}>
+                    {money(paid)} ({item.orders} đơn)
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="admin-panel">
         <div className="admin-panel-head">
-          <h3>Thống kê doanh thu & đơn hàng hợp lệ theo ngày (từ PostgreSQL)</h3>
+          <h3>Chi tiết đối soát theo ngày ({data?.timezone || "Asia/Ho_Chi_Minh"})</h3>
         </div>
         <div className="admin-table-wrap">
           <table className="admin-table">
             <thead>
               <tr>
-                <th>Ngày</th>
-                <th>Số lượng đơn hàng</th>
-                <th>Tổng giá trị đơn hàng</th>
+                <th>Ngày (VN)</th>
+                <th>Số đơn</th>
+                <th>Tổng đơn (GMV)</th>
+                <th>Đã thanh toán</th>
+                <th>Hoàn tiền</th>
+                <th>Doanh thu ròng</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={3} className="admin-empty">
+                  <td colSpan={6} className="admin-empty">
                     Đang tải dữ liệu phân tích...
                   </td>
                 </tr>
               ) : series.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="admin-empty">
-                    Chưa có dữ liệu đơn hàng.
+                  <td colSpan={6} className="admin-empty">
+                    Chưa có dữ liệu đơn hàng trong khoảng thời gian đã chọn.
                   </td>
                 </tr>
               ) : (
@@ -568,13 +1315,25 @@ export function AdminAnalyticsPage() {
                   <tr key={item.day}>
                     <td><strong>{item.day}</strong></td>
                     <td>{item.orders} đơn</td>
-                    <td><strong>{money(item.revenue)}</strong></td>
+                    <td>{money(item.gross_order_value ?? item.revenue)}</td>
+                    <td><strong>{money(item.paid_revenue ?? item.revenue)}</strong></td>
+                    <td>{money(item.refund_amount ?? 0)}</td>
+                    <td><strong>{money(item.net_revenue ?? item.paid_revenue ?? item.revenue)}</strong></td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
+        {data?.metric_definitions && (
+          <div className="admin-metric-notes">
+            {Object.entries(data.metric_definitions).map(([k, desc]) => (
+              <small key={k}>
+                <strong>{k}:</strong> {desc}
+              </small>
+            ))}
+          </div>
+        )}
       </div>
     </>
   );

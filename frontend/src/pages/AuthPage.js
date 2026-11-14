@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../auth/AuthContext";
+import { authService } from "../api/client";
 import { ErrorBox } from "../components/Feedback";
 
 function GoogleIcon() {
@@ -44,12 +45,52 @@ function ActiveGoogleButton({ onAccessToken, onError, disabled }) {
   );
 }
 
+let facebookSdkPromise;
+
+function loadFacebookSdk(appId) {
+  if (window.FB) {
+    window.FB.init({ appId, cookie: true, xfbml: false, version: "v27.0" });
+    return Promise.resolve(window.FB);
+  }
+  if (facebookSdkPromise) return facebookSdkPromise;
+
+  facebookSdkPromise = new Promise((resolve, reject) => {
+    window.fbAsyncInit = () => {
+      window.FB.init({ appId, cookie: true, xfbml: false, version: "v27.0" });
+      resolve(window.FB);
+    };
+    if (document.getElementById("facebook-jssdk")) return;
+    const script = document.createElement("script");
+    script.id = "facebook-jssdk";
+    script.async = true;
+    script.defer = true;
+    script.crossOrigin = "anonymous";
+    script.src = "https://connect.facebook.net/vi_VN/sdk.js";
+    script.onerror = () => reject(new Error("Không tải được Facebook SDK."));
+    document.body.appendChild(script);
+  });
+  return facebookSdkPromise;
+}
+
 export default function AuthPage({ mode = "login" }) {
   const isRegister = mode === "register";
-  const { login, loginWithGoogle, register } = useAuth();
+  const { login, loginWithGoogle, loginWithFacebook, register } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const googleClientId = (process.env.REACT_APP_GOOGLE_CLIENT_ID || "").trim();
+  const [facebookAppId, setFacebookAppId] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    authService.getFacebookConfig()
+      .then((config) => {
+        if (active && config?.enabled) setFacebookAppId(config.app_id || "");
+      })
+      .catch(() => {
+        if (active) setFacebookAppId("");
+      });
+    return () => { active = false; };
+  }, []);
 
   const [form, setForm] = useState({
     email: "",
@@ -80,6 +121,19 @@ export default function AuthPage({ mode = "login" }) {
     setError(null);
     try {
       const profile = await loginWithGoogle({ access_token: accessToken });
+      redirectAfterAuth(profile);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleFacebookAccessToken = async (accessToken) => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const profile = await loginWithFacebook({ access_token: accessToken });
       redirectAfterAuth(profile);
     } catch (err) {
       setError(err);
@@ -176,19 +230,26 @@ export default function AuthPage({ mode = "login" }) {
             <button
               type="button"
               className="ux-social-button"
-              disabled={!process.env.REACT_APP_FACEBOOK_APP_ID}
-              title={!process.env.REACT_APP_FACEBOOK_APP_ID ? "Đang cấu hình OAuth" : "Đăng nhập bằng Facebook"}
-              style={!process.env.REACT_APP_FACEBOOK_APP_ID ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
-              onClick={() => {
-                if (process.env.REACT_APP_FACEBOOK_APP_ID) {
-                  window.location.href = `/api/auth/oauth/facebook/`;
+              disabled={!facebookAppId || submitting}
+              title={!facebookAppId ? "Đang cấu hình OAuth" : "Đăng nhập bằng Facebook"}
+              style={!facebookAppId ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
+              onClick={async () => {
+                try {
+                  const facebook = await loadFacebookSdk(facebookAppId);
+                  facebook.login((response) => {
+                    const accessToken = response?.authResponse?.accessToken;
+                    if (accessToken) handleFacebookAccessToken(accessToken);
+                    else setError(new Error("Đăng nhập Facebook bị hủy hoặc không thành công."));
+                  }, { scope: "public_profile", return_scopes: true });
+                } catch (err) {
+                  setError(err);
                 }
               }}
             >
               <svg className="facebook-f" viewBox="0 0 24 24" width="18" height="18" fill="#1877F2">
                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
               </svg>
-              <span>{process.env.REACT_APP_FACEBOOK_APP_ID ? "Facebook" : "Facebook (Sắp mở)"}</span>
+              <span>{facebookAppId ? "Facebook" : "Facebook (Sắp mở)"}</span>
             </button>
           </div>
 

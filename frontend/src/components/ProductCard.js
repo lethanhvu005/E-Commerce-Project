@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { fallbackProductImage, money, productImage } from "../api/format";
+import { money, productImage } from "../api/format";
 import { Tilt3DCard } from "./Motion3D";
 
 function GearIcon({ name }) {
@@ -67,6 +67,7 @@ export default function ProductCard({
 }) {
   const [justAdded, setJustAdded] = useState(false);
   const [favPop, setFavPop] = useState(false);
+  const [imgFailed, setImgFailed] = useState(false);
 
   if (!product) return null;
 
@@ -149,20 +150,19 @@ export default function ProductCard({
       <div className="gear-product-photo-wrap">
         <Link className="gear-product-photo" to={link} aria-label={`Xem ${product.name}`}>
           <span className="gear-photo-halo" aria-hidden="true" />
-          {imgSrc ? (
+          {imgSrc && !imgFailed ? (
             <img
               className="nexa-product-img nexa-3d-float-img"
               src={imgSrc}
               loading="lazy"
               decoding="async"
               alt={product.name}
-              onError={(e) => {
-                e.currentTarget.onerror = null;
-                e.currentTarget.src = fallbackProductImage(product);
-              }}
+              onError={() => setImgFailed(true)}
             />
           ) : (
-            <span className="image-empty">Chưa có ảnh</span>
+            <span className="image-empty" role="img" aria-label={product.name}>
+              {imgFailed ? "Không tải được ảnh" : "Chưa có ảnh"}
+            </span>
           )}
           <span className="gear-photo-floor-shadow" aria-hidden="true" />
         </Link>

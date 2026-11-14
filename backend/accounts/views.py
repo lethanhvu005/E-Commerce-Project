@@ -19,6 +19,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Address, User
 from .serializers import (
     AddressSerializer,
+    FacebookLoginSerializer,
     GoogleLoginSerializer,
     LoginSerializer,
     RefreshSerializer,
@@ -64,6 +65,42 @@ def verify_google_oauth_payload(*, credential="", access_token="", expected_clie
         return user_info
 
     raise ValueError("Thiếu thông tin xác thực Google.")
+
+
+def _fetch_facebook_json(path, params):
+    graph_version = (getattr(settings, "FACEBOOK_GRAPH_API_VERSION", "v27.0") or "v27.0").strip()
+    query = urlencode(params)
+    return _fetch_google_json(f"https://graph.facebook.com/{graph_version}/{path}?{query}")
+
+
+def verify_facebook_access_token(*, access_token, app_id, app_secret):
+    debug_payload = _fetch_facebook_json(
+        "debug_token",
+        {
+            "input_token": access_token,
+            "access_token": f"{app_id}|{app_secret}",
+        },
+    )
+    token_data = debug_payload.get("data") or {}
+    if not token_data.get("is_valid"):
+        raise ValueError("Facebook access token không hợp lệ hoặc đã hết hạn.")
+    if str(token_data.get("app_id") or "") != str(app_id):
+        raise ValueError("Facebook access token không thuộc ứng dụng này.")
+
+    facebook_user_id = str(token_data.get("user_id") or "").strip()
+    if not facebook_user_id:
+        raise ValueError("Facebook access token thiếu định danh người dùng.")
+
+    profile = _fetch_facebook_json(
+        "me",
+        {
+            "fields": "id,email,first_name,last_name,name",
+            "access_token": access_token,
+        },
+    )
+    if str(profile.get("id") or "") != facebook_user_id:
+        raise ValueError("Facebook profile không khớp với access token.")
+    return profile
 
 
 @api_view(["POST"])
@@ -235,6 +272,115 @@ def google_login(request):
         if user is None:
             return Response(
                 {"detail": "Không thể hoàn tất đăng nhập Google do xung đột dữ liệu tài khoản. Vui lòng thử lại."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+    refresh = RefreshToken.for_user(user)
+    return Response(
+        {
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "user": UserSerializer(user).data,
+        }
+    )
+
+
+@api_view(["GET"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def facebook_config(request):
+    app_id = (getattr(settings, "FACEBOOK_APP_ID", "") or "").strip()
+    return Response({"app_id": app_id, "enabled": bool(app_id)})
+
+
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+@throttle_classes([LoginRateThrottle])
+def facebook_login(request):
+    app_id = (getattr(settings, "FACEBOOK_APP_ID", "") or "").strip()
+    app_secret = (getattr(settings, "FACEBOOK_APP_SECRET", "") or "").strip()
+    if not app_id or not app_secret:
+        return Response(
+            {"detail": "Máy chủ chưa cấu hình Facebook Login."},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    serializer = FacebookLoginSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    try:
+        payload = verify_facebook_access_token(
+            access_token=serializer.validated_data["access_token"],
+            app_id=app_id,
+            app_secret=app_secret,
+        )
+    except ValueError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_401_UNAUTHORIZED)
+    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError):
+        return Response(
+            {"detail": "Không thể xác minh tài khoản Facebook lúc này."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    facebook_sub = str(payload.get("id") or "").strip()
+    facebook_email = str(payload.get("email") or "").strip().lower()
+    email = facebook_email or f"facebook-{facebook_sub}@users.nexa.invalid"
+
+    first_name = str(payload.get("first_name") or "").strip()
+    last_name = str(payload.get("last_name") or "").strip()
+    now = timezone.now()
+    try:
+        with transaction.atomic():
+            user = User.objects.select_for_update().filter(facebook_sub=facebook_sub).first()
+            if user is not None:
+                if not user.is_active:
+                    return Response({"detail": "Tài khoản đã bị vô hiệu hóa."}, status=status.HTTP_401_UNAUTHORIZED)
+                if user.is_staff or user.is_superuser:
+                    return Response(
+                        {"detail": "Tài khoản quản trị/nhân viên không được đăng nhập qua Facebook."},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+            else:
+                existing = User.objects.select_for_update().filter(email=email).first()
+                if existing is not None:
+                    if existing.is_staff or existing.is_superuser:
+                        return Response(
+                            {"detail": "Không được tự động liên kết Facebook với tài khoản quản trị/nhân viên."},
+                            status=status.HTTP_403_FORBIDDEN,
+                        )
+                    if existing.facebook_sub and existing.facebook_sub != facebook_sub:
+                        return Response(
+                            {"detail": "Email này đã liên kết với một tài khoản Facebook khác."},
+                            status=status.HTTP_409_CONFLICT,
+                        )
+                    if existing.google_sub or existing.has_usable_password():
+                        return Response(
+                            {"detail": "Email này đã có phương thức đăng nhập khác. Hãy dùng phương thức đã đăng ký."},
+                            status=status.HTTP_409_CONFLICT,
+                        )
+                    existing.facebook_sub = facebook_sub
+                    existing.email_verified_at = existing.email_verified_at or now
+                    existing.save(update_fields=["facebook_sub", "email_verified_at"])
+                    user = existing
+                else:
+                    user = User.objects.create_user(
+                        email=email,
+                        password=None,
+                        facebook_sub=facebook_sub,
+                        first_name=first_name or email.split("@")[0],
+                        last_name=last_name,
+                        email_verified_at=now if facebook_email else None,
+                    )
+    except IntegrityError:
+        user = User.objects.filter(
+            facebook_sub=facebook_sub,
+            is_active=True,
+            is_staff=False,
+            is_superuser=False,
+        ).first()
+        if user is None:
+            return Response(
+                {"detail": "Không thể hoàn tất đăng nhập Facebook do xung đột tài khoản."},
                 status=status.HTTP_409_CONFLICT,
             )
 
