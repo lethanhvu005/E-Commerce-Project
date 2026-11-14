@@ -236,6 +236,13 @@ export const communityService = {
 
 export const adminService = {
   getDashboard: () => api.get("/admin/dashboard/"),
+  getAnalytics: () => api.get("/admin/analytics/"),
+  getOrders: () => api.get("/admin/orders/"),
+  getCustomers: () => api.get("/admin/customers/"),
+  getPromotions: () => api.get("/admin/promotions/"),
+  getReviews: () => api.get("/admin/reviews/"),
+  getQuestions: () => api.get("/admin/questions/"),
+  getOutboxEvents: () => api.get("/admin/outbox-events/"),
   getProducts: (params = {}) => {
     const qs = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
