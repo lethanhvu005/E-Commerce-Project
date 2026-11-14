@@ -82,7 +82,7 @@ export default function OrderDetailPage() {
   }
 
   const items = order.items || [];
-  const canCancel = ["pending", "confirmed"].includes(order.status);
+  const canCancel = ["pending", "confirmed", "packing"].includes(order.status);
 
   return (
     <div className="container" style={{ paddingBottom: "60px" }}>
@@ -204,12 +204,12 @@ export default function OrderDetailPage() {
             <h3>Thông tin giao nhận</h3>
             {order.delivery_address ? (
               <div>
-                <strong>{order.delivery_address.recipient}</strong>
+                <strong>{order.delivery_address.recipient_name || order.delivery_address.recipient}</strong>
                 <div style={{ color: "#617b9f", fontSize: "12px", margin: "4px 0" }}>
                   {order.delivery_address.phone}
                 </div>
                 <div style={{ color: "#4f6587", fontSize: "12px" }}>
-                  {order.delivery_address.address}, {order.delivery_address.ward}, {order.delivery_address.province}
+                  {order.delivery_address.address_line || order.delivery_address.address}, {order.delivery_address.ward}, {order.delivery_address.province}
                 </div>
               </div>
             ) : (
@@ -218,7 +218,9 @@ export default function OrderDetailPage() {
 
             <div style={{ borderTop: "1px solid #edf1f7", marginTop: "14px", paddingTop: "12px" }}>
               <span style={{ fontSize: "11px", color: "var(--muted)", display: "block" }}>PHƯƠNG THỨC VẬN CHUYỂN</span>
-              <strong style={{ fontSize: "13px" }}>{order.shipping_method_snapshot?.name || "Tiêu chuẩn"}</strong>
+              <strong style={{ fontSize: "13px" }}>
+                {order.shipping_method_snapshot?.name || order.shipping_method_snapshot || "Tiêu chuẩn"}
+              </strong>
             </div>
           </div>
 
