@@ -460,7 +460,7 @@ export default function HomePage() {
       <div className="container home-body">
         {error && (
           <div className="home-api-error">
-            <ErrorBox error={error} onRetry={loadHome} />
+            <ErrorBox error={error} onRetry={loadHome} variant="inline" />
           </div>
         )}
 
