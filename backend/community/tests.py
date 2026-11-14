@@ -67,3 +67,56 @@ class CommunityApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["status"], ModerationStatus.PENDING)
         self.assertEqual(ProductQuestion.objects.get().user, self.user)
+
+    def test_short_inputs_and_invalid_patch_stars_return_400_instead_of_500(self):
+        short_review = self.client.post(
+            f"/api/products/{self.product.slug}/reviews/",
+            {"stars": 5, "body": "   ngắn   "},
+            format="json",
+        )
+        self.assertEqual(short_review.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("body", short_review.data)
+
+        short_question = self.client.post(
+            f"/api/products/{self.product.slug}/questions/",
+            {"body": "  a  "},
+            format="json",
+        )
+        self.assertEqual(short_question.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("body", short_question.data)
+
+        question = ProductQuestion.objects.create(
+            product=self.product,
+            user=self.user,
+            body="Câu hỏi hợp lệ?",
+            status=ModerationStatus.PUBLISHED,
+        )
+        short_answer = self.client.post(
+            f"/api/questions/{question.id}/answers/",
+            {"body": " ok "},
+            format="json",
+        )
+        self.assertEqual(short_answer.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("body", short_answer.data)
+
+        review = Review.objects.create(
+            product=self.product,
+            user=self.user,
+            stars=4,
+            body="Đánh giá hợp lệ trên mười ký tự.",
+        )
+        bad_stars = self.client.patch(
+            f"/api/reviews/{review.id}/",
+            {"stars": 99},
+            format="json",
+        )
+        self.assertEqual(bad_stars.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("stars", bad_stars.data)
+
+        bad_body = self.client.patch(
+            f"/api/reviews/{review.id}/",
+            {"body": "ngắn"},
+            format="json",
+        )
+        self.assertEqual(bad_body.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("body", bad_body.data)
