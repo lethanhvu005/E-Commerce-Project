@@ -46,3 +46,25 @@ test("disables Google and Facebook OAuth buttons when client IDs are not configu
     if (prevFacebook !== undefined) process.env.REACT_APP_FACEBOOK_APP_ID = prevFacebook;
   }
 });
+
+test("enables Google OAuth button when REACT_APP_GOOGLE_CLIENT_ID is configured", () => {
+  const prevGoogle = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+  process.env.REACT_APP_GOOGLE_CLIENT_ID = "test-google-client-id.apps.googleusercontent.com";
+  try {
+    render(
+      <AuthProvider>
+        <MemoryRouter>
+          <AuthPage mode="login" />
+        </MemoryRouter>
+      </AuthProvider>
+    );
+    const googleBtn = screen.getByRole("button", { name: /^google$/i });
+    expect(googleBtn).not.toBeDisabled();
+  } finally {
+    if (prevGoogle !== undefined) {
+      process.env.REACT_APP_GOOGLE_CLIENT_ID = prevGoogle;
+    } else {
+      delete process.env.REACT_APP_GOOGLE_CLIENT_ID;
+    }
+  }
+});

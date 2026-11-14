@@ -37,6 +37,12 @@ export function AuthProvider({ children }) {
     return loadUser();
   };
 
+  const loginWithGoogle = async (payload) => {
+    const tokens = await authService.loginWithGoogle(payload);
+    saveTokens({ access: tokens.access, refresh: tokens.refresh });
+    return loadUser();
+  };
+
   const register = async (payload) => {
     await authService.register(payload);
     return login({ email: payload.email, password: payload.password });
@@ -60,6 +66,7 @@ export function AuthProvider({ children }) {
     user,
     loading,
     login,
+    loginWithGoogle,
     register,
     logout,
     reloadUser: loadUser,

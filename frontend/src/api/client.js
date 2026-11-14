@@ -158,6 +158,7 @@ export const api = {
 
 export const authService = {
   login: (credentials) => api.post("/auth/login/", credentials),
+  loginWithGoogle: (payload) => api.post("/auth/google/", payload),
   register: (payload) => api.post("/auth/register/", payload),
   logout: (refreshToken) => api.post("/auth/logout/", { refresh: refreshToken }),
   getProfile: () => api.get("/accounts/me/"),

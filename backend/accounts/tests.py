@@ -215,3 +215,31 @@ class AccountAuthApiTests(APITestCase):
         listing = self.client.get("/api/accounts/me/addresses/")
         self.assertEqual(listing.status_code, status.HTTP_200_OK)
         self.assertEqual(len(listing.data["results"]), 1)
+
+    def test_google_login_creates_verified_user_and_returns_jwt(self):
+        from unittest.mock import patch
+        from django.test import override_settings
+
+        mock_payload = {
+            "aud": "test-google-client-id.apps.googleusercontent.com",
+            "email": "GoogleUser@Example.test",
+            "email_verified": "true",
+            "given_name": "Minh",
+            "family_name": "Nguyễn",
+        }
+        with override_settings(GOOGLE_CLIENT_ID="test-google-client-id.apps.googleusercontent.com"):
+            with patch("accounts.views.verify_google_oauth_payload", return_value=mock_payload):
+                res = self.client.post(
+                    "/api/auth/google/",
+                    {"access_token": "mock-google-access-token"},
+                    format="json",
+                )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn("access", res.data)
+        self.assertIn("refresh", res.data)
+        self.assertEqual(res.data["user"]["email"], "googleuser@example.test")
+        user = User.objects.get(email="googleuser@example.test")
+        self.assertIsNotNone(user.email_verified_at)
+        self.assertEqual(user.first_name, "Minh")
+        self.assertEqual(user.last_name, "Nguyễn")
+

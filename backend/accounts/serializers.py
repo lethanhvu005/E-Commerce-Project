@@ -108,6 +108,16 @@ class RefreshSerializer(serializers.Serializer):
     refresh = serializers.CharField(trim_whitespace=False)
 
 
+class GoogleLoginSerializer(serializers.Serializer):
+    credential = serializers.CharField(required=False, allow_blank=True, trim_whitespace=True)
+    access_token = serializers.CharField(required=False, allow_blank=True, trim_whitespace=True)
+
+    def validate(self, attrs):
+        if not attrs.get("credential") and not attrs.get("access_token"):
+            raise serializers.ValidationError("Vui lòng cung cấp Google credential hoặc access_token.")
+        return attrs
+
+
 class AddressSerializer(serializers.ModelSerializer):
     recipient = serializers.CharField(source="recipient_name", max_length=150)
     address = serializers.CharField(source="address_line", max_length=300)
