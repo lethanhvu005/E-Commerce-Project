@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { orderService } from "../api/client";
-import { money, dateTime } from "../api/format";
+import { money, dateTime, orderStatusLabel } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import { Loading, ErrorBox } from "../components/Feedback";
 import { Tilt3DCard } from "../components/Motion3D";
@@ -253,6 +253,17 @@ export function FaqPage() {
 }
 
 export function ShippingPage() {
+  const [methods, setMethods] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    orderService
+      .getShippingMethods()
+      .then((res) => setMethods(res?.results || res || []))
+      .catch(() => setMethods([]))
+      .finally(() => setLoading(false));
+  }, []);
+
   return (
     <div className="container ux-page">
       <section className="ux-hero nexa-hero-glow">
@@ -271,23 +282,24 @@ export function ShippingPage() {
       </section>
       <div className="ux-two">
         <section className="ux-card">
-          <h2>Phương thức giao hàng</h2>
-          <div className="ux-shipping-item">
-            <strong>01 / Giao hàng tiêu chuẩn (Standard)</strong>
-            <p>
-              Dự kiến 2–4 ngày làm việc · 30.000 ₫ · Miễn phí khi đạt điều kiện ưu đãi.
-            </p>
-          </div>
-          <div className="ux-shipping-item">
-            <strong>02 / Giao hàng hỏa tốc (Express)</strong>
-            <p>Dự kiến 1–2 ngày làm việc · 50.000 ₫ · Giao nhanh ưu tiên.</p>
-          </div>
-          <div className="ux-shipping-item">
-            <strong>03 / Theo dõi tiến độ (Tracking)</strong>
-            <p>
-              Cập nhật trạng thái từng chặng: Chờ xác nhận, Đã xác nhận, Đang giao, Hoàn thành.
-            </p>
-          </div>
+          <h2>Phương thức giao hàng (từ PostgreSQL)</h2>
+          {loading ? (
+            <Loading label="Đang tải phương thức giao hàng..." />
+          ) : methods.length === 0 ? (
+            <p style={{ color: "var(--muted)" }}>Chưa có phương thức giao hàng khả dụng.</p>
+          ) : (
+            methods.map((m, idx) => (
+              <div className="ux-shipping-item" key={m.id || m.code}>
+                <strong>
+                  {String(idx + 1).padStart(2, "0")} / {m.name} ({m.code})
+                </strong>
+                <p>
+                  Dự kiến {m.min_days}–{m.max_days} ngày làm việc · {money(m.base_fee)}
+                  {m.free_threshold ? ` · Miễn phí cho đơn từ ${money(m.free_threshold)}` : ""}
+                </p>
+              </div>
+            ))
+          )}
         </section>
         <section className="ux-card">
           <h2>Theo dõi đơn hàng</h2>
@@ -444,7 +456,7 @@ export function TrackingPage() {
                   </div>
                 </div>
                 <span className={`status-pill status-${orderData.status}`}>
-                  {orderData.status_display || orderData.status}
+                  {orderStatusLabel(orderData.status)}
                 </span>
               </div>
               <div style={{ fontSize: "14px", lineHeight: "1.7" }}>
@@ -470,7 +482,7 @@ export function TrackingPage() {
                     <div key={h.id || idx} className="timeline-node active">
                       <span className="dot" />
                       <div>
-                        <strong>{h.to_status_display || h.to_status}</strong>
+                        <strong>{orderStatusLabel(h.to_status)}</strong>
                         <div style={{ fontSize: "12px", color: "var(--muted)" }}>
                           {dateTime(h.created_at)}
                         </div>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { cartService, catalogService, wishlistService } from "../api/client";
+import { categoryImage } from "../api/format";
 
 function NexaLogoMark() {
   const uid = useId();
@@ -380,77 +381,54 @@ export default function Layout() {
                     </div>
 
                     <div className="mega-category-groups mega-category-grid">
-                      <section className="mega-category-group">
-                        <h3>Điều khiển chính xác</h3>
-                        <Link className="mega-category-link" to="/products?category=ban-phim">
-                          <Icon name="keyboard" />
-                          <span>Bàn phím cơ</span>
-                          <small>Custom & Rapid Trigger</small>
-                        </Link>
-                        <Link className="mega-category-link" to="/products?category=chuot">
-                          <Icon name="mouse" />
-                          <span>Chuột Gaming</span>
-                          <small>Siêu nhẹ & 8KHz Polling</small>
-                        </Link>
-                      </section>
-
-                      <section className="mega-category-group">
-                        <h3>Âm thanh & Hiển thị</h3>
-                        <Link className="mega-category-link" to="/products?category=tai-nghe">
-                          <Icon name="headset" />
-                          <span>Tai nghe eSports</span>
-                          <small>Spatial 7.1 & Không dây</small>
-                        </Link>
-                        <Link className="mega-category-link" to="/products?category=man-hinh">
-                          <Icon name="monitor" />
-                          <span>Màn hình tần số cao</span>
-                          <small>240Hz – 360Hz Fast IPS</small>
-                        </Link>
-                      </section>
-
-                      <section className="mega-category-group">
-                        <h3>Hoàn thiện Góc Setup</h3>
-                        <Link className="mega-category-link" to="/products?category=phu-kien">
-                          <Icon name="pad" />
-                          <span>Pad & Phụ kiện</span>
-                          <small>Bề mặt tốc độ & Control</small>
-                        </Link>
-                        <Link className="mega-category-link" to="/products?category=ghe-gaming">
-                          <Icon name="chair" />
-                          <span>Ghế Công thái học</span>
-                          <small>Nâng đỡ cột sống chuẩn</small>
-                        </Link>
-                      </section>
+                      {[0, 2, 4].map((startIdx, groupIdx) => {
+                        const groupTitles = [
+                          "Điều khiển chính xác",
+                          "Âm thanh & Hiển thị",
+                          "Hoàn thiện Góc Setup",
+                        ];
+                        const slice = categories.slice(startIdx, startIdx + 2);
+                        if (slice.length === 0) return null;
+                        return (
+                          <section className="mega-category-group" key={groupIdx}>
+                            <h3>{groupTitles[groupIdx] || "Danh mục"}</h3>
+                            {slice.map((cat) => (
+                              <Link
+                                key={cat.id || cat.slug}
+                                className="mega-category-link"
+                                to={`/products?category=${cat.slug}`}
+                              >
+                                <Icon name={cat.code === "accessory" ? "pad" : cat.code || "grid"} />
+                                <span>{cat.name}</span>
+                                <small>Danh mục chính hãng</small>
+                              </Link>
+                            ))}
+                          </section>
+                        );
+                      })}
                     </div>
                   </div>
 
                   <div className="mega-feature-grid">
-                    <Link className="mega-feature" to="/products?category=ban-phim">
-                      <span className="mega-feature-image">
-                        <img src="/assets/images/categories/keyboards.png" alt="Bàn phím NEXA" />
-                        <b>01</b>
-                      </span>
-                      <span className="mega-feature-copy">
-                        <small>Bàn phím / NEXA SELECT</small>
-                        <strong>NEXA KEYBOARD</strong>
-                        <span>
-                          Khám phá <b>↗</b>
+                    {categories.slice(0, 2).map((cat, idx) => (
+                      <Link
+                        key={cat.id || cat.slug}
+                        className="mega-feature"
+                        to={`/products?category=${cat.slug}`}
+                      >
+                        <span className="mega-feature-image">
+                          <img src={categoryImage(cat)} alt={cat.name} />
+                          <b>{String(idx + 1).padStart(2, "0")}</b>
                         </span>
-                      </span>
-                    </Link>
-                    <Link className="mega-feature" to="/products?category=chuot">
-                      <span className="mega-feature-image">
-                        <img src="/assets/images/categories/mouse.png" alt="Chuột gaming" />
-                        <b>02</b>
-                      </span>
-                      <span className="mega-feature-copy">
-                        <small>Chuột / NEXA SELECT</small>
-                        <strong>GAMING MOUSE</strong>
-                        <span>
-                          Khám phá <b>↗</b>
+                        <span className="mega-feature-copy">
+                          <small>{cat.name} / NEXA SELECT</small>
+                          <strong>{cat.name.toUpperCase()}</strong>
+                          <span>
+                            Khám phá <b>↗</b>
+                          </span>
                         </span>
-                      </span>
-                    </Link>
+                      </Link>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -604,31 +582,7 @@ export default function Layout() {
             </div>
 
             <div className="mobile-category-grid">
-              {(categories.length > 0
-                ? categories
-                : [
-                    {
-                      name: "Bàn phím",
-                      slug: "ban-phim",
-                      image: "/assets/images/categories/keyboards.png",
-                    },
-                    {
-                      name: "Chuột",
-                      slug: "chuot",
-                      image: "/assets/images/categories/mouse.png",
-                    },
-                    {
-                      name: "Tai nghe",
-                      slug: "tai-nghe",
-                      image: "/assets/images/categories/headset.png",
-                    },
-                    {
-                      name: "Màn hình",
-                      slug: "man-hinh",
-                      image: "/assets/images/categories/monitor.png",
-                    },
-                  ]
-              ).map((c) => (
+              {categories.map((c) => (
                 <Link
                   key={c.id || c.slug}
                   className="menu-category-tile gear-category"

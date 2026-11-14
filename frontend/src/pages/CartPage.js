@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useOutletContext } from "react-router-dom";
-import { cartService } from "../api/client";
+import { cartService, orderService } from "../api/client";
 import { fallbackProductImage, money, productImage } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import { ErrorBox, Loading, Toast } from "../components/Feedback";
-
-const FREE_SHIPPING_THRESHOLD = 1000000;
 
 export default function CartPage() {
   const { user } = useAuth();
@@ -14,6 +12,7 @@ export default function CartPage() {
   const { refreshCartCount } = outlet;
 
   const [cart, setCart] = useState(null);
+  const [freeShipThreshold, setFreeShipThreshold] = useState(0);
   const [voucherCode, setVoucherCode] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -33,6 +32,17 @@ export default function CartPage() {
       setLoading(false);
     }
   }, [refreshCartCount]);
+
+  useEffect(() => {
+    orderService
+      .getShippingMethods()
+      .then((res) => {
+        const list = res?.results || res || [];
+        const std = list.find((m) => m.free_threshold != null && Number(m.free_threshold) > 0);
+        if (std) setFreeShipThreshold(Number(std.free_threshold));
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -135,8 +145,12 @@ export default function CartPage() {
   const items = cart?.items || [];
   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
   const subtotalNum = Number(cart?.subtotal || 0);
-  const shipProgress = Math.min(100, Math.round((subtotalNum / FREE_SHIPPING_THRESHOLD) * 100));
-  const remainingForFreeShip = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotalNum);
+  const shipProgress =
+    freeShipThreshold > 0
+      ? Math.min(100, Math.round((subtotalNum / freeShipThreshold) * 100))
+      : 100;
+  const remainingForFreeShip =
+    freeShipThreshold > 0 ? Math.max(0, freeShipThreshold - subtotalNum) : 0;
 
   return (
     <div className="container">
@@ -187,7 +201,7 @@ export default function CartPage() {
                   <span>🎉 Đơn hàng của bạn đã đủ điều kiện hưởng ưu đãi <b>Miễn phí vận chuyển</b>!</span>
                 ) : (
                   <span>
-                    Mua thêm <b>{money(remainingForFreeShip)}</b> để đạt mốc ưu đãi vận chuyển 1.000.000 ₫
+                    Mua thêm <b>{money(remainingForFreeShip)}</b> để đạt mốc ưu đãi vận chuyển {money(freeShipThreshold)}
                   </span>
                 )}
                 <b>{shipProgress}%</b>
