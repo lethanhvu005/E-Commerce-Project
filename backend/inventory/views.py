@@ -2,6 +2,7 @@ from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -9,6 +10,12 @@ from catalog.models import ProductVariant
 from operations.models import AuditLog
 from .models import InventoryBalance, InventoryMovement
 from .serializers import InventoryAdjustmentSerializer, InventoryBalanceSerializer, InventoryMovementSerializer
+
+
+class AdminInventoryPagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = "page_size"
+    max_page_size = 100
 
 
 def require_permission(request, permission):
@@ -43,7 +50,9 @@ def inventory(request):
         return denied
     if request.method == "GET":
         balances = InventoryBalance.objects.select_related("variant").order_by("variant__sku")
-        return Response({"results": InventoryBalanceSerializer(balances, many=True).data})
+        paginator = AdminInventoryPagination()
+        page = paginator.paginate_queryset(balances, request)
+        return paginator.get_paginated_response(InventoryBalanceSerializer(page, many=True).data)
     serializer = InventoryAdjustmentSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     data = serializer.validated_data
@@ -82,5 +91,7 @@ def movements(request):
     denied = require_permission(request, "inventory.view_inventorymovement")
     if denied:
         return denied
-    queryset = InventoryMovement.objects.select_related("variant").order_by("-created_at", "-id")[:100]
-    return Response({"results": InventoryMovementSerializer(queryset, many=True).data})
+    queryset = InventoryMovement.objects.select_related("variant").order_by("-created_at", "-id")
+    paginator = AdminInventoryPagination()
+    page = paginator.paginate_queryset(queryset, request)
+    return paginator.get_paginated_response(InventoryMovementSerializer(page, many=True).data)

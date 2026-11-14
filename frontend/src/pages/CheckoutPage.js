@@ -5,6 +5,17 @@ import { fallbackProductImage, money, productImage } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import { Empty, ErrorBox, Loading, Toast } from "../components/Feedback";
 
+function generateCheckoutUUID() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 export default function CheckoutPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -12,7 +23,7 @@ export default function CheckoutPage() {
   const { refreshCartCount } = outlet;
 
   // Checkout Key UUID for idempotency
-  const checkoutKeyRef = useRef(crypto.randomUUID());
+  const checkoutKeyRef = useRef(generateCheckoutUUID());
 
   // Data States
   const [cart, setCart] = useState(null);
@@ -82,7 +93,7 @@ export default function CheckoutPage() {
     initCheckout();
   }, [user, navigate, initCheckout]);
 
-  // Call Checkout Preview whenever address, method, or note changes
+  // Call Checkout Preview whenever address or shipping method changes
   useEffect(() => {
     if (!selectedAddressId || !selectedMethodId) return;
 
@@ -92,7 +103,7 @@ export default function CheckoutPage() {
     orderService.checkoutPreview({
       address_id: Number(selectedAddressId),
       shipping_method_id: Number(selectedMethodId),
-      note: note.trim(),
+      note: "",
     })
       .then((data) => {
         if (isMounted) setPreview(data);
@@ -107,7 +118,7 @@ export default function CheckoutPage() {
     return () => {
       isMounted = false;
     };
-  }, [selectedAddressId, selectedMethodId, note]);
+  }, [selectedAddressId, selectedMethodId]);
 
   // Handle Create Address
   const handleCreateAddress = async (e) => {
@@ -153,7 +164,7 @@ export default function CheckoutPage() {
     } catch (err) {
       if (err.status === 409) {
         // Idempotency conflict: regenerate checkout key for retry
-        checkoutKeyRef.current = crypto.randomUUID();
+        checkoutKeyRef.current = generateCheckoutUUID();
         setError(new Error("Yêu cầu bị xung đột hoặc đã được gửi. Đã tạo mã phiên mới, vui lòng nhấn Đặt hàng lại."));
       } else {
         setError(err);

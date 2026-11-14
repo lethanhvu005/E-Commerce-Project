@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { orderService } from "../api/client";
 import { dateTime, money } from "../api/format";
@@ -6,18 +6,18 @@ import { useAuth } from "../auth/AuthContext";
 import { ErrorBox, Loading } from "../components/Feedback";
 
 const ORDER_FILTER_TABS = [
-  { label: "Tất cả", value: "all" },
-  { label: "Chờ xác nhận", value: "pending" },
-  { label: "Đang xử lý / Vận chuyển", value: "processing" },
-  { label: "Đã giao", value: "delivered" },
-  { label: "Đã hủy", value: "cancelled" },
+  { label: "Tất cả", value: "all", statusParam: "" },
+  { label: "Chờ xác nhận", value: "pending", statusParam: "pending" },
+  { label: "Đang xử lý / Vận chuyển", value: "processing", statusParam: "confirmed,packing,shipped" },
+  { label: "Đã giao", value: "delivered", statusParam: "delivered" },
+  { label: "Đã hủy", value: "cancelled", statusParam: "cancelled,expired" },
 ];
 
 function getTimelineStage(status) {
-  if (status === "cancelled") return -1;
+  if (status === "cancelled" || status === "expired") return -1;
   if (status === "delivered" || status === "completed") return 4;
   if (status === "shipped") return 3;
-  if (status === "confirmed" || status === "processing") return 2;
+  if (status === "confirmed" || status === "packing" || status === "processing") return 2;
   return 1; // pending
 }
 
@@ -26,22 +26,31 @@ export default function OrdersPage() {
   const navigate = useNavigate();
 
   const [orders, setOrders] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
   const [activeTab, setActiveTab] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const loadOrders = async () => {
+  const currentTabConfig = ORDER_FILTER_TABS.find((t) => t.value === activeTab) || ORDER_FILTER_TABS[0];
+
+  const loadOrders = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await orderService.getOrders();
-      setOrders(data.results || data || []);
+      const data = await orderService.getOrders({
+        status: currentTabConfig.statusParam,
+        page,
+      });
+      const list = data.results || data || [];
+      setOrders(list);
+      setTotalCount(data.count ?? list.length);
     } catch (err) {
       setError(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentTabConfig.statusParam, page]);
 
   useEffect(() => {
     if (!user) {
@@ -49,27 +58,22 @@ export default function OrdersPage() {
       return;
     }
     loadOrders();
-  }, [user, navigate]);
+  }, [user, navigate, loadOrders]);
 
-  // Filter orders by status
-  const filteredOrders = orders.filter((o) => {
-    if (activeTab === "all") return true;
-    if (activeTab === "pending") return o.status === "pending";
-    if (activeTab === "processing") return ["confirmed", "processing", "shipped"].includes(o.status);
-    if (activeTab === "delivered") return ["delivered", "completed"].includes(o.status);
-    if (activeTab === "cancelled") return o.status === "cancelled";
-    return true;
-  });
+  const filteredOrders = orders;
+  const totalPages = Math.ceil(totalCount / 10) || 1;
 
   const getStatusLabel = (status) => {
     switch (status) {
       case "pending": return "Chờ xác nhận";
       case "confirmed": return "Đã xác nhận";
+      case "packing": return "Đang đóng gói";
       case "processing": return "Đang xử lý";
       case "shipped": return "Đang vận chuyển";
       case "delivered": return "Đã giao hàng";
       case "completed": return "Hoàn thành";
       case "cancelled": return "Đã hủy";
+      case "expired": return "Hết hạn giữ chỗ";
       default: return status;
     }
   };
@@ -103,10 +107,13 @@ export default function OrdersPage() {
             key={tab.value}
             type="button"
             className={activeTab === tab.value ? "active" : ""}
-            onClick={() => setActiveTab(tab.value)}
+            onClick={() => {
+              setActiveTab(tab.value);
+              setPage(1);
+            }}
           >
             {tab.label}
-            {tab.value === "all" ? ` (${orders.length})` : ""}
+            {activeTab === tab.value ? ` (${totalCount})` : ""}
           </button>
         ))}
       </nav>
@@ -189,6 +196,39 @@ export default function OrdersPage() {
               </article>
             );
           })}
+          {totalPages > 1 && (
+            <nav
+              className="pagination nexa-pagination"
+              aria-label="Phân trang đơn hàng"
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: "12px",
+                marginTop: "24px",
+              }}
+            >
+              <button
+                type="button"
+                className="btn btn-quiet"
+                disabled={page <= 1 || loading}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                ← Trang trước
+              </button>
+              <span className="nexa-page-indicator">
+                Trang <b>{page}</b> / {totalPages}
+              </span>
+              <button
+                type="button"
+                className="btn btn-quiet"
+                disabled={page >= totalPages || loading}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Trang sau →
+              </button>
+            </nav>
+          )}
         </div>
       )}
     </div>

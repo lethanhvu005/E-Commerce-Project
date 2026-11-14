@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import F, Min, Q
+from django.db.models import Avg, Count, F, Min, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -33,8 +33,12 @@ def active_products():
     return (
         Product.objects.filter(status=Product.Status.ACTIVE, category__is_active=True, brand__is_active=True)
         .select_related("category", "brand")
-        .prefetch_related("images", "variants__inventory", "reviews")
-        .annotate(min_price=Min("variants__price", filter=Q(variants__is_active=True)))
+        .prefetch_related("images", "variants__inventory")
+        .annotate(
+            min_price=Min("variants__price", filter=Q(variants__is_active=True)),
+            rating_avg=Avg("reviews__stars", filter=Q(reviews__status="published")),
+            review_count=Count("reviews", filter=Q(reviews__status="published"), distinct=True),
+        )
     )
 
 

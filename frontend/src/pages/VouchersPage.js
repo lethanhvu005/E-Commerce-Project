@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { promotionService } from "../api/client";
 import { Tilt3DCard } from "../components/Motion3D";
@@ -10,6 +10,7 @@ export default function VouchersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [toastMsg, setToastMsg] = useState("");
+  const redirectTimerRef = useRef(null);
 
   const loadVouchers = async () => {
     setLoading(true);
@@ -26,12 +27,20 @@ export default function VouchersPage() {
 
   useEffect(() => {
     loadVouchers();
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+      }
+    };
   }, []);
 
   const handleUseVoucher = (code) => {
     navigator.clipboard?.writeText(code);
     setToastMsg(`Đã sao chép mã ${code}! Đang chuyển đến giỏ hàng...`);
-    setTimeout(() => {
+    if (redirectTimerRef.current) {
+      clearTimeout(redirectTimerRef.current);
+    }
+    redirectTimerRef.current = setTimeout(() => {
       navigate("/cart");
     }, 900);
   };

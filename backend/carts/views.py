@@ -23,6 +23,16 @@ def cart_response(cart):
         "discount_total": discount,
         "total": total,
         "voucher_code": cart.voucher.code if cart.voucher_id else None,
+        "voucher": (
+            {
+                "id": cart.voucher.id,
+                "code": cart.voucher.code,
+                "kind": cart.voucher.kind,
+                "value": cart.voucher.value,
+            }
+            if cart.voucher_id
+            else None
+        ),
     }
     if voucher_error:
         payload["voucher_error"] = voucher_error

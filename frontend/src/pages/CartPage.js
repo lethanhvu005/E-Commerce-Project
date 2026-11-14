@@ -87,7 +87,16 @@ export default function CartPage() {
     if (!code) return;
     try {
       const updated = await cartService.applyVoucher(code);
-      setCart(updated);
+      setCart((prev) =>
+        prev
+          ? {
+              ...prev,
+              ...updated,
+              items: updated.items ?? prev.items,
+              voucher: updated.voucher ?? (updated.voucher_code ? { code: updated.voucher_code } : null),
+            }
+          : updated
+      );
       setToastMsg(`Áp dụng mã ${code} thành công!`);
       setVoucherCode("");
     } catch (err) {
@@ -98,7 +107,17 @@ export default function CartPage() {
   const handleRemoveVoucher = async () => {
     try {
       const updated = await cartService.removeVoucher();
-      setCart(updated);
+      setCart((prev) =>
+        prev
+          ? {
+              ...prev,
+              ...updated,
+              items: updated.items ?? prev.items,
+              voucher: null,
+              voucher_code: null,
+            }
+          : updated
+      );
       setToastMsg("Đã gỡ mã ưu đãi.");
     } catch (err) {
       setToastMsg(err.message || "Không thể gỡ mã ưu đãi.");
@@ -267,11 +286,11 @@ export default function CartPage() {
             )}
 
             {/* Voucher Coupon Input Form */}
-            {cart.voucher ? (
+            {cart.voucher?.code || cart.voucher_code ? (
               <div className="nexa-applied-voucher">
                 <div>
                   <span>MÃ ƯU ĐÃI ĐANG ÁP DỤNG</span>
-                  <strong>{cart.voucher.code}</strong>
+                  <strong>{cart.voucher?.code || cart.voucher_code}</strong>
                 </div>
                 <button type="button" onClick={handleRemoveVoucher}>
                   Gỡ mã

@@ -9,7 +9,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import Address
+from .models import Address, User
 from .serializers import AddressSerializer, LoginSerializer, RefreshSerializer, RegisterSerializer, UserSerializer
 from .throttles import LoginRateThrottle, RegisterRateThrottle
 
@@ -53,8 +53,15 @@ def login(request):
 def refresh_token(request):
     input_serializer = RefreshSerializer(data=request.data)
     input_serializer.is_valid(raise_exception=True)
-    serializer = TokenRefreshSerializer(data=input_serializer.validated_data)
     try:
+        raw_token = RefreshToken(input_serializer.validated_data["refresh"])
+        user_id = raw_token.get("user_id")
+        if not User.objects.filter(pk=user_id, is_active=True).exists():
+            return Response(
+                {"refresh": ["Tài khoản đã bị vô hiệu hóa hoặc không còn hoạt động."]},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        serializer = TokenRefreshSerializer(data=input_serializer.validated_data)
         serializer.is_valid(raise_exception=True)
     except TokenError:
         return Response(

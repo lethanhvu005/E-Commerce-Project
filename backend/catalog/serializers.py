@@ -95,12 +95,16 @@ class ProductListSerializer(serializers.ModelSerializer):
         return total
 
     def get_rating_avg(self, product):
+        if hasattr(product, "rating_avg"):
+            return round(float(product.rating_avg), 1) if product.rating_avg is not None else None
         published = [r.stars for r in product.reviews.all() if r.status == "published"]
         if not published:
             return None
         return round(sum(published) / len(published), 1)
 
     def get_review_count(self, product):
+        if hasattr(product, "review_count") and product.review_count is not None:
+            return int(product.review_count)
         return sum(1 for r in product.reviews.all() if r.status == "published")
 
 

@@ -52,6 +52,8 @@ class VoucherApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["discount_total"], 20)
         self.assertEqual(response.data["total"], 180)
+        self.assertEqual(len(response.data["items"]), 1)
+        self.assertEqual(response.data["voucher"]["code"], "SAVE10")
 
     def test_voucher_usage_limit_and_per_user_limit_enforced(self):
         user = User.objects.create_user("limit-user@example.test", "Buyer!Password123")

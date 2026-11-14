@@ -24,9 +24,14 @@ export default function ReviewsPage() {
         setProducts(list);
         if (list.length > 0) {
           setSelectedSlug(list[0].slug);
+        } else {
+          setLoading(false);
         }
       })
-      .catch(setError);
+      .catch((err) => {
+        setError(err);
+        setLoading(false);
+      });
   }, []);
 
   // Load reviews whenever selectedSlug changes

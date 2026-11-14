@@ -38,9 +38,13 @@ def order_queryset_with_relations():
 def orders(request):
     if request.method == "GET":
         queryset = order_queryset_with_relations().filter(user=request.user).order_by("-created_at", "-id")
-        requested_status = request.query_params.get("status")
+        requested_status = request.query_params.get("status", "").strip()
         if requested_status:
-            queryset = queryset.filter(status=requested_status)
+            statuses = [s.strip() for s in requested_status.split(",") if s.strip()]
+            if len(statuses) == 1:
+                queryset = queryset.filter(status=statuses[0])
+            elif statuses:
+                queryset = queryset.filter(status__in=statuses)
         paginator = PageNumberPagination()
         paginator.page_size = 10
         page = paginator.paginate_queryset(queryset, request)

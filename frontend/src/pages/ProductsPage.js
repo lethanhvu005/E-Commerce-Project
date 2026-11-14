@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { cartService, catalogService, wishlistService } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
@@ -56,7 +56,10 @@ export default function ProductsPage() {
     );
   }, []);
 
+  const requestIdRef = useRef(0);
+
   const loadProducts = useCallback(async () => {
+    const reqId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     try {
@@ -72,12 +75,16 @@ export default function ProductsPage() {
         page: currentPage,
         page_size: 12,
       });
+      if (reqId !== requestIdRef.current) return;
       setProductsData(data);
     } catch (err) {
+      if (reqId !== requestIdRef.current) return;
       setError(err);
       setProductsData({ count: 0, results: [] });
     } finally {
-      setLoading(false);
+      if (reqId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [
     currentCategory,

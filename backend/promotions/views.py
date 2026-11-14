@@ -4,7 +4,8 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from carts.services import cart_totals, compute_discount, get_cart, get_voucher_error
+from carts.services import cart_totals, get_cart, get_voucher_error
+from carts.views import cart_response
 from .models import Voucher
 from .serializers import VoucherCodeSerializer, VoucherSerializer
 
@@ -25,7 +26,6 @@ def cart_voucher(request):
     if request.method == "DELETE":
         cart.voucher = None
         cart.save(update_fields=["voucher", "updated_at"])
-        _, subtotal, discount, total = cart_totals(cart)
     else:
         serializer = VoucherCodeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -43,12 +43,5 @@ def cart_voucher(request):
             return Response({"code": [voucher_error]}, status=status.HTTP_400_BAD_REQUEST)
         cart.voucher = voucher
         cart.save(update_fields=["voucher", "updated_at"])
-        discount = compute_discount(voucher, subtotal)
-        total = subtotal - discount
 
-    return Response({
-        "subtotal": subtotal,
-        "discount_total": discount,
-        "total": total,
-        "voucher_code": cart.voucher.code if cart.voucher_id else None,
-    })
+    return cart_response(cart)

@@ -161,6 +161,17 @@ class AccountAuthApiTests(APITestCase):
         )
         self.assertEqual(replay_response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_refresh_token_rejects_deactivated_user(self):
+        refresh = RefreshToken.for_user(self.user)
+        self.user.is_active = False
+        self.user.save(update_fields=["is_active"])
+        response = self.client.post(
+            "/api/auth/token/refresh/",
+            {"refresh": str(refresh)},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
     def test_me_rejects_protected_fields(self):
         self.authenticate()
         response = self.client.patch(

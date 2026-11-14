@@ -3,6 +3,7 @@ from django.db.models import Count, DecimalField, F, Sum, Value
 from django.db.models.functions import Coalesce
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -64,10 +65,18 @@ def dashboard(request):
     )
 
 
+class AdminAuditPagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def audit_logs(request):
     if not request.user.is_staff or not request.user.has_perm("operations.view_auditlog"):
         return Response({"detail": "Bạn không có quyền xem nhật ký."}, status=status.HTTP_403_FORBIDDEN)
-    queryset = AuditLog.objects.select_related("actor").order_by("-created_at", "-id")[:100]
-    return Response({"results": AuditLogSerializer(queryset, many=True).data})
+    queryset = AuditLog.objects.select_related("actor").order_by("-created_at", "-id")
+    paginator = AdminAuditPagination()
+    page = paginator.paginate_queryset(queryset, request)
+    return paginator.get_paginated_response(AuditLogSerializer(page, many=True).data)

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { orderService } from "../api/client";
 import { money, dateTime } from "../api/format";
+import { useAuth } from "../auth/AuthContext";
 import { Loading, ErrorBox } from "../components/Feedback";
 import { Tilt3DCard } from "../components/Motion3D";
 
@@ -336,6 +337,7 @@ export function PrivacyPage() {
 }
 
 export function TrackingPage() {
+  const { user } = useAuth();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -346,6 +348,10 @@ export function TrackingPage() {
     e.preventDefault();
     const trimmed = code.trim();
     if (!trimmed) return;
+    if (!user) {
+      setError(new Error("Vui lòng đăng nhập tài khoản để tra cứu đơn hàng của bạn."));
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -365,6 +371,8 @@ export function TrackingPage() {
         new Error(
           err.status === 404
             ? `Không tìm thấy đơn hàng "${trimmed}". Vui lòng kiểm tra lại mã UUID của đơn.`
+            : err.status === 401
+            ? "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tra cứu đơn hàng."
             : err.message || "Không thể tra cứu đơn hàng lúc này. Vui lòng thử lại sau."
         )
       );
@@ -389,6 +397,15 @@ export function TrackingPage() {
       </section>
       <section className="ux-card">
         <h2>Theo dõi vận chuyển</h2>
+        {!user && (
+          <p style={{ marginBottom: "14px", color: "var(--muted)", fontSize: "13.5px" }}>
+            Vui lòng{" "}
+            <Link to="/login" state={{ from: { pathname: "/tracking" } }} style={{ color: "var(--action)", fontWeight: 700 }}>
+              Đăng nhập
+            </Link>{" "}
+            để tra cứu trạng thái đơn hàng thuộc tài khoản của bạn.
+          </p>
+        )}
         <form onSubmit={handleTrack}>
           <label>
             Mã định danh đơn hàng (UUID)
@@ -407,7 +424,7 @@ export function TrackingPage() {
         </form>
 
         {loading && <Loading label="Đang kiểm tra thông tin đơn hàng từ máy chủ..." />}
-        {error && <ErrorBox error={error} />}
+        {error && <ErrorBox error={error} variant="inline" />}
 
         {orderData && (
           <div style={{ marginTop: "24px" }}>
@@ -432,11 +449,15 @@ export function TrackingPage() {
               </div>
               <div style={{ fontSize: "14px", lineHeight: "1.7" }}>
                 <div>
-                  <b>Tổng giá trị:</b> {money(orderData.total || orderData.total_amount)}
+                  <b>Tổng giá trị:</b>{" "}
+                  {money(orderData.grand_total ?? orderData.total ?? orderData.total_amount, orderData.currency)}
                 </div>
                 <div>
                   <b>Phương thức giao hàng:</b>{" "}
-                  {orderData.shipping_method?.name || orderData.shipping_method_name || "Tiêu chuẩn"}
+                  {orderData.shipping_method_snapshot ||
+                    orderData.shipping_method?.name ||
+                    orderData.shipping_method_name ||
+                    "Tiêu chuẩn"}
                 </div>
               </div>
             </div>
@@ -453,7 +474,9 @@ export function TrackingPage() {
                         <div style={{ fontSize: "12px", color: "var(--muted)" }}>
                           {dateTime(h.created_at)}
                         </div>
-                        {h.note && <p style={{ fontSize: "13px", marginTop: "4px" }}>{h.note}</p>}
+                        {(h.reason || h.note) && (
+                          <p style={{ fontSize: "13px", marginTop: "4px" }}>{h.reason || h.note}</p>
+                        )}
                       </div>
                     </div>
                   ))}
