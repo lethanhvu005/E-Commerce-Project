@@ -3,25 +3,32 @@ import { Link } from "react-router-dom";
 import { adminService } from "../api/client";
 import { money } from "../api/format";
 
-const labels = { pending: "Chờ xử lý", confirmed: "Đã xác nhận", processing: "Đang xử lý", shipped: "Đang giao", delivered: "Đã giao", cancelled: "Đã hủy" };
+const labels = { pending: "Chờ xử lý", confirmed: "Đã xác nhận", packing: "Đang đóng gói", processing: "Đang xử lý", shipped: "Đang giao", delivered: "Đã giao", cancelled: "Đã hủy", expired: "Hết hạn" };
 
 export default function AdminDashboardPage() {
   const [data, setData] = useState(null);
+  const [dailySeries, setDailySeries] = useState([]);
   const [lowStock, setLowStock] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const load = useCallback(async () => {
     setLoading(true); setError("");
     try {
-      const [dashboard, inventory] = await Promise.all([adminService.getDashboard(), adminService.getInventoryBalances()]);
+      const [dashboard, inventory, analytics] = await Promise.all([
+        adminService.getDashboard(),
+        adminService.getInventoryBalances(),
+        adminService.getAnalytics().catch(() => null),
+      ]);
       const balances = inventory?.results || inventory || [];
       setData(dashboard);
+      setDailySeries(analytics?.daily_series || []);
       setLowStock(balances.filter((x) => Number(x.available) <= Number(x.low_stock_threshold)).slice(0, 5));
     } catch (err) { setError(err.message || "Không thể tải dữ liệu quản trị."); }
     finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); }, [load]);
   const max = useMemo(() => Math.max(1, ...(data?.orders_by_status || []).map((x) => x.count)), [data]);
+  const maxDayRev = useMemo(() => Math.max(1, ...dailySeries.map((d) => Number(d.revenue || 0))), [dailySeries]);
 
   return <>
     <div className="admin-intro"><div><h1>Tổng quan</h1><p>Chào mừng bạn trở lại! Đây là giao diện quản trị CommerceOS.</p></div><button className="admin-select" onClick={load}>↻ Làm mới dữ liệu</button></div>
@@ -33,7 +40,7 @@ export default function AdminDashboardPage() {
       <div className="kpi"><small>Sản phẩm sắp hết</small><strong>{loading ? "—" : data?.low_stock_count ?? 0}</strong><span className="change down">Theo ngưỡng tồn kho</span><span className="kpi-icon red">⚠</span></div>
     </div>
     <div className="admin-charts">
-      <section className="admin-panel"><div className="admin-panel-head"><div><h3>Doanh thu & đơn hàng</h3><div className="chart-legend"><span><i className="legend-dot" />Dữ liệu thực từ backend</span></div></div></div><div className="admin-chart-empty">API hiện chưa cung cấp chuỗi dữ liệu theo ngày để vẽ biểu đồ.</div></section>
+      <section className="admin-panel"><div className="admin-panel-head"><div><h3>Doanh thu & đơn hàng</h3><div className="chart-legend"><span><i className="legend-dot" />Dữ liệu thực từ backend</span></div></div></div>{dailySeries.length ? <div className="admin-status-bars">{dailySeries.map((row) => <div className="admin-status-row" key={row.day}><span>{row.day}</span><div className="admin-status-track"><div className="admin-status-fill" style={{ width: `${(Number(row.revenue || 0) / maxDayRev) * 100}%` }} /></div><b>{money(row.revenue)} ({row.orders} đơn)</b></div>)}</div> : <div className="admin-chart-empty">Chưa có dữ liệu doanh thu theo ngày.</div>}</section>
       <section className="admin-panel"><div className="admin-panel-head"><h3>Đơn hàng theo trạng thái</h3></div><div className="admin-status-bars">{(data?.orders_by_status || []).length ? data.orders_by_status.map((row) => <div className="admin-status-row" key={row.status}><span>{labels[row.status] || row.status}</span><div className="admin-status-track"><div className="admin-status-fill" style={{ width: `${(row.count / max) * 100}%` }} /></div><b>{row.count}</b></div>) : <div className="admin-empty">Chưa có đơn hàng.</div>}</div></section>
     </div>
     <div className="admin-bottom">

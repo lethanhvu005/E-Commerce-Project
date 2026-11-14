@@ -737,7 +737,7 @@ export default function ProductDetailPage() {
                   {reviews.map((rev) => (
                     <article className="ux-review" key={rev.id}>
                       <div className="ux-review-head">
-                        <b>{rev.author?.first_name || rev.author?.email || "Khách hàng NEXA"}</b>
+                        <b>{rev.author?.first_name || rev.author?.email || rev.author || "Khách hàng NEXA"}</b>
                         <small>{new Date(rev.created_at).toLocaleDateString("vi-VN")}</small>
                       </div>
                       <div style={{ color: "#ffc107", fontSize: "14px", margin: "4px 0" }}>

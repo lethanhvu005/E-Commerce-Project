@@ -54,18 +54,6 @@ class ReviewUpdateSerializer(serializers.ModelSerializer):
         return _validate_trimmed_body(value, 10, "Nội dung đánh giá")
 
 
-class QuestionSerializer(serializers.ModelSerializer):
-    author = serializers.CharField(source="user.get_full_name", read_only=True)
-
-    class Meta:
-        model = ProductQuestion
-        fields = ["id", "body", "author", "status", "created_at"]
-        read_only_fields = ["id", "author", "status", "created_at"]
-
-    def validate_body(self, value):
-        return _validate_trimmed_body(value, 5, "Nội dung câu hỏi")
-
-
 class AnswerSerializer(serializers.ModelSerializer):
     author = serializers.CharField(source="user.get_full_name", read_only=True)
 
@@ -76,3 +64,22 @@ class AnswerSerializer(serializers.ModelSerializer):
 
     def validate_body(self, value):
         return _validate_trimmed_body(value, 5, "Nội dung câu trả lời")
+
+
+class QuestionSerializer(serializers.ModelSerializer):
+    author = serializers.CharField(source="user.get_full_name", read_only=True)
+    answers = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProductQuestion
+        fields = ["id", "body", "author", "status", "created_at", "answers"]
+        read_only_fields = ["id", "author", "status", "created_at", "answers"]
+
+    def get_answers(self, obj):
+        published_answers = [
+            ans for ans in obj.answers.all() if ans.status == "published"
+        ]
+        return AnswerSerializer(published_answers, many=True).data
+
+    def validate_body(self, value):
+        return _validate_trimmed_body(value, 5, "Nội dung câu hỏi")

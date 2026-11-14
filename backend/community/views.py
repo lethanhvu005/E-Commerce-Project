@@ -56,7 +56,12 @@ def review_detail(request, review_id):
 def product_questions(request, slug):
     product = get_object_or_404(Product, slug=slug, status=Product.Status.ACTIVE)
     if request.method == "GET":
-        questions = ProductQuestion.objects.filter(product=product, status=ModerationStatus.PUBLISHED).select_related("user").order_by("-created_at")
+        questions = (
+            ProductQuestion.objects.filter(product=product, status=ModerationStatus.PUBLISHED)
+            .select_related("user")
+            .prefetch_related("answers__user")
+            .order_by("-created_at")
+        )
         return Response({"results": QuestionSerializer(questions, many=True).data})
     auth_error = require_user(request)
     if auth_error:

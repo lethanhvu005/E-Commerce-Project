@@ -115,7 +115,7 @@ class Command(BaseCommand):
         # 2. Products, Variants, InventoryBalances, Features, Images
         seeded_products = []
         variants_by_sku = {}
-        for item in PRODUCTS:
+        for idx, item in enumerate(PRODUCTS):
             name, short_name, brand_name, category_code, price, old_price, stock, sku, badge, accent, description, features = item
             product, _ = Product.objects.update_or_create(
                 slug=slugify(name),
@@ -158,7 +158,7 @@ class Command(BaseCommand):
 
             InventoryBalance.objects.update_or_create(
                 variant=variant,
-                defaults={"on_hand": max(stock, 20), "reserved": 0, "low_stock_threshold": 5},
+                defaults={"on_hand": max(stock, 20), "reserved": 0, "low_stock_threshold": 10},
             )
 
             ProductFeature.objects.filter(product=product).delete()
@@ -245,6 +245,9 @@ class Command(BaseCommand):
             ("FREESHIP", Voucher.Kind.FREE_SHIP, 0, None, 300000, 1000, 10),
             ("NEXA200K", Voucher.Kind.FIXED, 200000, None, 2000000, 200, 5),
             ("GAMING50K", Voucher.Kind.FIXED, 50000, None, 500000, 500, 5),
+            ("SETUP500K", Voucher.Kind.FIXED, 500000, None, 8000000, 100, 3),
+            ("NEWMEMBER15", Voucher.Kind.PERCENT, 15, 150000, 1000000, 300, 2),
+            ("VIP300K", Voucher.Kind.FIXED, 300000, None, 4000000, 150, 5),
         ]
         vouchers_by_code = {}
         for code, kind, value, max_discount, min_subtotal, usage_limit, per_user_limit in voucher_defs:
@@ -268,11 +271,11 @@ class Command(BaseCommand):
         admin_group, _ = Group.objects.get_or_create(name="Quản trị viên hệ thống")
         ops_group, _ = Group.objects.get_or_create(name="Nhân viên vận hành & kho")
         cs_group, _ = Group.objects.get_or_create(name="Chăm sóc khách hàng")
-        all_perms = list(Permission.objects.all()[:20])
+        all_perms = list(Permission.objects.all())
         if all_perms:
             admin_group.permissions.set(all_perms)
-            ops_group.permissions.set(all_perms[:10])
-            cs_group.permissions.set(all_perms[10:20])
+            ops_group.permissions.set(all_perms)
+            cs_group.permissions.set(all_perms[:20])
 
         user_specs = [
             ("lethanhvu005@gmail.com", "Vũ", "Lê Thành", "0901234567", True, True),
@@ -281,6 +284,10 @@ class Command(BaseCommand):
             ("minh.tran@nexa.vn", "Minh", "Trần Quốc", "0938112233", False, False),
             ("huong.pham@nexa.vn", "Hương", "Phạm Thu", "0977445566", False, False),
             ("khoa.staff@nexa.vn", "Khoa", "Đặng Đăng", "0966889900", True, False),
+            ("anh.nguyen@nexa.vn", "Anh", "Nguyễn Hoàng", "0905123890", False, False),
+            ("linh.le@nexa.vn", "Linh", "Lê Mỹ", "0918234567", False, False),
+            ("duc.vo@nexa.vn", "Đức", "Võ Minh", "0944556677", False, False),
+            ("trang.hoang@nexa.vn", "Trang", "Hoàng Thảo", "0989112244", False, False),
         ]
         users_by_email = {}
         for email, first_name, last_name, phone, is_staff, is_superuser in user_specs:
@@ -329,10 +336,16 @@ class Command(BaseCommand):
             ("lethanhvu005@gmail.com", "Lê Thành Vũ", "0901234567", "128 Nguyễn Cơ Thạch, Khu đô thị Sala", "Phường An Lợi Đông", "TP. Hồ Chí Minh", True),
             ("lethanhvu005@gmail.com", "Lê Thành Vũ (Văn phòng)", "0901234567", "Tòa nhà Bitexco, 2 Hải Triều", "Phường Bến Nghé", "TP. Hồ Chí Minh", False),
             ("lethanhvu2005@gmail.com", "Lê Thành", "0912345678", "456 Lê Văn Việt, Khu Công Nghệ Cao", "Phường Tăng Nhơn Phú A", "TP. Hồ Chí Minh", True),
+            ("lethanhvu2005@gmail.com", "Lê Thành (Studio)", "0912345678", "72 Lê Thánh Tôn, Vincom Center", "Phường Bến Nghé", "TP. Hồ Chí Minh", False),
             ("vu@gmail.com", "Nguyễn Vũ", "0987654321", "88 Láng Hạ, Tòa nhà Sky City", "Phường Láng Hạ", "Hà Nội", True),
+            ("vu@gmail.com", "Nguyễn Vũ (Cơ quan)", "0987654321", "54 Liễu Giai, Lotte Center", "Phường Cống Vị", "Hà Nội", False),
             ("minh.tran@nexa.vn", "Trần Quốc Minh", "0938112233", "215 Nguyễn Văn Linh", "Phường Thạc Gián", "Đà Nẵng", True),
             ("huong.pham@nexa.vn", "Phạm Thu Hương", "0977445566", "19 Đại lộ Hòa Bình", "Phường Tân An", "Cần Thơ", True),
             ("khoa.staff@nexa.vn", "Đặng Đăng Khoa", "0966889900", "35 Nguyễn Huệ", "Phường Bến Nghé", "TP. Hồ Chí Minh", True),
+            ("anh.nguyen@nexa.vn", "Nguyễn Hoàng Anh", "0905123890", "102 Trần Phú", "Phường Lộc Thọ", "Khánh Hòa", True),
+            ("linh.le@nexa.vn", "Lê Mỹ Linh", "0918234567", "18 Hoàng Diệu", "Phường Hải Châu 2", "Đà Nẵng", True),
+            ("duc.vo@nexa.vn", "Võ Minh Đức", "0944556677", "240 Cầu Giấy", "Phường Quan Hoa", "Hà Nội", True),
+            ("trang.hoang@nexa.vn", "Hoàng Thảo Trang", "0989112244", "68 Nguyễn Văn Cừ", "Phường Nguyễn Cư Trinh", "TP. Hồ Chí Minh", True),
         ]
         default_address_by_email = {}
         for email, recipient, phone, line, ward, province, is_default in address_specs:
@@ -373,12 +386,32 @@ class Command(BaseCommand):
                     },
                 )
 
+        # Ensure any other manually registered users also have a default address and token
+        for u in User.objects.exclude(email__in=users_by_email.keys()):
+            users_by_email[u.email] = u
+            Token.objects.get_or_create(user=u)
+            existing_def = Address.objects.filter(user=u, is_default=True).first()
+            if not existing_def:
+                existing_def = Address.objects.create(
+                    user=u,
+                    recipient_name=u.get_full_name() or u.email.split("@")[0],
+                    phone=u.phone or "0909888777",
+                    address_line="100 Nguyễn Thị Minh Khai",
+                    ward="Phường 6",
+                    province="TP. Hồ Chí Minh",
+                    country_code="VN",
+                    is_default=True,
+                )
+            default_address_by_email[u.email] = existing_def
+
         # 6. Active Carts & Guest Cart
         active_cart_specs = [
             ("lethanhvu005@gmail.com", "NEXA10", [("NEXA-X75", 1), ("NEXA-MAT", 2)]),
             ("lethanhvu2005@gmail.com", "FREESHIP", [("LOGI-GPX2", 1), ("RAZER-BSV2", 1)]),
-            ("vu@gmail.com", None, [("KEY-K2", 1)]),
+            ("vu@gmail.com", "GAMING50K", [("KEY-K2", 1), ("RAZER-ATLAS", 1)]),
             ("minh.tran@nexa.vn", "GAMING50K", [("RAZER-VV3P", 1), ("RAZER-ATLAS", 1)]),
+            ("huong.pham@nexa.vn", "NEXA5", [("NEXA-S98", 1)]),
+            ("anh.nguyen@nexa.vn", "NEXA200K", [("ASUS-VG27AQ", 1)]),
         ]
         for email, voucher_code, items in active_cart_specs:
             u = users_by_email[email]
@@ -416,106 +449,290 @@ class Command(BaseCommand):
             defaults={"quantity": 1},
         )
 
-        # 7. Orders, OrderAddresses, OrderItems, OrderStatusHistory, Payments, VoucherRedemptions, InventoryReservations, InventoryMovements
+        # 7. Orders across all statuses and all 14 days for all users
         order_specs = [
+            # --- lethanhvu005@gmail.com (8 orders covering all tabs: Delivered, Shipped, Packing, Confirmed, Pending, Cancelled) ---
             {
                 "order_number": "NX-20261101-001",
                 "email": "lethanhvu005@gmail.com",
                 "status": OrderStatus.DELIVERED,
                 "shipping": std_ship,
                 "voucher_code": "NEXA10",
-                "items": [("NEXA-X75", 1), ("LOGI-GPX2", 1)],
+                "items": [("NEXA-X75", 1), ("LOGI-GPX2", 1), ("NEXA-MAT", 1)],
                 "payment_provider": Payment.Provider.VNPAY,
                 "payment_status": Payment.Status.SUCCEEDED,
                 "note": "Giao giờ hành chính tại sảnh tòa nhà.",
-                "days_ago": 10,
+                "days_ago": 12,
             },
             {
-                "order_number": "NX-20261105-002",
+                "order_number": "NX-20261103-002",
                 "email": "lethanhvu005@gmail.com",
-                "status": OrderStatus.SHIPPED,
+                "status": OrderStatus.DELIVERED,
                 "shipping": exp_ship,
                 "voucher_code": "NEXA200K",
-                "items": [("ASUS-VG27AQ", 1), ("NEXA-MAT", 1)],
+                "items": [("RAZER-BSV2", 1), ("ASUS-VG27AQ", 1), ("RAZER-ATLAS", 1)],
                 "payment_provider": Payment.Provider.MOMO,
                 "payment_status": Payment.Status.SUCCEEDED,
                 "note": "Gọi trước khi giao 15 phút.",
-                "days_ago": 4,
+                "days_ago": 9,
             },
             {
-                "order_number": "NX-20261110-003",
+                "order_number": "NX-20261106-003",
+                "email": "lethanhvu005@gmail.com",
+                "status": OrderStatus.DELIVERED,
+                "shipping": std_ship,
+                "voucher_code": "VIP300K",
+                "items": [("KEY-Q1PRO", 1), ("RAZER-VV3P", 1), ("COR-TC100", 1)],
+                "payment_provider": Payment.Provider.VNPAY,
+                "payment_status": Payment.Status.SUCCEEDED,
+                "note": "Giao tận phòng làm việc tầng 4.",
+                "days_ago": 6,
+            },
+            {
+                "order_number": "NX-20261109-004",
+                "email": "lethanhvu005@gmail.com",
+                "status": OrderStatus.SHIPPED,
+                "shipping": exp_ship,
+                "voucher_code": "SETUP500K",
+                "items": [("ASUS-XG27", 1), ("LOGI-GPX2-HS", 1)],
+                "payment_provider": Payment.Provider.VNPAY,
+                "payment_status": Payment.Status.SUCCEEDED,
+                "note": "Hàng màn hình giá trị cao, xin nhẹ tay.",
+                "days_ago": 3,
+            },
+            {
+                "order_number": "NX-20261111-005",
                 "email": "lethanhvu005@gmail.com",
                 "status": OrderStatus.PACKING,
                 "shipping": std_ship,
                 "voucher_code": "GAMING50K",
-                "items": [("RAZER-HV3", 1)],
+                "items": [("RAZER-HV3", 1), ("NEXA-PULSE8K", 1)],
                 "payment_provider": Payment.Provider.COD,
                 "payment_status": Payment.Status.PENDING,
-                "note": "Đóng gói chống sốc kỹ giúp mình.",
+                "note": "Đóng gói chống sốc 2 lớp giúp mình.",
+                "days_ago": 2,
+            },
+            {
+                "order_number": "NX-20261113-006",
+                "email": "lethanhvu005@gmail.com",
+                "status": OrderStatus.CONFIRMED,
+                "shipping": exp_ship,
+                "voucher_code": "NEXA10",
+                "items": [("NEXA-S98", 1), ("COR-M75", 1)],
+                "payment_provider": Payment.Provider.MOMO,
+                "payment_status": Payment.Status.SUCCEEDED,
+                "note": "Giao nhanh trong sáng mai.",
                 "days_ago": 1,
             },
             {
-                "order_number": "NX-20261102-004",
-                "email": "lethanhvu2005@gmail.com",
-                "status": OrderStatus.DELIVERED,
-                "shipping": std_ship,
-                "voucher_code": "NEXA5",
-                "items": [("KEY-K2", 1), ("HYX-CLOUD3", 1)],
-                "payment_provider": Payment.Provider.VNPAY,
-                "payment_status": Payment.Status.SUCCEEDED,
-                "note": "Giao buổi chiều sau 14h.",
-                "days_ago": 8,
-            },
-            {
-                "order_number": "NX-20261112-005",
-                "email": "lethanhvu2005@gmail.com",
+                "order_number": "NX-20261114-007",
+                "email": "lethanhvu005@gmail.com",
                 "status": OrderStatus.PENDING,
-                "shipping": exp_ship,
-                "voucher_code": None,
-                "items": [("RAZER-VV3P", 1)],
+                "shipping": std_ship,
+                "voucher_code": "FREESHIP",
+                "items": [("NEXA-CHAIR", 1), ("NEXA-OPT24", 1)],
                 "payment_provider": Payment.Provider.COD,
                 "payment_status": Payment.Status.PENDING,
-                "note": "Kiểm tra hàng nguyên seal khi nhận.",
+                "note": "Hỗ trợ lắp đặt ghế khi giao.",
                 "days_ago": 0,
             },
             {
-                "order_number": "NX-20261103-006",
-                "email": "vu@gmail.com",
-                "status": OrderStatus.DELIVERED,
-                "shipping": std_ship,
-                "voucher_code": "FREESHIP",
-                "items": [("LOGI-G502", 1), ("NEXA-AURA71", 1)],
-                "payment_provider": Payment.Provider.COD,
-                "payment_status": Payment.Status.SUCCEEDED,
-                "note": "Để ở quầy lễ tân nếu không nghe máy.",
-                "days_ago": 7,
-            },
-            {
-                "order_number": "NX-20261108-007",
-                "email": "vu@gmail.com",
+                "order_number": "NX-20261104-008",
+                "email": "lethanhvu005@gmail.com",
                 "status": OrderStatus.CANCELLED,
                 "shipping": std_ship,
                 "voucher_code": None,
                 "items": [("COR-K70", 1)],
                 "payment_provider": Payment.Provider.VNPAY,
                 "payment_status": Payment.Status.CANCELLED,
-                "note": "Đổi sang mẫu TKL nhỏ gọn hơn.",
+                "note": "Đổi sang đặt bản TKL nhỏ gọn hơn.",
+                "days_ago": 8,
+            },
+            # --- lethanhvu2005@gmail.com (6 orders covering all tabs) ---
+            {
+                "order_number": "NX-20261102-009",
+                "email": "lethanhvu2005@gmail.com",
+                "status": OrderStatus.DELIVERED,
+                "shipping": std_ship,
+                "voucher_code": "NEXA5",
+                "items": [("KEY-K2", 1), ("HYX-CLOUD3", 1), ("LOGI-G502", 1)],
+                "payment_provider": Payment.Provider.VNPAY,
+                "payment_status": Payment.Status.SUCCEEDED,
+                "note": "Giao buổi chiều sau 14h.",
+                "days_ago": 11,
+            },
+            {
+                "order_number": "NX-20261105-010",
+                "email": "lethanhvu2005@gmail.com",
+                "status": OrderStatus.DELIVERED,
+                "shipping": exp_ship,
+                "voucher_code": "NEXA200K",
+                "items": [("NEXA-V27", 1), ("LOGI-PROX-TKL", 1), ("NEXA-AURA71", 1)],
+                "payment_provider": Payment.Provider.MOMO,
+                "payment_status": Payment.Status.SUCCEEDED,
+                "note": "Giao tại cổng Khu Công Nghệ Cao.",
+                "days_ago": 7,
+            },
+            {
+                "order_number": "NX-20261110-011",
+                "email": "lethanhvu2005@gmail.com",
+                "status": OrderStatus.SHIPPED,
+                "shipping": exp_ship,
+                "voucher_code": "NEWMEMBER15",
+                "items": [("NEXA-X75", 1), ("RAZER-VV3P", 1)],
+                "payment_provider": Payment.Provider.VNPAY,
+                "payment_status": Payment.Status.SUCCEEDED,
+                "note": "Gọi điện trước khi giao 30 phút.",
                 "days_ago": 3,
             },
             {
-                "order_number": "NX-20261109-008",
-                "email": "minh.tran@nexa.vn",
+                "order_number": "NX-20261112-012",
+                "email": "lethanhvu2005@gmail.com",
                 "status": OrderStatus.CONFIRMED,
-                "shipping": exp_ship,
+                "shipping": std_ship,
                 "voucher_code": "NEXA10",
-                "items": [("KEY-Q1PRO", 1), ("RAZER-ATLAS", 1)],
+                "items": [("ASUS-VG27AQ", 1), ("NEXA-MAT", 1)],
+                "payment_provider": Payment.Provider.MOMO,
+                "payment_status": Payment.Status.SUCCEEDED,
+                "note": "Kiểm tra kỹ điểm chết màn hình trước khi xuất kho.",
+                "days_ago": 1,
+            },
+            {
+                "order_number": "NX-20261114-013",
+                "email": "lethanhvu2005@gmail.com",
+                "status": OrderStatus.PENDING,
+                "shipping": exp_ship,
+                "voucher_code": None,
+                "items": [("KEY-Q1PRO", 1)],
+                "payment_provider": Payment.Provider.COD,
+                "payment_status": Payment.Status.PENDING,
+                "note": "Kiểm tra hàng nguyên seal khi nhận.",
+                "days_ago": 0,
+            },
+            {
+                "order_number": "NX-20261107-014",
+                "email": "lethanhvu2005@gmail.com",
+                "status": OrderStatus.CANCELLED,
+                "shipping": std_ship,
+                "voucher_code": None,
+                "items": [("RAZER-BSV2", 1)],
+                "payment_provider": Payment.Provider.VNPAY,
+                "payment_status": Payment.Status.CANCELLED,
+                "note": "Đặt nhầm địa chỉ nhận hàng, hủy để đặt lại.",
+                "days_ago": 5,
+            },
+            # --- vu@gmail.com (6 orders covering all tabs) ---
+            {
+                "order_number": "NX-20261103-015",
+                "email": "vu@gmail.com",
+                "status": OrderStatus.DELIVERED,
+                "shipping": std_ship,
+                "voucher_code": "FREESHIP",
+                "items": [("LOGI-G502", 1), ("NEXA-AURA71", 1), ("NEXA-S98", 1)],
+                "payment_provider": Payment.Provider.COD,
+                "payment_status": Payment.Status.SUCCEEDED,
+                "note": "Để ở quầy lễ tân nếu không nghe máy.",
+                "days_ago": 10,
+            },
+            {
+                "order_number": "NX-20261106-016",
+                "email": "vu@gmail.com",
+                "status": OrderStatus.DELIVERED,
+                "shipping": exp_ship,
+                "voucher_code": "VIP300K",
+                "items": [("COR-K70", 1), ("NEXA-CHAIR", 1), ("NEXA-OPT24", 1)],
+                "payment_provider": Payment.Provider.VNPAY,
+                "payment_status": Payment.Status.SUCCEEDED,
+                "note": "Giao ngoài giờ hành chính sau 18h.",
+                "days_ago": 6,
+            },
+            {
+                "order_number": "NX-20261109-017",
+                "email": "vu@gmail.com",
+                "status": OrderStatus.SHIPPED,
+                "shipping": std_ship,
+                "voucher_code": "NEXA10",
+                "items": [("LOGI-GPX2", 1), ("HYX-CLOUD3", 1)],
+                "payment_provider": Payment.Provider.MOMO,
+                "payment_status": Payment.Status.SUCCEEDED,
+                "note": "Giao tại sảnh A tòa nhà Sky City.",
+                "days_ago": 3,
+            },
+            {
+                "order_number": "NX-20261112-018",
+                "email": "vu@gmail.com",
+                "status": OrderStatus.PACKING,
+                "shipping": exp_ship,
+                "voucher_code": "GAMING50K",
+                "items": [("RAZER-ATLAS", 1), ("NEXA-PULSE8K", 1)],
+                "payment_provider": Payment.Provider.VNPAY,
+                "payment_status": Payment.Status.SUCCEEDED,
+                "note": "Pad kính cường lực xin bọc kỹ xốp nổ.",
+                "days_ago": 1,
+            },
+            {
+                "order_number": "NX-20261114-019",
+                "email": "vu@gmail.com",
+                "status": OrderStatus.PENDING,
+                "shipping": std_ship,
+                "voucher_code": "NEXA200K",
+                "items": [("COR-TC100", 1)],
+                "payment_provider": Payment.Provider.COD,
+                "payment_status": Payment.Status.PENDING,
+                "note": "Giao vào cuối tuần thứ Bảy.",
+                "days_ago": 0,
+            },
+            {
+                "order_number": "NX-20261108-020",
+                "email": "vu@gmail.com",
+                "status": OrderStatus.CANCELLED,
+                "shipping": std_ship,
+                "voucher_code": None,
+                "items": [("ASUS-XG27", 1)],
+                "payment_provider": Payment.Provider.VNPAY,
+                "payment_status": Payment.Status.CANCELLED,
+                "note": "Đổi sang mẫu màn hình 24.5 inch phù hợp bàn làm việc.",
+                "days_ago": 4,
+            },
+            # --- Other customer orders for rich analytics & verified reviews across all 24 SKUs ---
+            {
+                "order_number": "NX-20261101-021",
+                "email": "minh.tran@nexa.vn",
+                "status": OrderStatus.DELIVERED,
+                "shipping": exp_ship,
+                "voucher_code": "NEXA200K",
+                "items": [("ASUS-VG27AQ", 1), ("KEY-Q1PRO", 1), ("RAZER-ATLAS", 1), ("COR-M75", 1)],
                 "payment_provider": Payment.Provider.MOMO,
                 "payment_status": Payment.Status.SUCCEEDED,
                 "note": "Xuất hóa đơn VAT công ty.",
-                "days_ago": 2,
+                "days_ago": 13,
             },
             {
-                "order_number": "NX-20261104-009",
+                "order_number": "NX-20261104-022",
+                "email": "minh.tran@nexa.vn",
+                "status": OrderStatus.DELIVERED,
+                "shipping": std_ship,
+                "voucher_code": "SETUP500K",
+                "items": [("RAZER-HV3", 1), ("LOGI-PROX-TKL", 1), ("LOGI-GPX2-HS", 1), ("ASUS-XG27", 1)],
+                "payment_provider": Payment.Provider.VNPAY,
+                "payment_status": Payment.Status.SUCCEEDED,
+                "note": "Giao cho phòng eSports Đà Nẵng.",
+                "days_ago": 8,
+            },
+            {
+                "order_number": "NX-20261102-023",
+                "email": "huong.pham@nexa.vn",
+                "status": OrderStatus.DELIVERED,
+                "shipping": std_ship,
+                "voucher_code": "NEXA10",
+                "items": [("NEXA-S98", 1), ("NEXA-V27", 1), ("NEXA-MAT", 2), ("NEXA-PULSE8K", 1)],
+                "payment_provider": Payment.Provider.VNPAY,
+                "payment_status": Payment.Status.SUCCEEDED,
+                "note": "Giao giờ hành chính.",
+                "days_ago": 10,
+            },
+            {
+                "order_number": "NX-20261104-024",
                 "email": "huong.pham@nexa.vn",
                 "status": OrderStatus.EXPIRED,
                 "shipping": std_ship,
@@ -526,7 +743,98 @@ class Command(BaseCommand):
                 "note": "",
                 "days_ago": 6,
             },
+            {
+                "order_number": "NX-20261105-025",
+                "email": "anh.nguyen@nexa.vn",
+                "status": OrderStatus.DELIVERED,
+                "shipping": exp_ship,
+                "voucher_code": "VIP300K",
+                "items": [("NEXA-X75", 1), ("LOGI-GPX2", 1), ("RAZER-BSV2", 1), ("KEY-K2", 1)],
+                "payment_provider": Payment.Provider.MOMO,
+                "payment_status": Payment.Status.SUCCEEDED,
+                "note": "Đóng gói kỹ gửi đi Nha Trang.",
+                "days_ago": 7,
+            },
+            {
+                "order_number": "NX-20261107-026",
+                "email": "linh.le@nexa.vn",
+                "status": OrderStatus.DELIVERED,
+                "shipping": std_ship,
+                "voucher_code": "NEWMEMBER15",
+                "items": [("COR-K70", 1), ("HYX-CLOUD3", 1), ("LOGI-G502", 1), ("NEXA-CHAIR", 1)],
+                "payment_provider": Payment.Provider.VNPAY,
+                "payment_status": Payment.Status.SUCCEEDED,
+                "note": "Giao trước 17h chiều.",
+                "days_ago": 5,
+            },
+            {
+                "order_number": "NX-20261108-027",
+                "email": "duc.vo@nexa.vn",
+                "status": OrderStatus.DELIVERED,
+                "shipping": exp_ship,
+                "voucher_code": "SETUP500K",
+                "items": [("RAZER-HV3", 1), ("LOGI-PROX-TKL", 1), ("RAZER-VV3P", 1), ("COR-M75", 1)],
+                "payment_provider": Payment.Provider.VNPAY,
+                "payment_status": Payment.Status.SUCCEEDED,
+                "note": "Nhận hàng tại sảnh văn phòng Cầu Giấy.",
+                "days_ago": 4,
+            },
+            {
+                "order_number": "NX-20261110-028",
+                "email": "trang.hoang@nexa.vn",
+                "status": OrderStatus.DELIVERED,
+                "shipping": std_ship,
+                "voucher_code": "NEXA200K",
+                "items": [("LOGI-GPX2-HS", 1), ("NEXA-AURA71", 1), ("NEXA-OPT24", 1), ("COR-TC100", 1)],
+                "payment_provider": Payment.Provider.MOMO,
+                "payment_status": Payment.Status.SUCCEEDED,
+                "note": "Gọi cho lễ tân nhận giúp nếu mình đang họp.",
+                "days_ago": 2,
+            },
+            {
+                "order_number": "NX-20261111-029",
+                "email": "anh.nguyen@nexa.vn",
+                "status": OrderStatus.DELIVERED,
+                "shipping": std_ship,
+                "voucher_code": "GAMING50K",
+                "items": [("NEXA-V27", 1), ("ASUS-XG27", 1)],
+                "payment_provider": Payment.Provider.VNPAY,
+                "payment_status": Payment.Status.SUCCEEDED,
+                "note": "Bọc chống thấm nước cẩn thận.",
+                "days_ago": 2,
+            },
+            {
+                "order_number": "NX-20261113-030",
+                "email": "linh.le@nexa.vn",
+                "status": OrderStatus.SHIPPED,
+                "shipping": exp_ship,
+                "voucher_code": "NEXA10",
+                "items": [("KEY-Q1PRO", 1), ("RAZER-ATLAS", 1)],
+                "payment_provider": Payment.Provider.MOMO,
+                "payment_status": Payment.Status.SUCCEEDED,
+                "note": "Giao nhanh giúp mình nhé.",
+                "days_ago": 1,
+            },
         ]
+
+        # Also clean up old demo order numbers that were renamed so there are no duplicates
+        old_demo_nums = ["NX-20261105-002", "NX-20261110-003", "NX-20261102-004", "NX-20261112-005", "NX-20261103-006", "NX-20261108-007", "NX-20261109-008", "NX-20261104-009"]
+        for old_num in old_demo_nums:
+            old_ord = Order.objects.filter(order_number=old_num).first()
+            if old_ord:
+                Review.objects.filter(order_item__order=old_ord).update(order_item=None)
+                InventoryMovement.objects.filter(order=old_ord).delete()
+                InventoryReservation.objects.filter(order=old_ord).delete()
+                VoucherRedemption.objects.filter(order=old_ord).delete()
+                Payment.objects.filter(order=old_ord).delete()
+                OrderStatusHistory.objects.filter(order=old_ord).delete()
+                OrderItem.objects.filter(order=old_ord).delete()
+                OrderAddress.objects.filter(order=old_ord).delete()
+                sc = old_ord.source_cart
+                old_ord.delete()
+                if sc:
+                    CartItem.objects.filter(cart=sc).delete()
+                    sc.delete()
 
         staff_actor = users_by_email["lethanhvu005@gmail.com"]
         delivered_order_items = {}
@@ -595,6 +903,8 @@ class Command(BaseCommand):
                     "customer_note": spec["note"],
                 },
             )
+            # Backdate created_at so analytics charts and order history show realistic dates
+            Order.objects.filter(pk=order.pk).update(created_at=created_time, updated_at=created_time)
 
             OrderAddress.objects.update_or_create(
                 order=order,
@@ -684,13 +994,16 @@ class Command(BaseCommand):
                 if spec["status"] == OrderStatus.EXPIRED:
                     transitions.append((OrderStatus.PENDING, OrderStatus.EXPIRED, None, "Quá thời hạn giữ chỗ thanh toán"))
 
-                for from_st, to_st, actor_user, reason_text in transitions:
-                    OrderStatusHistory.objects.create(
+                for step_i, (from_st, to_st, actor_user, reason_text) in enumerate(transitions):
+                    hist = OrderStatusHistory.objects.create(
                         order=order,
                         from_status=from_st,
                         to_status=to_st,
                         actor=actor_user,
                         reason=reason_text,
+                    )
+                    OrderStatusHistory.objects.filter(pk=hist.pk).update(
+                        created_at=created_time + timedelta(hours=step_i * 2)
                     )
 
             # VoucherRedemption
@@ -711,8 +1024,8 @@ class Command(BaseCommand):
                 )
 
             # Payment
-            paid_at_val = (now - timedelta(days=spec["days_ago"])) if spec["payment_status"] in [Payment.Status.SUCCEEDED, Payment.Status.REFUNDED] else None
-            Payment.objects.update_or_create(
+            paid_at_val = created_time if spec["payment_status"] in [Payment.Status.SUCCEEDED, Payment.Status.REFUNDED] else None
+            pay_obj, _ = Payment.objects.update_or_create(
                 idempotency_key=deterministic_uuid(f"pay-{order_number}"),
                 defaults={
                     "order": order,
@@ -724,8 +1037,10 @@ class Command(BaseCommand):
                     "paid_at": paid_at_val,
                 },
             )
+            Payment.objects.filter(pk=pay_obj.pk).update(created_at=created_time)
 
-        # Sync InventoryBalance.reserved with active reservations and add receipt/adjustment movements
+        # Sync InventoryBalance.reserved with active reservations and configure 3 realistic low-stock SKUs
+        low_stock_skus = {"ASUS-XG27": 7, "KEY-Q1PRO": 8, "RAZER-ATLAS": 6}
         for sku, variant in variants_by_sku.items():
             active_res = (
                 InventoryReservation.objects.filter(variant=variant, status=InventoryReservation.Status.ACTIVE)
@@ -734,9 +1049,14 @@ class Command(BaseCommand):
             )
             balance = InventoryBalance.objects.get(variant=variant)
             balance.reserved = active_res
-            if balance.on_hand < active_res + 10:
-                balance.on_hand = active_res + 25
-            balance.save(update_fields=["on_hand", "reserved", "updated_at"])
+            if sku in low_stock_skus:
+                balance.low_stock_threshold = 10
+                balance.on_hand = active_res + low_stock_skus[sku]
+            else:
+                balance.low_stock_threshold = 8
+                if balance.on_hand < active_res + 15:
+                    balance.on_hand = active_res + 28
+            balance.save(update_fields=["on_hand", "reserved", "low_stock_threshold", "updated_at"])
 
             InventoryMovement.objects.update_or_create(
                 event_key=deterministic_uuid(f"receipt-initial-{sku}"),
@@ -750,85 +1070,302 @@ class Command(BaseCommand):
                 },
             )
 
-        # 8. Community: Reviews, ProductQuestions, ProductAnswers
-        review_specs = [
-            ("lethanhvu005@gmail.com", "NEXA-X75", 5, "Bàn phím gõ cực kỳ đầm tay, stabilizer được cân chỉnh sẵn rất mượt và LED RGB sáng đều đẹp mắt.", ModerationStatus.PUBLISHED),
-            ("lethanhvu005@gmail.com", "LOGI-GPX2", 5, "Chuột nhẹ đến bất ngờ, di tâm trong Valorant và CS2 cực kỳ chuẩn xác, pin dùng cả tuần chưa hết.", ModerationStatus.PUBLISHED),
-            ("lethanhvu2005@gmail.com", "KEY-K2", 5, "Kết nối Bluetooth với MacBook và PC chuyển đổi rất nhanh, build chắc chắn, gõ code cả ngày không mỏi.", ModerationStatus.PUBLISHED),
-            ("lethanhvu2005@gmail.com", "HYX-CLOUD3", 4, "Đệm tai siêu êm, đeo 5 tiếng liên tục không bị nóng tai, âm thanh định vị tiếng bước chân rất rõ.", ModerationStatus.PUBLISHED),
-            ("vu@gmail.com", "LOGI-G502", 5, "Con lăn vô cực huyền thoại kết hợp switch quang học mới bấm rất nảy, nhiều nút phụ tiện cho cả làm việc.", ModerationStatus.PUBLISHED),
-            ("vu@gmail.com", "NEXA-AURA71", 4, "Trong tầm giá hơn 2 triệu thì chiếc tai nghe không dây này quá đáng tiền, mic lọc ồn tốt khi họp nhóm.", ModerationStatus.PUBLISHED),
-            ("minh.tran@nexa.vn", "ASUS-VG27AQ", 5, "Màn hình 2K 165Hz màu sắc tươi, không bị hở sáng, đóng gói giao hàng cực kỳ cẩn thận.", ModerationStatus.PUBLISHED),
-            ("huong.pham@nexa.vn", "NEXA-S98", 5, "Layout 98 phím có cụm phím số rất tiện nhập liệu mà vẫn gọn bàn làm việc, âm gõ trầm ấm.", ModerationStatus.PENDING),
-        ]
-        for email, sku, stars, body, rev_status in review_specs:
-            u = users_by_email[email]
-            product = variants_by_sku[sku].product
-            verified_oi = delivered_order_items.get((email, product.slug))
-            Review.objects.update_or_create(
-                user=u,
-                product=product,
-                defaults={
-                    "order_item": verified_oi,
-                    "stars": stars,
-                    "body": body,
-                    "status": rev_status,
-                },
-            )
+        # 8. Community: Comprehensive Reviews & Q&A for ALL 24 Products
+        product_review_map = {
+            "NEXA-X75": [
+                ("lethanhvu005@gmail.com", 5, "Bàn phím gõ cực kỳ đầm tay, stabilizer được cân chỉnh sẵn rất mượt và LED RGB sáng đều đẹp mắt.", ModerationStatus.PUBLISHED, 10),
+                ("lethanhvu2005@gmail.com", 5, "Layout 75% vừa vặn bàn làm việc, kết nối 2.4GHz cực nhạy không có độ trễ khi chơi game.", ModerationStatus.PUBLISHED, 7),
+                ("anh.nguyen@nexa.vn", 5, "Foam tiêu âm 3 lớp làm rất tốt, âm gõ clacky nghe cực cuốn, pin dùng liên tục cả tuần.", ModerationStatus.PUBLISHED, 5),
+                ("minh.tran@nexa.vn", 4, "Keycap PBT nhám nhẹ chống bám vân tay tốt, phần mềm chỉnh macro trực quan dễ dùng.", ModerationStatus.PUBLISHED, 2),
+            ],
+            "LOGI-GPX2": [
+                ("lethanhvu005@gmail.com", 5, "Chuột nhẹ đến bất ngờ, di tâm trong Valorant và CS2 cực kỳ chuẩn xác, pin dùng cả tuần chưa hết.", ModerationStatus.PUBLISHED, 11),
+                ("vu@gmail.com", 5, "Switch quang học Lightforce mới bấm đanh và nảy hơn đời 1 rất nhiều, cổng sạc USB-C quá tiện.", ModerationStatus.PUBLISHED, 6),
+                ("anh.nguyen@nexa.vn", 5, "Cảm biến Hero 2 32K tracking mượt mà trên cả pad vải lẫn pad kính, xứng đáng chuột quốc dân eSports.", ModerationStatus.PUBLISHED, 4),
+                ("duc.vo@nexa.vn", 4, "Form cầm an toàn phù hợp cả claw grip và palm grip, feet zin lướt khá êm.", ModerationStatus.PUBLISHED, 1),
+            ],
+            "RAZER-BSV2": [
+                ("lethanhvu005@gmail.com", 5, "Micro HyperClear Super Wideband thu âm trong vắt như mic rời, đồng đội khen giọng rất rõ.", ModerationStatus.PUBLISHED, 8),
+                ("anh.nguyen@nexa.vn", 5, "Đệm tai FlowKnit cực thoáng, đeo 6 tiếng liên tục cuối tuần vẫn nhẹ đầu và không nóng tai.", ModerationStatus.PUBLISHED, 5),
+                ("minh.tran@nexa.vn", 4, "Định vị tiếng bước chân trong FPS cực chuẩn nhờ profile eSports có sẵn trên Synapse.", ModerationStatus.PUBLISHED, 3),
+                ("huong.pham@nexa.vn", 5, "Thời lượng pin thực tế lên tới gần 70 giờ, cả tuần mới phải cắm sạc một lần.", ModerationStatus.PUBLISHED, 1),
+            ],
+            "ASUS-VG27AQ": [
+                ("lethanhvu005@gmail.com", 5, "Màn hình 27 inch 2K 165Hz quá sắc nét, màu sắc IPS tươi tắn, vừa làm đồ họa vừa bắn FPS đều ngon.", ModerationStatus.PUBLISHED, 8),
+                ("minh.tran@nexa.vn", 5, "Chân đế công thái học nâng hạ xoay dọc rất mượt, bật G-Sync Compatible không hề bị xé hình.", ModerationStatus.PUBLISHED, 12),
+                ("lethanhvu2005@gmail.com", 4, "Tấm nền không bị hở sáng ở các góc, shop đóng gói chống sốc cực kỳ cẩn thận.", ModerationStatus.PUBLISHED, 4),
+                ("anh.nguyen@nexa.vn", 5, "Trong tầm giá dưới 7 triệu thì chiếc màn 2K này vô địch về độ bền và hiệu năng.", ModerationStatus.PUBLISHED, 2),
+            ],
+            "KEY-K2": [
+                ("lethanhvu2005@gmail.com", 5, "Kết nối Bluetooth với MacBook và PC chuyển đổi rất nhanh bằng tổ hợp phím, gõ code cả ngày không mỏi.", ModerationStatus.PUBLISHED, 10),
+                ("anh.nguyen@nexa.vn", 5, "Có sẵn bộ keycap cho cả macOS và Windows trong hộp, build khung nhôm cực kỳ cứng cáp.", ModerationStatus.PUBLISHED, 6),
+                ("vu@gmail.com", 4, "Pin 4000mAh rất trâu, thiết kế cổ điển đặt lên bàn làm việc nhìn cực kỳ tối giản.", ModerationStatus.PUBLISHED, 3),
+            ],
+            "NEXA-S98": [
+                ("vu@gmail.com", 5, "Layout 98 phím có cụm phím số rất tiện nhập liệu kế toán và code mà vẫn gọn hơn full-size nhiều.", ModerationStatus.PUBLISHED, 9),
+                ("huong.pham@nexa.vn", 5, "Dải LED viền RGB hai bên hông rất đẹp, âm gõ trầm ấm nhờ lót sẵn đệm silicone dày.", ModerationStatus.PUBLISHED, 8),
+                ("lethanhvu005@gmail.com", 5, "Mạch hot-swap 5 pin nhận diện switch nhạy, núm xoay chỉnh âm lượng vặn rất đầm tay.", ModerationStatus.PUBLISHED, 2),
+                ("linh.le@nexa.vn", 5, "Đang chờ nhận thêm bộ switch tactile để lắp thử trên chiếc S98 này, rất ưng ý.", ModerationStatus.PENDING, 1),
+            ],
+            "COR-K70": [
+                ("vu@gmail.com", 5, "Khung nhôm phay xước đặc trưng của Corsair cực kỳ sang, cụm phím media và con lăn nhôm quá tiện.", ModerationStatus.PUBLISHED, 5),
+                ("linh.le@nexa.vn", 5, "Tần số phản hồi AXON 8000Hz siêu nhanh, kê tay từ tính đi kèm mềm và đỡ cổ tay rất tốt.", ModerationStatus.PUBLISHED, 4),
+                ("duc.vo@nexa.vn", 4, "Keycap PBT Double-shot dày dặn, hiệu ứng đèn iCUE đồng bộ với toàn bộ dàn PC cực đẹp.", ModerationStatus.PUBLISHED, 2),
+            ],
+            "HYX-CLOUD3": [
+                ("lethanhvu2005@gmail.com", 5, "Đệm tai memory foam siêu êm đúng chất HyperX, đeo 5 tiếng liên tục không bị đau vành tai.", ModerationStatus.PUBLISHED, 9),
+                ("linh.le@nexa.vn", 5, "Pin lên đến 120 giờ thực sự ấn tượng, mua về dùng hơn 2 tuần lễ vẫn chưa phải sạc lại.", ModerationStatus.PUBLISHED, 4),
+                ("vu@gmail.com", 4, "Màng loa 53mm đặt nghiêng cho âm trường rộng, nghe nhạc lẫn chơi game thế giới mở đều hay.", ModerationStatus.PUBLISHED, 2),
+            ],
+            "LOGI-G502": [
+                ("lethanhvu2005@gmail.com", 5, "Con lăn vô cực hai chế độ cuộn tài liệu dài cực sướng, chuyển sang bắn súng cũng rất đầm.", ModerationStatus.PUBLISHED, 10),
+                ("vu@gmail.com", 5, "Bản G502 X Lightspeed giảm trọng lượng đáng kể so với đời cũ, nút bắn tỉa DPI Shift tháo đảo chiều rất thông minh.", ModerationStatus.PUBLISHED, 8),
+                ("linh.le@nexa.vn", 5, "Nhiều nút phụ lập trình được trên G HUB, hỗ trợ đắc lực cho cả dựng video Premiere và chơi MMO.", ModerationStatus.PUBLISHED, 3),
+            ],
+            "NEXA-V27": [
+                ("lethanhvu2005@gmail.com", 5, "Màn hình NEXA Vision 27 QHD viền siêu mỏng 3 cạnh, ghép 2 màn hình liền mạch cực đẹp.", ModerationStatus.PUBLISHED, 6),
+                ("huong.pham@nexa.vn", 5, "Màu sắc chuẩn xác ngay khi xuất xưởng, làm việc văn phòng và chỉnh ảnh Lightroom rất dịu mắt.", ModerationStatus.PUBLISHED, 9),
+                ("anh.nguyen@nexa.vn", 4, "Có đầy đủ cáp DisplayPort và HDMI đi kèm trong hộp, chân đế kim loại chắc chắn không rung lắc.", ModerationStatus.PUBLISHED, 2),
+            ],
+            "NEXA-MAT": [
+                ("lethanhvu005@gmail.com", 5, "Pad chuột cỡ XL phủ kín mặt bàn, bề mặt vải dệt mịn giúp di chuột mượt mà và kiểm soát tâm tốt.", ModerationStatus.PUBLISHED, 11),
+                ("huong.pham@nexa.vn", 5, "Lớp phủ kháng nước hiệu quả, lỡ làm đổ chút cà phê chỉ cần lấy khăn giấy thấm nhẹ là sạch.", ModerationStatus.PUBLISHED, 8),
+                ("lethanhvu2005@gmail.com", 5, "Viền bo may chìm không gây cấn cổ tay khi tì lâu, đế cao su bám chặt mặt bàn gỗ.", ModerationStatus.PUBLISHED, 3),
+            ],
+            "NEXA-CHAIR": [
+                ("vu@gmail.com", 5, "Ghế NEXA Ergo Pro đỡ thắt lưng chuẩn công thái học, ngồi code 8-10 tiếng mỗi ngày hết hẳn đau mỏi lưng.", ModerationStatus.PUBLISHED, 5),
+                ("linh.le@nexa.vn", 5, "Lưới thoáng khí ngồi mùa hè rất mát, bệ tỳ tay 4D chỉnh được mọi góc độ vừa tầm bàn.", ModerationStatus.PUBLISHED, 4),
+                ("lethanhvu005@gmail.com", 4, "Khung chân hợp kim nhôm sáng bóng, bánh xe PU lăn êm không gây xước sàn gỗ.", ModerationStatus.PUBLISHED, 1),
+            ],
+            "RAZER-HV3": [
+                ("minh.tran@nexa.vn", 5, "Tính năng Rapid Trigger trên switch quang học Analog Gen-2 giúp counter-strafe trong Valorant nhanh không tưởng!", ModerationStatus.PUBLISHED, 7),
+                ("duc.vo@nexa.vn", 5, "Chỉnh được điểm nhận phím từ 0.1mm đến 4.0mm ngay trên bàn phím không cần mở phần mềm, quá đỉnh.", ModerationStatus.PUBLISHED, 3),
+                ("lethanhvu005@gmail.com", 5, "Mặt trên bằng nhôm máy bay cứng cáp, kê tay giả da có nam châm hít rất gọn.", ModerationStatus.PUBLISHED, 2),
+            ],
+            "LOGI-PROX-TKL": [
+                ("lethanhvu2005@gmail.com", 5, "Kết nối Lightspeed dùng chung 1 đầu thu với chuột G Pro X Superlight 2 cực gọn cổng USB.", ModerationStatus.PUBLISHED, 6),
+                ("minh.tran@nexa.vn", 5, "Đi kèm hộp đựng cứng chống sốc rất xịn để mang đi thi đấu hoặc ra quán net.", ModerationStatus.PUBLISHED, 7),
+                ("duc.vo@nexa.vn", 4, "Keycap PBT xuyên LED sáng rõ, con lăn chỉnh âm lượng mượt và tiện lợi.", ModerationStatus.PUBLISHED, 3),
+            ],
+            "KEY-Q1PRO": [
+                ("lethanhvu005@gmail.com", 5, "Khung nhôm CNC 6063 nguyên khối nặng gần 2kg cực kỳ đầm, cấu trúc Gasket mount nhún êm tuyệt vời.", ModerationStatus.PUBLISHED, 5),
+                ("minh.tran@nexa.vn", 5, "Keymap trực tiếp trên trình duyệt bằng VIA không cần cài app, núm xoay CNC hoàn thiện sắc sảo.", ModerationStatus.PUBLISHED, 11),
+                ("linh.le@nexa.vn", 5, "Keycap KSA profile PBT hai lớp gõ rất ôm ngón tay, âm thanh stock đã cực kỳ hay rồi.", ModerationStatus.PUBLISHED, 1),
+                ("duc.vo@nexa.vn", 5, "Đang trải nghiệm thêm kết nối Bluetooth 5.1 trên iPad Pro, độ trễ rất thấp.", ModerationStatus.PENDING, 0),
+            ],
+            "RAZER-VV3P": [
+                ("lethanhvu005@gmail.com", 5, "Trọng lượng 54g cân bằng hoàn hảo, đi kèm sẵn HyperPolling Wireless Dongle 8000Hz trong hộp luôn!", ModerationStatus.PUBLISHED, 5),
+                ("duc.vo@nexa.vn", 5, "Form mới nâng phần lưng cao hơn Viper V2 Pro nên ôm lòng bàn tay cực kỳ thoải mái.", ModerationStatus.PUBLISHED, 3),
+                ("lethanhvu2005@gmail.com", 5, "Lớp phủ bề mặt mịn bám tay cực tốt kể cả khi ra mồ hôi tay lúc thi đấu căng thẳng.", ModerationStatus.PUBLISHED, 2),
+            ],
+            "NEXA-PULSE8K": [
+                ("huong.pham@nexa.vn", 5, "Mức giá chưa tới 2 triệu mà có sẵn mắt đọc PAW3395 và đầu thu 8KHz, trọng lượng 49g nhẹ như lông hồng.", ModerationStatus.PUBLISHED, 8),
+                ("lethanhvu005@gmail.com", 5, "Switch quang học bấm giòn, không lo bị double-click, feet PTFE lớn lướt cực êm.", ModerationStatus.PUBLISHED, 3),
+                ("vu@gmail.com", 4, "Thiết kế đối xứng dễ làm quen, đèn báo mức DPI và dung lượng pin trên dock thu phát rất trực quan.", ModerationStatus.PUBLISHED, 1),
+            ],
+            "COR-M75": [
+                ("minh.tran@nexa.vn", 5, "Chuột đối xứng thuần FPS của Corsair làm rất tốt, không có chi tiết thừa, vẩy tâm cực nhanh.", ModerationStatus.PUBLISHED, 11),
+                ("duc.vo@nexa.vn", 5, "Nút bấm Quickstrike không có khoảng trễ hành trình, phản hồi tức thì từng pha đấu súng.", ModerationStatus.PUBLISHED, 3),
+                ("lethanhvu005@gmail.com", 4, "Kết nối không dây Slipstream cực kỳ ổn định, cầm nắm chắc chắn.", ModerationStatus.PUBLISHED, 1),
+            ],
+            "LOGI-GPX2-HS": [
+                ("minh.tran@nexa.vn", 5, "Màng loa Graphene 50mm tách bạch hoàn toàn tiếng bước chân và tiếng nổ lựu đạn, âm thanh cực kỳ chi tiết.", ModerationStatus.PUBLISHED, 7),
+                ("trang.hoang@nexa.vn", 5, "Trong hộp tặng kèm cả bộ đệm tai da lẫn đệm tai vải nhung để thay đổi theo thời tiết, rất chu đáo.", ModerationStatus.PUBLISHED, 2),
+                ("lethanhvu005@gmail.com", 5, "Khớp xoay tai nghe linh hoạt, có cả Bluetooth để vừa chơi game trên PC vừa nhận cuộc gọi điện thoại.", ModerationStatus.PUBLISHED, 2),
+            ],
+            "NEXA-AURA71": [
+                ("lethanhvu2005@gmail.com", 5, "Trong tầm giá hơn 2 triệu thì chiếc tai nghe không dây này quá đáng tiền, mic lọc ồn AI rất tốt khi họp nhóm.", ModerationStatus.PUBLISHED, 6),
+                ("vu@gmail.com", 5, "Âm thanh vòm 7.1 xem phim hành động và chơi game AAA cực kỳ sống động, trọng lượng nhẹ chỉ 260g.", ModerationStatus.PUBLISHED, 9),
+                ("trang.hoang@nexa.vn", 4, "Đệm tai vải lưới mát mẻ, màu sắc hiện đại hợp với góc setup trắng đen.", ModerationStatus.PUBLISHED, 2),
+            ],
+            "ASUS-XG27": [
+                ("minh.tran@nexa.vn", 5, "Tần số quét 300Hz ở độ phân giải 2K thực sự là đỉnh cao công nghệ, chuyển động mượt như lụa!", ModerationStatus.PUBLISHED, 7),
+                ("anh.nguyen@nexa.vn", 5, "Công nghệ ELMB Sync vừa chống nhòe chuyển động vừa giữ G-Sync, bắn CS2 và Apex Legends nhìn địch cực rõ.", ModerationStatus.PUBLISHED, 2),
+                ("lethanhvu005@gmail.com", 5, "Độ sáng HDR600 rực rỡ, bảng màu hiệu chỉnh sẵn từ nhà máy kèm giấy chứng nhận Calman Verified.", ModerationStatus.PUBLISHED, 3),
+                ("vu@gmail.com", 4, "Chân đế ROG thiết kế hầm hố, có lỗ ốc 1/4 inch trên đỉnh để gắn webcam hoặc đèn livestream rất tiện.", ModerationStatus.PENDING, 1),
+            ],
+            "NEXA-OPT24": [
+                ("vu@gmail.com", 5, "Màn hình 24.5 inch 240Hz chuẩn kích thước thi đấu FPS, tấm nền Fast IPS màu đẹp và góc nhìn rộng.", ModerationStatus.PUBLISHED, 5),
+                ("trang.hoang@nexa.vn", 5, "Chân đế xoay dọc 90 độ rất nhẹ nhàng, mình dùng làm màn hình phụ đọc tài liệu và dựng dọc cực chuẩn.", ModerationStatus.PUBLISHED, 2),
+                ("lethanhvu005@gmail.com", 5, "Viền mỏng đều 4 cạnh, menu OSD điều khiển bằng núm joystick 5 hướng phía sau rất dễ thao tác.", ModerationStatus.PUBLISHED, 1),
+            ],
+            "RAZER-ATLAS": [
+                ("lethanhvu005@gmail.com", 5, "Lần đầu dùng pad kính cường lực mà mê luôn, bề mặt xử lý vi khắc CNC di chuột nhẹ như bay mà dừng tâm vẫn chuẩn.", ModerationStatus.PUBLISHED, 8),
+                ("minh.tran@nexa.vn", 5, "Không bao giờ lo mòn bề mặt hay ẩm mốc như pad vải, lau nhẹ bằng khăn ẩm là sạch bóng như mới.", ModerationStatus.PUBLISHED, 11),
+                ("vu@gmail.com", 5, "Mặt đế cao su phủ kín toàn bộ tấm kính nên đặt lên bàn cực kỳ đầm, không bị xê dịch dù vẩy chuột mạnh.", ModerationStatus.PUBLISHED, 1),
+                ("linh.le@nexa.vn", 5, "Thiết kế họa tiết tối giản của Razer rất hợp với chuột Viper V3 Pro.", ModerationStatus.PENDING, 0),
+            ],
+            "COR-TC100": [
+                ("lethanhvu005@gmail.com", 5, "Form ghế Relaxed rộng rãi thoải mái, không bị bó hai bên đùi như các mẫu ghế racing truyền thống.", ModerationStatus.PUBLISHED, 5),
+                ("trang.hoang@nexa.vn", 5, "Chất liệu vải dệt mềm mại và cực kỳ thoáng lưng, gối cổ cao su non nâng đỡ gáy rất êm khi ngả nghỉ trưa.", ModerationStatus.PUBLISHED, 2),
+                ("vu@gmail.com", 5, "Khung thép chắc chắn, ngả lưng 160 độ nằm xem phim cực sướng, lắp đặt chỉ mất khoảng 20 phút.", ModerationStatus.PUBLISHED, 1),
+                ("duc.vo@nexa.vn", 2, "Giao hàng hơi trễ 1 tiếng do mưa lớn nhưng nhân viên hỗ trợ rất nhiệt tình.", ModerationStatus.REJECTED, 1),
+            ],
+        }
 
-        qa_specs = [
-            (
-                "NEXA-X75",
-                "lethanhvu2005@gmail.com",
-                "Mẫu bàn phím NEXA X75 này có hỗ trợ thay switch 5 pin không shop?",
-                ModerationStatus.PUBLISHED,
-                [
-                    ("lethanhvu005@gmail.com", "Chào bạn, mạch của NEXA X75 hỗ trợ hot-swap 5 pin toàn bộ phím và tương thích hầu hết switch cơ hiện nay nhé!", ModerationStatus.PUBLISHED),
-                    ("khoa.staff@nexa.vn", "Trong hộp sản phẩm cũng tặng kèm sẵn keycap/switch puller để bạn thay thế dễ dàng ạ.", ModerationStatus.PUBLISHED),
-                ],
-            ),
-            (
-                "LOGI-GPX2",
-                "vu@gmail.com",
-                "Chuột Logitech G Pro X Superlight 2 có kèm đầu thu Lightspeed USB-C trong hộp không?",
-                ModerationStatus.PUBLISHED,
-                [
-                    ("lethanhvu005@gmail.com", "Dạ có đầy đủ receiver Lightspeed, dây sạc USB-C dù siêu mềm và bộ grip tape chính hãng đi kèm trong hộp ạ.", ModerationStatus.PUBLISHED),
-                ],
-            ),
-            (
-                "ASUS-VG27AQ",
-                "minh.tran@nexa.vn",
-                "Màn hình này gắn arm chuẩn VESA 100x100mm được không ạ?",
-                ModerationStatus.PUBLISHED,
-                [
-                    ("khoa.staff@nexa.vn", "Hoàn toàn tương thích chuẩn VESA 100x100mm bạn nhé, tháo chân đế rất nhanh chỉ với 4 ốc.", ModerationStatus.PUBLISHED),
-                ],
-            ),
-        ]
-        for sku, ask_email, q_body, q_status, answers in qa_specs:
+        for sku, rev_list in product_review_map.items():
             product = variants_by_sku[sku].product
-            ask_user = users_by_email[ask_email]
-            question, _ = ProductQuestion.objects.get_or_create(
-                product=product,
-                user=ask_user,
-                body=q_body,
-                defaults={"status": q_status},
-            )
-            for ans_email, a_body, a_status in answers:
-                ProductAnswer.objects.get_or_create(
-                    question=question,
-                    user=users_by_email[ans_email],
-                    body=a_body,
-                    defaults={"status": a_status},
+            for email, stars, body, rev_status, days_ago in rev_list:
+                u = users_by_email[email]
+                verified_oi = delivered_order_items.get((email, product.slug))
+                rev, _ = Review.objects.update_or_create(
+                    user=u,
+                    product=product,
+                    defaults={
+                        "order_item": verified_oi,
+                        "stars": stars,
+                        "body": body,
+                        "status": rev_status,
+                    },
                 )
+                rev_time = now - timedelta(days=days_ago, hours=2)
+                Review.objects.filter(pk=rev.pk).update(created_at=rev_time, updated_at=rev_time)
 
-        # 9. Wishlists
+        # Q&A for ALL 24 Products (2 questions + answers per product)
+        qa_templates_by_category = {
+            "keyboard": [
+                (
+                    "Mẫu bàn phím {name} này có hỗ trợ hot-swap thay switch 5 pin không shop?",
+                    [
+                        ("lethanhvu005@gmail.com", "Chào bạn, sản phẩm {name} hỗ trợ đầy đủ tính năng kết nối ổn định và đi kèm phụ kiện chính hãng nguyên seal trong hộp nhé!"),
+                        ("khoa.staff@nexa.vn", "Bên mình bảo hành chính hãng 24 tháng 1 đổi 1 và hỗ trợ kỹ thuật vệ sinh, cân chỉnh stabilizer miễn phí trọn đời ạ."),
+                    ],
+                ),
+                (
+                    "Bàn phím {name} dùng với macOS và Windows có chuyển đổi nhanh được không?",
+                    [
+                        ("khoa.staff@nexa.vn", "Hoàn toàn tương thích cả macOS lẫn Windows bạn nhé, bạn có thể chuyển layout phím tắt chỉ với một gạt công tắc hoặc tổ hợp phím Fn."),
+                    ],
+                ),
+            ],
+            "mouse": [
+                (
+                    "Chuột {name} trong hộp đã kèm sẵn đầu thu Wireless và dây sạc USB-C dù siêu mềm chưa ạ?",
+                    [
+                        ("lethanhvu005@gmail.com", "Dạ sản phẩm {name} chính hãng tại NEXA đi kèm đầy đủ receiver không dây, cáp sạc paracord chống rối và bộ phụ kiện tiêu chuẩn trong hộp ạ."),
+                        ("khoa.staff@nexa.vn", "Nếu bạn cần dán sẵn feet PTFE hoặc grip tape khi giao hàng, bạn cứ ghi chú vào đơn hàng để kỹ thuật viên hỗ trợ nhé!"),
+                    ],
+                ),
+                (
+                    "Pin của chuột {name} dùng liên tục được khoảng bao lâu và bảo hành thế nào?",
+                    [
+                        ("khoa.staff@nexa.vn", "Thời lượng pin thực tế đạt từ 70 đến 95 giờ sử dụng liên tục tùy mức polling rate, và được bảo hành chính hãng 24 tháng tại hệ thống NEXA ạ."),
+                    ],
+                ),
+            ],
+            "headset": [
+                (
+                    "Tai nghe {name} kết nối không dây với PS5 và PC cùng lúc có bị trễ âm thanh không?",
+                    [
+                        ("lethanhvu005@gmail.com", "Với công nghệ kết nối không dây 2.4GHz độ trễ siêu thấp dưới 15ms, {name} đảm bảo âm thanh đồng bộ tức thì cho cả PC và PS5 bạn nhé!"),
+                    ],
+                ),
+                (
+                    "Đệm tai của {name} đeo lâu có bị bí nóng không và có phụ kiện thay thế không shop?",
+                    [
+                        ("khoa.staff@nexa.vn", "Đệm tai của {name} sử dụng mút hoạt tính bọc chất liệu thoáng khí cao cấp nên đeo nhiều giờ vẫn êm và mát tai, NEXA cũng luôn sẵn đệm tai thay thế chính hãng ạ."),
+                    ],
+                ),
+            ],
+            "monitor": [
+                (
+                    "Màn hình {name} có hỗ trợ ngàm gắn arm chuẩn VESA 100x100mm và kèm sẵn dây DisplayPort không?",
+                    [
+                        ("lethanhvu005@gmail.com", "Dạ màn hình {name} hỗ trợ chuẩn VESA 100x100mm tương thích mọi loại arm màn hình hiện nay, và trong thùng đã kèm sẵn cáp DisplayPort băng thông cao để lên tối đa tần số quét ạ."),
+                    ],
+                ),
+                (
+                    "Chính sách bảo hành điểm chết của màn hình {name} tại NEXA như thế nào ạ?",
+                    [
+                        ("khoa.staff@nexa.vn", "NEXA hỗ trợ kiểm tra điểm chết trực tiếp trước khi xuất kho và áp dụng bảo hành chính hãng 24 tháng tận nơi theo tiêu chuẩn nhà sản xuất bạn nhé!"),
+                    ],
+                ),
+            ],
+            "accessory": [
+                (
+                    "Sản phẩm {name} vệ sinh hằng ngày như thế nào để giữ bề mặt bền đẹp lâu dài?",
+                    [
+                        ("lethanhvu005@gmail.com", "Bạn chỉ cần dùng khăn microfiber ẩm lau nhẹ bề mặt {name} và để khô tự nhiên ở nơi thoáng mát, tuyệt đối không dùng hóa chất tẩy rửa mạnh nhé."),
+                    ],
+                ),
+                (
+                    "Kích thước của {name} có vừa với bàn làm việc dài 1m2 không shop?",
+                    [
+                        ("khoa.staff@nexa.vn", "Hoàn toàn vừa vặn và tôn dáng góc setup trên bàn 1m2 trở lên bạn nhé, mặt đế cao su chống trượt bám rất chắc trên cả mặt gỗ và mặt kính ạ."),
+                    ],
+                ),
+            ],
+            "chair": [
+                (
+                    "Ghế {name} có hỗ trợ giao lắp đặt tận nơi tại TP.HCM và Hà Nội không?",
+                    [
+                        ("lethanhvu005@gmail.com", "Dạ đội ngũ kỹ thuật NEXA hỗ trợ giao và lắp đặt hoàn chỉnh tận phòng miễn phí tại nội thành TP.HCM và Hà Nội trong vòng 2 giờ ạ!"),
+                    ],
+                ),
+                (
+                    "Chiều cao 1m75 nặng 78kg ngồi mẫu ghế {name} này có thoải mái không shop?",
+                    [
+                        ("khoa.staff@nexa.vn", "Rất vừa vặn bạn nhé! {name} sử dụng trụ thủy lực Class 4 chịu tải tới 130kg và phần tựa lưng, kê tay điều chỉnh linh hoạt theo vóc dáng người ngồi ạ."),
+                    ],
+                ),
+            ],
+        }
+
+        customer_emails_cycle = [
+            "lethanhvu2005@gmail.com",
+            "vu@gmail.com",
+            "minh.tran@nexa.vn",
+            "huong.pham@nexa.vn",
+            "anh.nguyen@nexa.vn",
+            "linh.le@nexa.vn",
+            "duc.vo@nexa.vn",
+            "trang.hoang@nexa.vn",
+        ]
+
+        for p_idx, item in enumerate(PRODUCTS):
+            name, short_name, _, category_code, _, _, _, sku, _, _, _, _ = item
+            product = variants_by_sku[sku].product
+            templates = qa_templates_by_category[category_code]
+            for t_idx, (q_tpl, ans_list) in enumerate(templates):
+                asker = users_by_email[customer_emails_cycle[(p_idx + t_idx) % len(customer_emails_cycle)]]
+                q_body = q_tpl.format(name=short_name)
+                question, _ = ProductQuestion.objects.update_or_create(
+                    product=product,
+                    user=asker,
+                    body=q_body,
+                    defaults={"status": ModerationStatus.PUBLISHED},
+                )
+                for ans_email, a_tpl in ans_list:
+                    a_body = a_tpl.format(name=short_name)
+                    ProductAnswer.objects.update_or_create(
+                        question=question,
+                        user=users_by_email[ans_email],
+                        body=a_body,
+                        defaults={"status": ModerationStatus.PUBLISHED},
+                    )
+
+        # Also add 3 pending questions for Admin Support moderation queue
+        pending_questions = [
+            ("NEXA-X75", "duc.vo@nexa.vn", "Shop còn sẵn bản switch Tactile Brown cho mẫu NEXA X75 tại chi nhánh Quận 1 không ạ?"),
+            ("ASUS-XG27", "trang.hoang@nexa.vn", "Mua màn hình ROG Strix XG27AQMR kèm arm màn hình có được áp dụng chồng mã SETUP500K không?"),
+            ("RAZER-VV3P", "linh.le@nexa.vn", "Chuột Viper V3 Pro màu trắng bao giờ về thêm hàng tại kho Hà Nội vậy shop?"),
+        ]
+        for sku, ask_email, q_body in pending_questions:
+            ProductQuestion.objects.update_or_create(
+                product=variants_by_sku[sku].product,
+                user=users_by_email[ask_email],
+                body=q_body,
+                defaults={"status": ModerationStatus.PENDING},
+            )
+
+        # 9. Wishlists (rich favorites for every user account)
         wishlist_specs = [
-            ("lethanhvu005@gmail.com", ["RAZER-HV3", "ASUS-XG27", "KEY-Q1PRO", "RAZER-VV3P"]),
-            ("lethanhvu2005@gmail.com", ["NEXA-X75", "LOGI-GPX2-HS", "NEXA-V27"]),
-            ("vu@gmail.com", ["NEXA-S98", "COR-TC100", "RAZER-ATLAS"]),
-            ("minh.tran@nexa.vn", ["NEXA-PULSE8K", "NEXA-OPT24"]),
+            ("lethanhvu005@gmail.com", ["RAZER-HV3", "ASUS-XG27", "KEY-Q1PRO", "RAZER-VV3P", "LOGI-GPX2-HS", "COR-TC100"]),
+            ("lethanhvu2005@gmail.com", ["NEXA-X75", "LOGI-GPX2-HS", "NEXA-V27", "RAZER-ATLAS", "NEXA-CHAIR"]),
+            ("vu@gmail.com", ["NEXA-S98", "COR-TC100", "RAZER-ATLAS", "LOGI-GPX2", "ASUS-VG27AQ"]),
+            ("minh.tran@nexa.vn", ["NEXA-PULSE8K", "NEXA-OPT24", "KEY-Q1PRO"]),
+            ("huong.pham@nexa.vn", ["NEXA-CHAIR", "HYX-CLOUD3", "LOGI-G502"]),
+            ("anh.nguyen@nexa.vn", ["RAZER-VV3P", "COR-M75", "NEXA-MAT"]),
         ]
         for email, skus in wishlist_specs:
             u = users_by_email[email]
@@ -838,17 +1375,24 @@ class Command(BaseCommand):
                     product=variants_by_sku[sku].product,
                 )
 
-        # 10. Operations: AuditLogs & OutboxEvents
+        # 10. Operations: AuditLogs & OutboxEvents (12+ entries each)
         audit_specs = [
             ("order.status_updated", "Order", "NX-20261101-001", {"from": "shipped", "to": "delivered", "verified_by": "lethanhvu005@gmail.com"}),
+            ("order.status_updated", "Order", "NX-20261103-002", {"from": "shipped", "to": "delivered", "verified_by": "lethanhvu005@gmail.com"}),
+            ("order.status_updated", "Order", "NX-20261109-004", {"from": "packing", "to": "shipped", "carrier": "NEXA Express"}),
             ("inventory.stock_received", "ProductVariant", "NEXA-X75", {"added": 45, "warehouse": "HCM-Hub-01"}),
+            ("inventory.stock_received", "ProductVariant", "LOGI-GPX2", {"added": 30, "warehouse": "HCM-Hub-01"}),
+            ("inventory.low_stock_alert", "ProductVariant", "ASUS-XG27", {"available": 7, "threshold": 10}),
+            ("inventory.low_stock_alert", "ProductVariant", "RAZER-ATLAS", {"available": 6, "threshold": 10}),
             ("voucher.published", "Voucher", "NEXA200K", {"value": 200000, "min_subtotal": 2000000}),
+            ("voucher.published", "Voucher", "SETUP500K", {"value": 500000, "min_subtotal": 8000000}),
             ("catalog.price_updated", "ProductVariant", "LOGI-GPX2", {"old_price": 3590000, "new_price": 2890000}),
             ("community.review_moderated", "Review", "NEXA-X75", {"status": "published", "moderator": "lethanhvu005@gmail.com"}),
+            ("community.question_answered", "ProductQuestion", "LOGI-GPX2", {"answered_by": "khoa.staff@nexa.vn"}),
         ]
-        for action, entity_type, entity_id, changes in audit_specs:
-            AuditLog.objects.update_or_create(
-                request_id=deterministic_uuid(f"audit-{action}-{entity_id}"),
+        for idx, (action, entity_type, entity_id, changes) in enumerate(audit_specs):
+            al, _ = AuditLog.objects.update_or_create(
+                request_id=deterministic_uuid(f"audit-{action}-{entity_id}-{idx}"),
                 defaults={
                     "actor": staff_actor,
                     "action": action,
@@ -857,16 +1401,24 @@ class Command(BaseCommand):
                     "changes": changes,
                 },
             )
+            AuditLog.objects.filter(pk=al.pk).update(created_at=now - timedelta(hours=idx * 6))
 
         outbox_specs = [
-            ("order.created", "NX-20261101-001", OutboxEvent.Status.SENT, {"order_number": "NX-20261101-001", "grand_total": 5280000}),
+            ("order.created", "NX-20261101-001", OutboxEvent.Status.SENT, {"order_number": "NX-20261101-001", "grand_total": 5770000}),
             ("payment.succeeded", "NX-20261101-001", OutboxEvent.Status.SENT, {"order_number": "NX-20261101-001", "provider": "vnpay"}),
             ("order.delivered", "NX-20261101-001", OutboxEvent.Status.SENT, {"order_number": "NX-20261101-001", "customer": "lethanhvu005@gmail.com"}),
-            ("order.created", "NX-20261112-005", OutboxEvent.Status.PENDING, {"order_number": "NX-20261112-005", "grand_total": 3940000}),
-            ("inventory.low_stock", "ASUS-XG27", OutboxEvent.Status.PENDING, {"sku": "ASUS-XG27", "available": 12}),
+            ("order.created", "NX-20261103-002", OutboxEvent.Status.SENT, {"order_number": "NX-20261103-002", "grand_total": 14220000}),
+            ("payment.succeeded", "NX-20261103-002", OutboxEvent.Status.SENT, {"order_number": "NX-20261103-002", "provider": "momo"}),
+            ("order.delivered", "NX-20261103-002", OutboxEvent.Status.SENT, {"order_number": "NX-20261103-002", "customer": "lethanhvu005@gmail.com"}),
+            ("order.shipped", "NX-20261109-004", OutboxEvent.Status.SENT, {"order_number": "NX-20261109-004", "tracking": "VNX-990412"}),
+            ("order.created", "NX-20261114-007", OutboxEvent.Status.PENDING, {"order_number": "NX-20261114-007", "grand_total": 8680000}),
+            ("order.created", "NX-20261114-013", OutboxEvent.Status.PENDING, {"order_number": "NX-20261114-013", "grand_total": 4740000}),
+            ("inventory.low_stock", "ASUS-XG27", OutboxEvent.Status.PENDING, {"sku": "ASUS-XG27", "available": 7}),
+            ("inventory.low_stock", "KEY-Q1PRO", OutboxEvent.Status.PENDING, {"sku": "KEY-Q1PRO", "available": 8}),
+            ("inventory.low_stock", "RAZER-ATLAS", OutboxEvent.Status.PENDING, {"sku": "RAZER-ATLAS", "available": 6}),
         ]
-        for topic, agg_id, ob_status, payload in outbox_specs:
-            OutboxEvent.objects.update_or_create(
+        for idx, (topic, agg_id, ob_status, payload) in enumerate(outbox_specs):
+            ob, _ = OutboxEvent.objects.update_or_create(
                 event_key=deterministic_uuid(f"outbox-{topic}-{agg_id}"),
                 defaults={
                     "topic": topic,
@@ -874,9 +1426,10 @@ class Command(BaseCommand):
                     "payload": payload,
                     "status": ob_status,
                     "attempts": 1 if ob_status == OutboxEvent.Status.SENT else 0,
-                    "processed_at": now if ob_status == OutboxEvent.Status.SENT else None,
+                    "processed_at": now - timedelta(hours=idx * 4) if ob_status == OutboxEvent.Status.SENT else None,
                 },
             )
+            OutboxEvent.objects.filter(pk=ob.pk).update(created_at=now - timedelta(hours=idx * 5))
 
         # 11. Django Admin LogEntry
         product_ct = ContentType.objects.get_for_model(Product)
@@ -903,5 +1456,5 @@ class Command(BaseCommand):
                 )
 
         self.stdout.write(self.style.SUCCESS(
-            "Đã nạp đầy đủ dữ liệu mẫu cho TẤT CẢ các bảng trong PostgreSQL thành công!"
+            "Đã nạp đầy đủ dữ liệu mẫu (Đơn hàng, Đánh giá, Hỏi đáp, Tồn kho, Khuyến mãi...) cho TẤT CẢ các bảng và sản phẩm trong PostgreSQL thành công!"
         ))

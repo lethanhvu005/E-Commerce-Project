@@ -18,7 +18,7 @@ export default function ReviewsPage() {
 
   // Load products list for dropdown
   useEffect(() => {
-    catalogService.getProducts({ page_size: 20 })
+    catalogService.getProducts({ page_size: 50 })
       .then((data) => {
         const list = data.results || data || [];
         setProducts(list);
@@ -134,7 +134,7 @@ export default function ReviewsPage() {
                 {reviews.map((r) => (
                   <article className="ux-review" key={r.id}>
                     <div className="ux-review-head">
-                      <strong>{r.author?.first_name || r.author?.email || "Khách hàng NEXA"}</strong>
+                      <strong>{r.author?.first_name || r.author?.email || r.author || "Khách hàng NEXA"}</strong>
                       <small>{new Date(r.created_at).toLocaleDateString("vi-VN")}</small>
                     </div>
                     <div style={{ color: "#ffc107", fontSize: "14px", margin: "4px 0" }}>
