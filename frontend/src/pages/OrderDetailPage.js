@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { orderService } from "../api/client";
-import { dateTime, fallbackProductImage, money, productImage } from "../api/format";
+import { dateTime, fallbackProductImage, money, orderStatusLabel, productImage } from "../api/format";
 import { ErrorBox, Loading, Toast } from "../components/Feedback";
 
 export default function OrderDetailPage() {
@@ -102,15 +102,7 @@ export default function OrderDetailPage() {
         </span>
       </div>
 
-      <div
-        className="order-detail-grid"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) 360px",
-          gap: "24px",
-          alignItems: "start",
-        }}
-      >
+      <div className="order-detail-grid">
         {/* Left Column: Products List & Action */}
         <div>
           <section className="whitebox" style={{ marginBottom: "20px" }}>
@@ -157,7 +149,7 @@ export default function OrderDetailPage() {
                   <div key={idx} style={{ marginBottom: "16px", position: "relative" }}>
                     <div style={{ position: "absolute", left: "-24px", top: "2px", width: "10px", height: "10px", borderRadius: "50%", background: "var(--action)" }} />
                     <strong style={{ fontSize: "13px", color: "var(--ink)", display: "block" }}>
-                      {h.to_status?.toUpperCase() || "CẬP NHẬT"}
+                      {orderStatusLabel(h.to_status)}
                     </strong>
                     <span style={{ fontSize: "11px", color: "var(--muted)" }}>{dateTime(h.created_at)}</span>
                     {h.reason && <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#617b9f" }}>{h.reason}</p>}
@@ -175,8 +167,12 @@ export default function OrderDetailPage() {
             <h3>Thông tin thanh toán</h3>
             <div className="summary-row">
               <span>Trạng thái</span>
-              <strong style={{ textTransform: "uppercase", color: order.status === "cancelled" ? "#e27682" : "var(--action)" }}>
-                {order.status}
+              <strong
+                style={{
+                  color: ["cancelled", "expired"].includes(order.status) ? "#e27682" : "var(--action)",
+                }}
+              >
+                {orderStatusLabel(order.status)}
               </strong>
             </div>
             <div className="summary-row">

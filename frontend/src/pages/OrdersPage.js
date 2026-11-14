@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { orderService } from "../api/client";
-import { dateTime, money } from "../api/format";
+import { dateTime, money, orderStatusLabel } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import { ErrorBox, Loading } from "../components/Feedback";
 
@@ -62,21 +62,7 @@ export default function OrdersPage() {
 
   const filteredOrders = orders;
   const totalPages = Math.ceil(totalCount / 10) || 1;
-
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case "pending": return "Chờ xác nhận";
-      case "confirmed": return "Đã xác nhận";
-      case "packing": return "Đang đóng gói";
-      case "processing": return "Đang xử lý";
-      case "shipped": return "Đang vận chuyển";
-      case "delivered": return "Đã giao hàng";
-      case "completed": return "Hoàn thành";
-      case "cancelled": return "Đã hủy";
-      case "expired": return "Hết hạn giữ chỗ";
-      default: return status;
-    }
-  };
+  const getStatusLabel = orderStatusLabel;
 
   if (loading && orders.length === 0) {
     return (

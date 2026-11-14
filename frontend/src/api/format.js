@@ -120,3 +120,21 @@ export function queryString(params) {
   });
   return search.toString();
 }
+
+const ORDER_STATUS_LABELS = {
+  pending: "Chờ xác nhận",
+  confirmed: "Đã xác nhận",
+  packing: "Đang đóng gói",
+  processing: "Đang xử lý",
+  shipped: "Đang vận chuyển",
+  delivered: "Đã giao hàng",
+  completed: "Hoàn thành",
+  cancelled: "Đã hủy",
+  expired: "Hết hạn giữ chỗ",
+};
+
+export function orderStatusLabel(status) {
+  if (!status) return "Cập nhật";
+  return ORDER_STATUS_LABELS[status] || status;
+}
+

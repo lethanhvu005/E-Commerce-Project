@@ -1967,6 +1967,22 @@ html[data-theme] .main-with-mobile .nexa-auth-page .ux-benefits {
   .nexa-qv-visual {
     min-height: 260px;
   }
+  .order-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.order-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .order-detail-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 600px) {
