@@ -30,6 +30,7 @@ def order_queryset_with_relations():
     return Order.objects.select_related("delivery_address").prefetch_related(
         "items__variant__product__images",
         "items__variant__product__category",
+        "payments",
     )
 
 

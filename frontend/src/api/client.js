@@ -226,6 +226,12 @@ export const orderService = {
   getOrderPayments: (publicId) => api.get(`/orders/${publicId}/payments/`),
 };
 
+export const paymentService = {
+  getConfig: () => api.publicGet("/payments/config/"),
+  createVnpayUrl: (payload) => api.post("/payments/vnpay/create/", payload),
+  verifyVnpayReturn: (params) => api.post("/payments/vnpay/verify-return/", { params }),
+};
+
 export const promotionService = {
   getVouchers: () => api.publicGet("/vouchers/"),
 };

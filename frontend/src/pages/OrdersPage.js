@@ -170,13 +170,21 @@ export default function OrdersPage() {
                 </div>
 
                 {/* Footer */}
-                <footer className="order-card-foot" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <Link
-                    to={`/orders/${order.public_id}`}
-                    style={{ color: "var(--action)", fontWeight: 700, fontSize: "12.5px" }}
-                  >
-                    Xem chi tiết đơn hàng →
-                  </Link>
+                <footer className="order-card-foot" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                    <Link
+                      to={`/orders/${order.public_id}`}
+                      style={{ color: "var(--action)", fontWeight: 700, fontSize: "12.5px" }}
+                    >
+                      Xem chi tiết đơn hàng →
+                    </Link>
+                    {order.payment_provider && (
+                      <span className="demo-pill">
+                        {order.payment_provider.toUpperCase()}
+                        {order.payment_status === "succeeded" ? " · Đã thanh toán" : ""}
+                      </span>
+                    )}
+                  </div>
                   <b>Tổng cộng: {money(order.grand_total, order.currency)}</b>
                 </footer>
               </article>

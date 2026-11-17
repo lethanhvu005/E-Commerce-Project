@@ -239,7 +239,10 @@ def create_order(user, data):
         InventoryReservation.objects.create(order=order, variant=variant, quantity=item.quantity, expires_at=expiry)
     if locked_voucher:
         VoucherRedemption.objects.create(voucher=locked_voucher, user=user, order=order, discount_amount=discount)
-    Payment.objects.create(order=order, provider=Payment.Provider.COD, amount=grand_total)
+    requested_provider = data.get("payment_method") or data.get("payment_provider") or Payment.Provider.COD
+    if requested_provider not in {Payment.Provider.COD, Payment.Provider.VNPAY}:
+        requested_provider = Payment.Provider.COD
+    Payment.objects.create(order=order, provider=requested_provider, amount=grand_total)
     OrderStatusHistory.objects.create(order=order, to_status=OrderStatus.PENDING, actor=user, reason="Đơn hàng được tạo")
     OutboxEvent.objects.create(topic="order.created", aggregate_id=str(order.public_id), payload={"order_number": order.order_number})
     cart.status = Cart.Status.CONVERTED

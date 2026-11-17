@@ -192,6 +192,19 @@ if EMAIL_HOST_USER and EMAIL_HOST_PASSWORD:
     EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 else:
     EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+VNPAY_TMN_CODE = os.getenv("VNPAY_TMN_CODE", "").strip()
+VNPAY_HASH_SECRET = os.getenv("VNPAY_HASH_SECRET", "").strip()
+VNPAY_PAYMENT_URL = os.getenv(
+    "VNPAY_PAYMENT_URL",
+    "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
+).strip()
+VNPAY_RETURN_URL = os.getenv(
+    "VNPAY_RETURN_URL",
+    f"{FRONTEND_URL}/payment/vnpay-return",
+).strip()
+VNPAY_ALLOW_RETURN_RECONCILE = env_bool("VNPAY_ALLOW_RETURN_RECONCILE", DEBUG)
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 

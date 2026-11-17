@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext } from "react-router-dom";
-import { authService, cartService, orderService } from "../api/client";
+import { authService, cartService, orderService, paymentService } from "../api/client";
 import { fallbackProductImage, money, productImage } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import { ErrorBox, Loading, Toast } from "../components/Feedback";
@@ -32,6 +32,8 @@ export default function CheckoutPage() {
   const [shippingMethods, setShippingMethods] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState("");
   const [selectedMethodId, setSelectedMethodId] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("cod");
+  const [vnpayEnabled, setVnpayEnabled] = useState(false);
   const [note, setNote] = useState("");
   const [preview, setPreview] = useState(null);
 
@@ -59,11 +61,13 @@ export default function CheckoutPage() {
     setLoading(true);
     setError(null);
     try {
-      const [cartData, addressData, methodData] = await Promise.all([
+      const [cartData, addressData, methodData, paymentConfig] = await Promise.all([
         cartService.getCart(),
         authService.getAddresses(),
         orderService.getShippingMethods(),
+        paymentService.getConfig().catch(() => ({ vnpay_enabled: false })),
       ]);
+      setVnpayEnabled(Boolean(paymentConfig?.vnpay_enabled));
 
       if (!cartData.items || cartData.items.length === 0) {
         navigate("/cart");
@@ -210,12 +214,31 @@ export default function CheckoutPage() {
       const order = await orderService.createOrder({
         address_id: Number(selectedAddressId),
         shipping_method_id: Number(selectedMethodId),
+        payment_method: paymentMethod,
         note: note.trim(),
         checkout_key: checkoutKeyRef.current,
       });
 
-      // Order created successfully!
       if (refreshCartCount) refreshCartCount();
+
+      if (paymentMethod === "vnpay") {
+        try {
+          const vnpayRes = await paymentService.createVnpayUrl({
+            order_id: order.public_id || order.id,
+          });
+          if (vnpayRes?.payment_url) {
+            window.location.assign(vnpayRes.payment_url);
+            return;
+          }
+        } catch (vnpayErr) {
+          // Order was already created; send user to detail page so they can retry VNPay without duplicating the order
+          navigate(`/orders/${order.public_id || order.id}`, {
+            state: { paymentError: vnpayErr.message || "Không thể khởi tạo liên kết thanh toán VNPay." },
+          });
+          return;
+        }
+      }
+
       navigate(`/orders/success?order_id=${order.public_id || order.id}&order_number=${order.order_number}`);
     } catch (err) {
       if (err.status === 409) {
@@ -437,7 +460,13 @@ export default function CheckoutPage() {
             <h3>3. Phương thức thanh toán</h3>
             <label className="radio-card">
               <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                <input type="radio" name="payment_method" value="cod" defaultChecked />
+                <input
+                  type="radio"
+                  name="payment_method"
+                  value="cod"
+                  checked={paymentMethod === "cod"}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                />
                 <div>
                   <strong>Thanh toán khi nhận hàng (COD)</strong>
                   <div style={{ color: "#6e7f98", fontSize: "11.5px" }}>
@@ -446,6 +475,31 @@ export default function CheckoutPage() {
                 </div>
               </div>
               <span className="demo-pill">HỖ TRỢ CHÍNH THỨC</span>
+            </label>
+
+            <label
+              className="radio-card"
+              style={!vnpayEnabled ? { opacity: 0.72, cursor: "not-allowed" } : undefined}
+            >
+              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <input
+                  type="radio"
+                  name="payment_method"
+                  value="vnpay"
+                  disabled={!vnpayEnabled}
+                  checked={paymentMethod === "vnpay"}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                />
+                <div>
+                  <strong>Thanh toán trực tuyến VNPay (ATM / QR / Visa / MasterCard)</strong>
+                  <div style={{ color: "#6e7f98", fontSize: "11.5px" }}>
+                    {vnpayEnabled
+                      ? "Chuyển hướng an toàn qua cổng VNPay · xác nhận đơn tự động"
+                      : "Chưa cấu hình VNPAY_TMN_CODE & VNPAY_HASH_SECRET trên máy chủ"}
+                  </div>
+                </div>
+              </div>
+              <span className="demo-pill">{vnpayEnabled ? "VNPAY QR / THẺ" : "CHƯA BẬT"}</span>
             </label>
 
             <label className="field-label" htmlFor="order-note" style={{ marginTop: "16px" }}>
@@ -557,7 +611,9 @@ export default function CheckoutPage() {
               : previewLoading
               ? "Đang tính phí vận chuyển..."
               : preview
-              ? `Đặt hàng · ${money(preview.grand_total || preview.total)} ↗`
+              ? paymentMethod === "vnpay"
+                ? `Thanh toán VNPay · ${money(preview.grand_total || preview.total)} ↗`
+                : `Đặt hàng · ${money(preview.grand_total || preview.total)} ↗`
               : "Không thể báo giá đơn hàng"}
           </button>
 

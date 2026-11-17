@@ -1,5 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import * as apiClient from "../api/client";
 import { ErrorBox, Toast } from "../components/Feedback";
+import VnpayReturnPage from "../pages/VnpayReturnPage";
 import {
   fetchCurrentLocationAddress,
   validateEmailAddress,
@@ -103,5 +106,52 @@ describe("Geolocation reverse geocoding fallback", () => {
     expect(loc.ward).toBe("Ngũ Hành Sơn");
     expect(loc.province).toBe("Đà Nẵng");
     expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("VnpayReturnPage", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test("verifies VNPay return params on the backend and shows success receipt", async () => {
+    jest.spyOn(apiClient.paymentService, "verifyVnpayReturn").mockResolvedValue({
+      verified: true,
+      paid: true,
+      order_id: "11111111-1111-1111-1111-111111111111",
+      order_number: "NX12345",
+      transaction_no: "14600001",
+      amount: 530000,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/payment/vnpay-return?vnp_TxnRef=NX12345P1&vnp_SecureHash=abc&vnp_ResponseCode=00"]}>
+        <Routes>
+          <Route path="/payment/vnpay-return" element={<VnpayReturnPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText(/Thanh toán VNPay thành công/i)).toBeInTheDocument();
+    expect(screen.getByText("#NX12345")).toBeInTheDocument();
+    expect(screen.getByText("14600001")).toBeInTheDocument();
+  });
+
+  test("shows compact inline error if signature verification fails", async () => {
+    jest.spyOn(apiClient.paymentService, "verifyVnpayReturn").mockRejectedValue(
+      new Error("Chữ ký giao dịch VNPay không hợp lệ.")
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/payment/vnpay-return?vnp_TxnRef=NX12345P1&vnp_SecureHash=bad"]}>
+        <Routes>
+          <Route path="/payment/vnpay-return" element={<VnpayReturnPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveClass("nexa-error-banner");
+    expect(alert).toHaveTextContent("Chữ ký giao dịch VNPay không hợp lệ.");
   });
 });

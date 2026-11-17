@@ -1,11 +1,26 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { orderService } from "../api/client";
+import { Link, useLocation, useParams } from "react-router-dom";
+import { orderService, paymentService } from "../api/client";
 import { dateTime, fallbackProductImage, money, orderStatusLabel, productImage } from "../api/format";
 import { ErrorBox, Loading, Toast } from "../components/Feedback";
 
+const PAYMENT_STATUS_LABEL = {
+  pending: "Chờ thanh toán",
+  succeeded: "Đã thanh toán",
+  failed: "Thanh toán thất bại",
+  cancelled: "Đã hủy giao dịch",
+  refunded: "Đã hoàn tiền",
+};
+
+const PAYMENT_PROVIDER_LABEL = {
+  cod: "Thanh toán khi nhận hàng (COD)",
+  vnpay: "Cổng thanh toán VNPay",
+  momo: "Ví MoMo",
+};
+
 export default function OrderDetailPage() {
   const { id } = useParams();
+  const location = useLocation();
 
   const [order, setOrder] = useState(null);
   const [history, setHistory] = useState([]);
@@ -14,24 +29,47 @@ export default function OrderDetailPage() {
   const [cancelReason, setCancelReason] = useState("");
   const [showCancelPrompt, setShowCancelPrompt] = useState(false);
   const [error, setError] = useState(null);
+  const [vnpayEnabled, setVnpayEnabled] = useState(false);
+  const [payingVnpay, setPayingVnpay] = useState(false);
+  const [vnpayError, setVnpayError] = useState(() =>
+    location.state?.paymentError ? new Error(location.state.paymentError) : null
+  );
+  const [cancelError, setCancelError] = useState(null);
   const [toastMsg, setToastMsg] = useState("");
 
   const loadOrderDetail = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [detail, historyData] = await Promise.all([
+      const [detail, historyData, paymentConfig] = await Promise.all([
         orderService.getOrderDetail(id),
         orderService.getOrderHistory(id).catch(() => ({ results: [] })),
+        paymentService.getConfig().catch(() => ({ vnpay_enabled: false })),
       ]);
       setOrder(detail);
       setHistory(historyData.results || historyData || []);
+      setVnpayEnabled(Boolean(paymentConfig?.vnpay_enabled));
     } catch (err) {
       setError(err);
     } finally {
       setLoading(false);
     }
   }, [id]);
+
+  const handlePayWithVnpay = async () => {
+    setPayingVnpay(true);
+    setVnpayError(null);
+    try {
+      const res = await paymentService.createVnpayUrl({ order_id: id });
+      if (res?.payment_url) {
+        window.location.assign(res.payment_url);
+      }
+    } catch (err) {
+      setVnpayError(err);
+    } finally {
+      setPayingVnpay(false);
+    }
+  };
 
   useEffect(() => {
     loadOrderDetail();
@@ -40,8 +78,9 @@ export default function OrderDetailPage() {
   // Handle Cancel Order
   const handleCancelOrder = async (e) => {
     e.preventDefault();
+    setCancelError(null);
     if (!cancelReason.trim()) {
-      setToastMsg("Vui lòng nhập lý do hủy đơn hàng.");
+      setCancelError(new Error("Vui lòng nhập lý do hủy đơn hàng."));
       return;
     }
     setCancelling(true);
@@ -55,7 +94,7 @@ export default function OrderDetailPage() {
       const freshHistory = await orderService.getOrderHistory(id);
       setHistory(freshHistory.results || freshHistory || []);
     } catch (err) {
-      setToastMsg(err.message || "Không thể hủy đơn hàng.");
+      setCancelError(err);
     } finally {
       setCancelling(false);
     }
@@ -193,6 +232,39 @@ export default function OrderDetailPage() {
               <span>Tổng cộng</span>
               <strong>{money(order.grand_total, order.currency)}</strong>
             </div>
+            {order.payment_provider && (
+              <div className="summary-row" style={{ marginTop: "8px", paddingTop: "8px", borderTop: "1px solid var(--edge)" }}>
+                <span>Hình thức</span>
+                <strong>{PAYMENT_PROVIDER_LABEL[order.payment_provider] || order.payment_provider}</strong>
+              </div>
+            )}
+            {order.payment_status && (
+              <div className="summary-row">
+                <span>Thanh toán</span>
+                <strong style={{ color: order.payment_status === "succeeded" ? "#169569" : "var(--action)" }}>
+                  {PAYMENT_STATUS_LABEL[order.payment_status] || order.payment_status}
+                </strong>
+              </div>
+            )}
+
+            {order.status === "pending" && order.payment_status !== "succeeded" && vnpayEnabled && (
+              <div style={{ marginTop: "14px" }}>
+                <button
+                  type="button"
+                  className="btn btn-primary full"
+                  style={{ width: "100%" }}
+                  disabled={payingVnpay}
+                  onClick={handlePayWithVnpay}
+                >
+                  {payingVnpay
+                    ? "Đang tạo liên kết VNPay..."
+                    : order.payment_provider === "vnpay"
+                    ? "Thanh toán lại qua VNPay ↗"
+                    : "Thanh toán ngay qua VNPay ↗"}
+                </button>
+                {vnpayError && <ErrorBox error={vnpayError} />}
+              </div>
+            )}
           </div>
 
           {/* Delivery & Shipping Info */}
@@ -236,8 +308,12 @@ export default function OrderDetailPage() {
                     required
                     placeholder="Nhập lý do hủy đơn..."
                     value={cancelReason}
-                    onChange={(e) => setCancelReason(e.target.value)}
+                    onChange={(e) => {
+                      setCancelError(null);
+                      setCancelReason(e.target.value);
+                    }}
                   />
+                  {cancelError && <ErrorBox error={cancelError} />}
                   <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
                     <button type="submit" className="btn btn-dark" disabled={cancelling} style={{ background: "#d43b62" }}>
                       {cancelling ? "Đang hủy..." : "Xác nhận hủy đơn"}

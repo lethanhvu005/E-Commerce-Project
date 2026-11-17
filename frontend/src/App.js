@@ -11,6 +11,7 @@ import CheckoutPage from "./pages/CheckoutPage";
 import OrderSuccessPage from "./pages/OrderSuccessPage";
 import OrdersPage from "./pages/OrdersPage";
 import OrderDetailPage from "./pages/OrderDetailPage";
+import VnpayReturnPage from "./pages/VnpayReturnPage";
 import WishlistPage from "./pages/WishlistPage";
 import VouchersPage from "./pages/VouchersPage";
 import ReviewsPage from "./pages/ReviewsPage";
@@ -53,6 +54,7 @@ export default function App() {
             <Route path="cart" element={protectedPage(<CartPage />)} />
             <Route path="checkout" element={protectedPage(<CheckoutPage />)} />
             <Route path="orders/success" element={protectedPage(<OrderSuccessPage />)} />
+            <Route path="payment/vnpay-return" element={protectedPage(<VnpayReturnPage />)} />
             <Route path="orders" element={protectedPage(<OrdersPage />)} />
             <Route path="orders/:id" element={protectedPage(<OrderDetailPage />)} />
 
