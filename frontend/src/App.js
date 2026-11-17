@@ -16,6 +16,7 @@ import VouchersPage from "./pages/VouchersPage";
 import ReviewsPage from "./pages/ReviewsPage";
 import AccountPage from "./pages/AccountPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
+import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminInventoryPage from "./pages/AdminInventoryPage";
 import AdminProductsPage from "./pages/AdminProductsPage";
 import AdminLayout from "./components/admin/AdminLayout";
@@ -76,6 +77,7 @@ export default function App() {
             {/* Fallback */}
             <Route path="*" element={<NotFoundPage />} />
           </Route>
+          <Route path="admin/login" element={<AdminLoginPage />} />
           <Route path="admin" element={<ProtectedRoute requireStaff><AdminLayout /></ProtectedRoute>}>
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboardPage />} />

@@ -11,9 +11,17 @@ export default function AccountPage() {
   // Profile Edit State
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState({
+    email: "",
     first_name: "",
     last_name: "",
     phone: "",
+  });
+  const [emailOtpState, setEmailOtpState] = useState({
+    active: false,
+    email: "",
+    otp: "",
+    infoMessage: "",
+    devOtp: "",
   });
 
   // Addresses State
@@ -38,6 +46,7 @@ export default function AccountPage() {
   useEffect(() => {
     if (user) {
       setProfileForm({
+        email: user.email || "",
         first_name: user.first_name || "",
         last_name: user.last_name || "",
         phone: user.phone || "",
@@ -72,14 +81,52 @@ export default function AccountPage() {
     setBusy(true);
     setError(null);
     try {
-      await authService.updateProfile({
+      const profilePayload = {
         first_name: profileForm.first_name.trim(),
         last_name: profileForm.last_name.trim(),
         phone: profileForm.phone.trim(),
-      });
+      };
+      await authService.updateProfile(profilePayload);
+
+      const nextEmail = profileForm.email.trim().toLowerCase();
+      const currentEmail = (user.email || "").trim().toLowerCase();
+      if (user.can_edit_email && nextEmail && nextEmail !== currentEmail) {
+        const otpRes = await authService.requestEmailOtp(nextEmail);
+        setEmailOtpState({
+          active: true,
+          email: nextEmail,
+          otp: "",
+          infoMessage: otpRes?.detail || `Đã gửi mã xác thực 6 chữ số đến ${nextEmail}.`,
+          devOtp: otpRes?.dev_otp || "",
+        });
+        setToastMsg("Đã gửi mã xác thực đến Gmail của bạn!");
+        return;
+      }
+
       await reloadUser();
       setEditingProfile(false);
+      setEmailOtpState({ active: false, email: "", otp: "", infoMessage: "", devOtp: "" });
       setToastMsg("Đã cập nhật thông tin hồ sơ thành công!");
+    } catch (err) {
+      setError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleConfirmProfileEmailOtp = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await authService.verifyEmailOtp({
+        email: emailOtpState.email.trim().toLowerCase(),
+        otp: emailOtpState.otp.trim(),
+      });
+      await reloadUser();
+      setEmailOtpState({ active: false, email: "", otp: "", infoMessage: "", devOtp: "" });
+      setEditingProfile(false);
+      setToastMsg("Đã xác thực và thêm Gmail thành công!");
     } catch (err) {
       setError(err);
     } finally {
@@ -140,7 +187,7 @@ export default function AccountPage() {
     );
   }
 
-  const displayName = [user.last_name, user.first_name].filter(Boolean).join(" ") || user.email.split("@")[0];
+  const displayName = [user.last_name, user.first_name].filter(Boolean).join(" ") || user.email?.split("@")[0] || "Khách hàng NEXA";
   const avatarLetter = (user.first_name?.[0] || user.last_name?.[0] || user.email?.[0] || "N").toUpperCase();
 
   return (
@@ -192,7 +239,7 @@ export default function AccountPage() {
             </div>
             <div>
               <strong style={{ fontSize: "18px", color: "var(--ink)", display: "block" }}>{displayName}</strong>
-              <span style={{ color: "var(--muted)", fontSize: "13px" }}>{user.email}</span>
+              <span style={{ color: "var(--muted)", fontSize: "13px" }}>{user.email || "Chưa cập nhật"}</span>
             </div>
           </div>
 
@@ -228,14 +275,95 @@ export default function AccountPage() {
                 placeholder="0901234567"
               />
 
-              <div style={{ marginTop: "16px", display: "flex", gap: "10px" }}>
-                <button type="submit" className="btn btn-primary" disabled={busy}>
-                  {busy ? "Đang lưu..." : "Lưu thay đổi"}
-                </button>
-                <button type="button" className="btn btn-quiet" onClick={() => setEditingProfile(false)}>
-                  Hủy
-                </button>
-              </div>
+              {user.can_edit_email && (
+                <>
+                  <label htmlFor="p-email">Địa chỉ Gmail / Email</label>
+                  <input
+                    id="p-email"
+                    className="field"
+                    type="email"
+                    value={profileForm.email}
+                    disabled={emailOtpState.active}
+                    onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                    placeholder="yourname@gmail.com"
+                  />
+                </>
+              )}
+
+              {emailOtpState.active && (
+                <div
+                  style={{
+                    marginTop: "12px",
+                    padding: "12px",
+                    borderRadius: "10px",
+                    background: "rgba(99, 102, 241, 0.08)",
+                    border: "1px solid rgba(99, 102, 241, 0.25)",
+                  }}
+                >
+                  <p style={{ margin: "0 0 8px", fontSize: "13px", color: "var(--ink)" }}>
+                    {emailOtpState.infoMessage}
+                    {emailOtpState.devOtp ? (
+                      <>
+                        {" "}
+                        (Mã dev: <strong>{emailOtpState.devOtp}</strong>)
+                      </>
+                    ) : null}
+                  </p>
+                  <label htmlFor="p-email-otp">Mã xác thực (6 chữ số)</label>
+                  <input
+                    id="p-email-otp"
+                    className="field"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={emailOtpState.otp}
+                    onChange={(e) =>
+                      setEmailOtpState((prev) => ({
+                        ...prev,
+                        otp: e.target.value.replace(/\D/g, "").slice(0, 6),
+                      }))
+                    }
+                    placeholder="Nhập 6 chữ số (VD: 123456)"
+                  />
+                  <div style={{ marginTop: "10px", display: "flex", gap: "8px" }}>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      disabled={busy || emailOtpState.otp.trim().length !== 6}
+                      onClick={handleConfirmProfileEmailOtp}
+                    >
+                      {busy ? "Đang xác minh..." : "Xác nhận mã OTP"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-quiet"
+                      disabled={busy}
+                      onClick={() =>
+                        setEmailOtpState({
+                          active: false,
+                          email: "",
+                          otp: "",
+                          infoMessage: "",
+                          devOtp: "",
+                        })
+                      }
+                    >
+                      Đổi Gmail
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!emailOtpState.active && (
+                <div style={{ marginTop: "16px", display: "flex", gap: "10px" }}>
+                  <button type="submit" className="btn btn-primary" disabled={busy}>
+                    {busy ? "Đang lưu..." : "Lưu thay đổi"}
+                  </button>
+                  <button type="button" className="btn btn-quiet" onClick={() => setEditingProfile(false)}>
+                    Hủy
+                  </button>
+                </div>
+              )}
             </form>
           ) : (
             <div style={{ borderTop: "1px solid #e8edf3", paddingTop: "14px" }}>
@@ -245,7 +373,7 @@ export default function AccountPage() {
               </div>
               <div style={{ padding: "8px 0" }}>
                 <small style={{ color: "var(--muted)", display: "block", fontSize: "11px" }}>ĐỊA CHỈ EMAIL</small>
-                <strong>{user.email}</strong>
+                <strong>{user.email || "Chưa cập nhật"}</strong>
               </div>
               <div style={{ padding: "8px 0" }}>
                 <small style={{ color: "var(--muted)", display: "block", fontSize: "11px" }}>SỐ ĐIỆN THOẠI</small>

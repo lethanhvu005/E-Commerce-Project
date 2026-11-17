@@ -60,6 +60,8 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     permissions = serializers.SerializerMethodField()
+    can_edit_email = serializers.SerializerMethodField()
+    email = serializers.EmailField(required=False, allow_null=True, allow_blank=True)
 
     class Meta:
         model = User
@@ -73,27 +75,49 @@ class UserSerializer(serializers.ModelSerializer):
             "date_joined",
             "is_staff",
             "permissions",
+            "can_edit_email",
         ]
         read_only_fields = [
             "id",
-            "email",
             "email_verified_at",
             "date_joined",
             "is_staff",
             "permissions",
+            "can_edit_email",
         ]
 
     def get_permissions(self, user):
         return sorted(user.get_all_permissions()) if user.is_staff else []
 
+    def get_can_edit_email(self, user):
+        return bool(user.facebook_sub)
+
+    def validate_email(self, value):
+        if value is None or not value.strip():
+            return None
+        email = value.strip().lower()
+        queryset = User.objects.filter(email__iexact=email)
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError("Email đã được tài khoản khác sử dụng.")
+        return email
+
     def to_internal_value(self, data):
         allowed_fields = {"first_name", "last_name", "phone"}
+        if self.instance and self.instance.facebook_sub:
+            allowed_fields.add("email")
         rejected_fields = set(data) - allowed_fields
         if rejected_fields:
             raise serializers.ValidationError(
                 {field: "Không được sửa trường này tại API hồ sơ." for field in rejected_fields}
             )
         return super().to_internal_value(data)
+
+    def update(self, instance, validated_data):
+        if "email" in validated_data and validated_data["email"] != instance.email:
+            instance.email_verified_at = None
+        return super().update(instance, validated_data)
 
 
 class LoginSerializer(serializers.Serializer):
@@ -120,6 +144,27 @@ class GoogleLoginSerializer(serializers.Serializer):
 
 class FacebookLoginSerializer(serializers.Serializer):
     access_token = serializers.CharField(trim_whitespace=False)
+
+
+class EmailOtpRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        return value.strip().lower()
+
+
+class EmailOtpVerifySerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.CharField(min_length=6, max_length=6, trim_whitespace=True)
+
+    def validate_email(self, value):
+        return value.strip().lower()
+
+    def validate_otp(self, value):
+        code = value.strip()
+        if not code.isdigit() or len(code) != 6:
+            raise serializers.ValidationError("Mã xác thực phải gồm đúng 6 chữ số.")
+        return code
 
 
 class AddressSerializer(serializers.ModelSerializer):

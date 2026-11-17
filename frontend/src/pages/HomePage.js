@@ -55,41 +55,66 @@ function HeroWaves({ index }) {
   );
 }
 
-function getCampaignMeta(banner) {
+function getCampaignMeta(banner, isLight = false) {
   const key = `${banner?.desktop_image_key || ""} ${banner?.link_path || ""} ${banner?.title || ""}`.toLowerCase();
-  const desktopImg = assetUrl(banner?.desktop_image_key) || "";
-  const mobileImg = assetUrl(banner?.mobile_image_key) || desktopImg;
+  const rawDesktop = assetUrl(banner?.desktop_image_key) || "";
+  const rawMobile = assetUrl(banner?.mobile_image_key) || rawDesktop;
+  const isDayVariantInMobile = rawMobile.toLowerCase().includes("-day.");
 
   if (key.includes("keys") || key.includes("ban-phim") || key.includes("phím")) {
+    const darkImg = rawDesktop || "/assets/images/campaign/cobalt-keys-lettered.png";
+    const lightImg = isDayVariantInMobile ? rawMobile : "/assets/images/campaign/cobalt-keys-day.png";
+    const activeImg = isLight ? lightImg : darkImg;
     return {
       campaignClass: "campaign-keys",
-      desktopImg,
-      mobileImg,
+      desktopImg: activeImg,
+      mobileImg: isDayVariantInMobile ? activeImg : rawMobile,
+      darkImg,
+      lightImg,
       eyebrow: "DÀNH CHO NHỮNG ĐIỀU BẠN TẠO NÊN",
       indexLabel: "BỘ SƯU TẬP BÀN PHÍM",
       noteLines: ["Thiết kế tinh gọn.", "Cảm hứng bất tận."],
-      alt: banner?.title || "Banner bàn phím NEXA",
+      alt: banner?.title || "Ảnh ý tưởng bàn phím giữa những cánh hoa xanh cobalt",
     };
   }
   if (key.includes("motion") || key.includes("chuot") || key.includes("chuột") || key.includes("chuyển động")) {
+    const darkImg = rawDesktop || "/assets/images/campaign/cobalt-motion.png";
+    const lightImg = isDayVariantInMobile ? rawMobile : "/assets/images/campaign/cobalt-motion-day.png";
+    const activeImg = isLight ? lightImg : darkImg;
     return {
       campaignClass: "campaign-motion",
-      desktopImg,
-      mobileImg,
+      desktopImg: activeImg,
+      mobileImg: isDayVariantInMobile ? activeImg : rawMobile,
+      darkImg,
+      lightImg,
       eyebrow: "CÔNG NGHỆ HÒA VÀO NHỊP SỐNG",
       indexLabel: "BỘ SƯU TẬP CHUỘT",
       noteLines: ["Chuyển động tự nhiên.", "Trải nghiệm liền mạch."],
-      alt: banner?.title || "Banner chuột gaming NEXA",
+      alt: banner?.title || "Ảnh ý tưởng chuột giữa những cánh hoa xanh cobalt",
     };
   }
+  const isSoundCampaign =
+    key.includes("sound") ||
+    key.includes("tai-nghe") ||
+    key.includes("khoảnh khắc") ||
+    key.includes("âm thanh");
+  const darkImg = rawDesktop || (isSoundCampaign ? "/assets/images/campaign/cobalt-sound-wide.png" : "");
+  const lightImg = isDayVariantInMobile
+    ? rawMobile
+    : isSoundCampaign
+    ? "/assets/images/campaign/cobalt-sound-wide-day.png"
+    : rawDesktop;
+  const activeImg = isLight ? lightImg : darkImg;
   return {
     campaignClass: "campaign-sound",
-    desktopImg,
-    mobileImg,
-    eyebrow: "BỘ SƯU TẬP NỔI BẬT",
-    indexLabel: "CHIẾN DỊCH NEXA",
-    noteLines: ["Thiết kế chuẩn xác.", "Trải nghiệm trọn vẹn."],
-    alt: banner?.title || "Banner bộ sưu tập NEXA",
+    desktopImg: activeImg,
+    mobileImg: isDayVariantInMobile ? activeImg : rawMobile,
+    darkImg,
+    lightImg,
+    eyebrow: "ÂM THANH ĐỒNG HÀNH CÙNG BẠN",
+    indexLabel: "BỘ SƯU TẬP TAI NGHE",
+    noteLines: ["Chạm vào âm nhạc.", "Chạm đến cảm xúc."],
+    alt: banner?.title || "Ảnh ý tưởng tai nghe giữa những cánh hoa xanh cobalt",
   };
 }
 
@@ -161,6 +186,21 @@ export default function HomePage() {
   const [toastMsg, setToastMsg] = useState("");
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [heroTilt, setHeroTilt] = useState({ tx: 0, ty: 0, rx: 0, ry: 0 });
+  const [docTheme, setDocTheme] = useState(
+    () => (typeof document !== "undefined" && document.documentElement.getAttribute("data-theme")) || "dark"
+  );
+
+  useEffect(() => {
+    if (typeof document === "undefined" || typeof MutationObserver === "undefined") return undefined;
+    const html = document.documentElement;
+    const syncDocTheme = () => setDocTheme(html.getAttribute("data-theme") || "dark");
+    syncDocTheme();
+    const observer = new MutationObserver(syncDocTheme);
+    observer.observe(html, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, []);
+
+  const isLightTheme = (outlet.theme || docTheme) === "light";
 
   const markImageFailed = useCallback((key) => {
     setFailedImages((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
@@ -374,7 +414,7 @@ export default function HomePage() {
           <>
             <div className="slider-viewport nexa-slider-stage">
               {data.banners.map((banner, index) => {
-                const meta = getCampaignMeta(banner);
+                const meta = getCampaignMeta(banner, isLightTheme);
                 const title = splitTitle(banner.title);
                 const bannerImgKey = `banner-${banner.id ?? index}`;
                 const hasBannerImg = Boolean((meta.desktopImg || meta.mobileImg) && !failedImages[bannerImgKey]);
@@ -403,6 +443,8 @@ export default function HomePage() {
                           <img
                             className="hero-product-image"
                             src={meta.desktopImg || meta.mobileImg}
+                            data-dark-src={meta.darkImg || meta.desktopImg}
+                            data-light-src={meta.lightImg || meta.desktopImg}
                             width="1536"
                             height="1024"
                             alt={meta.alt || banner.title}

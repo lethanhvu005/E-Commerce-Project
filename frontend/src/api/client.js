@@ -158,6 +158,7 @@ export const api = {
 
 export const authService = {
   login: (credentials) => api.post("/auth/login/", credentials),
+  adminLogin: (credentials) => api.post("/admin/auth/login/", credentials),
   loginWithGoogle: (payload) => api.post("/auth/google/", payload),
   getFacebookConfig: () => api.publicGet("/auth/facebook/config/"),
   loginWithFacebook: (payload) => api.post("/auth/facebook/", payload),
@@ -165,6 +166,8 @@ export const authService = {
   logout: (refreshToken) => api.post("/auth/logout/", { refresh: refreshToken }),
   getProfile: () => api.get("/accounts/me/"),
   updateProfile: (profile) => api.patch("/accounts/me/", profile),
+  requestEmailOtp: (email) => api.post("/accounts/me/email-otp/request/", { email }),
+  verifyEmailOtp: ({ email, otp }) => api.post("/accounts/me/email-otp/verify/", { email, otp }),
   getAddresses: () => api.get("/accounts/me/addresses/"),
   addAddress: (addr) => api.post("/accounts/me/addresses/", addr),
   updateAddress: (id, addr) => api.patch(`/accounts/me/addresses/${id}/`, addr),

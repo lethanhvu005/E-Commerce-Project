@@ -37,6 +37,12 @@ export function AuthProvider({ children }) {
     return loadUser();
   };
 
+  const loginAdmin = async (credentials) => {
+    const tokens = await authService.adminLogin(credentials);
+    saveTokens(tokens);
+    return loadUser();
+  };
+
   const loginWithGoogle = async (payload) => {
     const tokens = await authService.loginWithGoogle(payload);
     saveTokens({ access: tokens.access, refresh: tokens.refresh });
@@ -72,6 +78,7 @@ export function AuthProvider({ children }) {
     user,
     loading,
     login,
+    loginAdmin,
     loginWithGoogle,
     loginWithFacebook,
     register,

@@ -1,10 +1,14 @@
 import json
+import logging
+import secrets
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from django.conf import settings
 from django.contrib.auth import authenticate
+from django.core.cache import cache
+from django.core.mail import send_mail
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -19,6 +23,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Address, User
 from .serializers import (
     AddressSerializer,
+    EmailOtpRequestSerializer,
+    EmailOtpVerifySerializer,
     FacebookLoginSerializer,
     GoogleLoginSerializer,
     LoginSerializer,
@@ -27,6 +33,10 @@ from .serializers import (
     UserSerializer,
 )
 from .throttles import LoginRateThrottle, RegisterRateThrottle
+
+logger = logging.getLogger(__name__)
+EMAIL_OTP_TTL_SECONDS = 600
+EMAIL_OTP_MAX_ATTEMPTS = 5
 
 
 VALID_GOOGLE_ISSUERS = {"accounts.google.com", "https://accounts.google.com"}
@@ -132,6 +142,37 @@ def login(request):
     )
     if user is None or not user.is_active:
         return Response({"detail": "Email hoặc mật khẩu không đúng."}, status=status.HTTP_401_UNAUTHORIZED)
+    if user.is_staff or user.is_superuser:
+        return Response(
+            {"detail": "Tài khoản quản trị phải đăng nhập tại cổng Admin."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    refresh = RefreshToken.for_user(user)
+    return Response({"access": str(refresh.access_token), "refresh": str(refresh)})
+
+
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+@throttle_classes([LoginRateThrottle])
+def admin_login(request):
+    serializer = LoginSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    user = authenticate(
+        request=request,
+        email=serializer.validated_data["email"],
+        password=serializer.validated_data["password"],
+    )
+    if user is None or not user.is_active:
+        return Response(
+            {"detail": "Email hoặc mật khẩu Admin không đúng."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+    if not user.is_staff:
+        return Response(
+            {"detail": "Tài khoản này không có quyền truy cập cổng Admin."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
     refresh = RefreshToken.for_user(user)
     return Response({"access": str(refresh.access_token), "refresh": str(refresh)})
 
@@ -281,6 +322,7 @@ def google_login(request):
             "access": str(refresh.access_token),
             "refresh": str(refresh),
             "user": UserSerializer(user).data,
+            "requires_email_verification": not bool(user.email),
         }
     )
 
@@ -323,12 +365,7 @@ def facebook_login(request):
         )
 
     facebook_sub = str(payload.get("id") or "").strip()
-    email = str(payload.get("email") or "").strip().lower()
-    if not email:
-        return Response(
-            {"detail": "Facebook không cung cấp email thật cho tài khoản này."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+    email = str(payload.get("email") or "").strip().lower() or None
 
     first_name = str(payload.get("first_name") or "").strip()
     last_name = str(payload.get("last_name") or "").strip()
@@ -345,7 +382,7 @@ def facebook_login(request):
                         status=status.HTTP_403_FORBIDDEN,
                     )
             else:
-                existing = User.objects.select_for_update().filter(email=email).first()
+                existing = User.objects.select_for_update().filter(email=email).first() if email else None
                 if existing is not None:
                     if existing.is_staff or existing.is_superuser:
                         return Response(
@@ -371,9 +408,9 @@ def facebook_login(request):
                         email=email,
                         password=None,
                         facebook_sub=facebook_sub,
-                        first_name=first_name or email.split("@")[0],
+                        first_name=first_name or "Facebook",
                         last_name=last_name,
-                        email_verified_at=now,
+                        email_verified_at=now if email else None,
                     )
     except IntegrityError:
         user = User.objects.filter(
@@ -394,6 +431,7 @@ def facebook_login(request):
             "access": str(refresh.access_token),
             "refresh": str(refresh),
             "user": UserSerializer(user).data,
+            "requires_email_verification": not bool(user.email),
         }
     )
 
@@ -452,6 +490,130 @@ def me(request):
     serializer.is_valid(raise_exception=True)
     serializer.save()
     return Response(serializer.data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def request_email_otp(request):
+    serializer = EmailOtpRequestSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    email = serializer.validated_data["email"]
+
+    if User.objects.filter(email__iexact=email).exclude(pk=request.user.pk).exists():
+        return Response(
+            {"email": ["Email này đã được tài khoản khác sử dụng."]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    code = f"{secrets.randbelow(1000000):06d}"
+    cache_key = f"email_otp:{request.user.pk}"
+    cache.set(
+        cache_key,
+        {"email": email, "code": code, "attempts": 0},
+        timeout=EMAIL_OTP_TTL_SECONDS,
+    )
+
+    smtp_configured = bool(
+        getattr(settings, "EMAIL_HOST_USER", "").strip()
+        and getattr(settings, "EMAIL_HOST_PASSWORD", "").strip()
+    )
+    mail_sent = False
+    try:
+        send_mail(
+            subject=f"[NEXA] Mã xác thực địa chỉ email của bạn: {code}",
+            message=(
+                f"Xin chào {request.user.get_full_name() or 'bạn'},\n\n"
+                f"Mã xác thực (OTP) để liên kết địa chỉ email {email} với tài khoản NEXA của bạn là:\n\n"
+                f"{code}\n\n"
+                f"Mã có hiệu lực trong vòng 10 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai."
+            ),
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@nexa.vn"),
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        mail_sent = True
+    except Exception:
+        logger.warning("Failed to send OTP email for user_id=%s", request.user.pk)
+        if not settings.DEBUG:
+            return Response(
+                {"detail": "Không thể gửi mã xác thực qua email lúc này. Vui lòng thử lại sau."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+    payload = {
+        "detail": f"Đã gửi mã xác thực gồm 6 chữ số đến {email}.",
+        "email": email,
+        "expires_in": EMAIL_OTP_TTL_SECONDS,
+        "smtp_configured": smtp_configured,
+    }
+    if settings.DEBUG and (not smtp_configured or not mail_sent):
+        payload["dev_otp"] = code
+    return Response(payload, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def verify_email_otp(request):
+    serializer = EmailOtpVerifySerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    email = serializer.validated_data["email"]
+    otp = serializer.validated_data["otp"]
+
+    cache_key = f"email_otp:{request.user.pk}"
+    otp_record = cache.get(cache_key)
+    if not otp_record or otp_record.get("email") != email:
+        return Response(
+            {"detail": "Mã xác thực đã hết hạn hoặc chưa được yêu cầu cho email này. Vui lòng gửi lại mã."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    attempts = int(otp_record.get("attempts", 0))
+    if attempts >= EMAIL_OTP_MAX_ATTEMPTS:
+        cache.delete(cache_key)
+        return Response(
+            {"detail": "Bạn đã nhập sai quá số lần cho phép. Vui lòng yêu cầu mã xác thực mới."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not secrets.compare_digest(str(otp_record.get("code", "")), otp):
+        otp_record["attempts"] = attempts + 1
+        if otp_record["attempts"] >= EMAIL_OTP_MAX_ATTEMPTS:
+            cache.delete(cache_key)
+            return Response(
+                {"detail": "Bạn đã nhập sai quá số lần cho phép. Vui lòng yêu cầu mã xác thực mới."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        cache.set(cache_key, otp_record, timeout=EMAIL_OTP_TTL_SECONDS)
+        return Response(
+            {"otp": ["Mã xác thực không chính xác."]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        with transaction.atomic():
+            user = User.objects.select_for_update().get(pk=request.user.pk)
+            if User.objects.filter(email__iexact=email).exclude(pk=user.pk).exists():
+                return Response(
+                    {"email": ["Email này đã được tài khoản khác sử dụng."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            user.email = email
+            user.email_verified_at = timezone.now()
+            user.save(update_fields=["email", "email_verified_at"])
+    except IntegrityError:
+        return Response(
+            {"email": ["Email này đã được tài khoản khác sử dụng."]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    cache.delete(cache_key)
+    return Response(
+        {
+            "detail": "Đã xác thực và thêm Gmail thành công!",
+            "user": UserSerializer(user).data,
+        },
+        status=status.HTTP_200_OK,
+    )
 
 
 def _save_address(serializer, user):

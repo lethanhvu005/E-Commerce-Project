@@ -74,11 +74,12 @@ function loadFacebookSdk(appId) {
 
 export default function AuthPage({ mode = "login" }) {
   const isRegister = mode === "register";
-  const { login, loginWithGoogle, loginWithFacebook, register } = useAuth();
+  const { login, loginWithGoogle, loginWithFacebook, register, reloadUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const googleClientId = (process.env.REACT_APP_GOOGLE_CLIENT_ID || "").trim();
   const [facebookAppId, setFacebookAppId] = useState("");
+  const [emailVerificationStep, setEmailVerificationStep] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -134,7 +135,61 @@ export default function AuthPage({ mode = "login" }) {
     setError(null);
     try {
       const profile = await loginWithFacebook({ access_token: accessToken });
+      if (!profile?.email) {
+        setEmailVerificationStep({
+          stage: "request",
+          email: "",
+          otp: "",
+          infoMessage: "",
+          devOtp: "",
+          profile,
+        });
+        return;
+      }
       redirectAfterAuth(profile);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRequestEmailOtp = async (e) => {
+    if (e?.preventDefault) e.preventDefault();
+    if (!emailVerificationStep) return;
+    const trimmedEmail = emailVerificationStep.email.trim().toLowerCase();
+    if (!trimmedEmail) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await authService.requestEmailOtp(trimmedEmail);
+      setEmailVerificationStep((prev) => ({
+        ...prev,
+        stage: "verify",
+        email: trimmedEmail,
+        otp: "",
+        infoMessage: res?.detail || `Đã gửi mã xác thực 6 chữ số đến ${trimmedEmail}.`,
+        devOtp: res?.dev_otp || "",
+      }));
+    } catch (err) {
+      setError(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleVerifyEmailOtp = async (e) => {
+    e.preventDefault();
+    if (!emailVerificationStep) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await authService.verifyEmailOtp({
+        email: emailVerificationStep.email.trim().toLowerCase(),
+        otp: emailVerificationStep.otp.trim(),
+      });
+      const updatedProfile = (await reloadUser()) || res?.user || emailVerificationStep.profile;
+      redirectAfterAuth(updatedProfile);
     } catch (err) {
       setError(err);
     } finally {
@@ -203,134 +258,257 @@ export default function AuthPage({ mode = "login" }) {
       <div className="ux-auth">
         {/* Left Form Card */}
         <div className="ux-card">
-          <h2>{isRegister ? "Tạo tài khoản" : "Đăng nhập"}</h2>
+          {emailVerificationStep ? (
+            <div>
+              <h2>
+                {emailVerificationStep.stage === "request"
+                  ? "Bổ sung địa chỉ Gmail"
+                  : "Xác thực mã OTP"}
+              </h2>
+              <p style={{ color: "var(--muted)", fontSize: "14px", marginBottom: "16px", lineHeight: 1.5 }}>
+                {emailVerificationStep.stage === "request"
+                  ? "Đăng nhập Facebook thành công! Tài khoản Facebook của bạn chưa cung cấp địa chỉ email. Vui lòng nhập Gmail để nhận mã xác thực 6 chữ số."
+                  : emailVerificationStep.infoMessage || `Mã xác thực 6 chữ số đã được gửi đến ${emailVerificationStep.email}.`}
+              </p>
 
-          {/* Social login buttons visual */}
-          <div className="ux-social">
-            {googleClientId ? (
-              <GoogleOAuthProvider clientId={googleClientId}>
-                <ActiveGoogleButton
-                  disabled={submitting}
-                  onAccessToken={handleGoogleAccessToken}
-                  onError={(err) => setError(err)}
-                />
-              </GoogleOAuthProvider>
-            ) : (
-              <button
-                type="button"
-                className="ux-social-button"
-                disabled
-                title="Đang cấu hình OAuth"
-                style={{ opacity: 0.6, cursor: "not-allowed" }}
-              >
-                <GoogleIcon />
-                <span>Google (Sắp mở)</span>
-              </button>
-            )}
-            <button
-              type="button"
-              className="ux-social-button"
-              disabled={!facebookAppId || submitting}
-              title={!facebookAppId ? "Đang cấu hình OAuth" : "Đăng nhập bằng Facebook"}
-              style={!facebookAppId ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
-              onClick={async () => {
-                try {
-                  const facebook = await loadFacebookSdk(facebookAppId);
-                  facebook.login((response) => {
-                    const accessToken = response?.authResponse?.accessToken;
-                    if (accessToken) handleFacebookAccessToken(accessToken);
-                    else setError(new Error("Đăng nhập Facebook bị hủy hoặc không thành công."));
-                  }, { scope: "public_profile,email", return_scopes: true });
-                } catch (err) {
-                  setError(err);
-                }
-              }}
-            >
-              <svg className="facebook-f" viewBox="0 0 24 24" width="18" height="18" fill="#1877F2">
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-              </svg>
-              <span>{facebookAppId ? "Facebook" : "Facebook (Sắp mở)"}</span>
-            </button>
-          </div>
-
-          <div className="ux-separator">
-            <span>hoặc tiếp tục với email</span>
-          </div>
-
-          <form onSubmit={handleSubmit}>
-            {isRegister && (
-              <div className="form-grid">
-                <div>
-                  <label htmlFor="reg-last">Họ</label>
-                  <input
-                    id="reg-last"
-                    className="field"
-                    name="last_name"
-                    required
-                    value={form.last_name}
-                    onChange={handleChange}
-                    placeholder="Nguyễn"
-                  />
+              {emailVerificationStep.stage === "verify" && emailVerificationStep.devOtp && (
+                <div
+                  style={{
+                    padding: "10px 14px",
+                    marginBottom: "14px",
+                    borderRadius: "10px",
+                    background: "rgba(99, 102, 241, 0.12)",
+                    border: "1px solid rgba(99, 102, 241, 0.35)",
+                    fontSize: "13px",
+                    color: "var(--ink)",
+                  }}
+                >
+                  Mã xác thực (chế độ dev): <strong>{emailVerificationStep.devOtp}</strong>
                 </div>
-                <div>
-                  <label htmlFor="reg-first">Tên</label>
+              )}
+
+              {emailVerificationStep.stage === "request" ? (
+                <form onSubmit={handleRequestEmailOtp}>
+                  <label htmlFor="fb-verify-email">Địa chỉ Gmail</label>
                   <input
-                    id="reg-first"
+                    id="fb-verify-email"
                     className="field"
-                    name="first_name"
+                    name="email"
+                    type="email"
                     required
-                    value={form.first_name}
-                    onChange={handleChange}
-                    placeholder="Văn An"
+                    autoComplete="email"
+                    value={emailVerificationStep.email}
+                    onChange={(e) =>
+                      setEmailVerificationStep((prev) => ({
+                        ...prev,
+                        email: e.target.value,
+                      }))
+                    }
+                    placeholder="yourname@gmail.com"
                   />
-                </div>
+
+                  {error && <ErrorBox error={error} variant="inline" />}
+
+                  <button
+                    type="submit"
+                    className="btn btn-violet full nexa-auth-submit"
+                    disabled={submitting}
+                  >
+                    {submitting ? "Đang gửi mã..." : "Gửi mã xác thực ↗"}
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleVerifyEmailOtp}>
+                  <label htmlFor="fb-verify-otp">Mã xác thực (6 chữ số)</label>
+                  <input
+                    id="fb-verify-otp"
+                    className="field"
+                    name="otp"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    required
+                    autoComplete="one-time-code"
+                    value={emailVerificationStep.otp}
+                    onChange={(e) =>
+                      setEmailVerificationStep((prev) => ({
+                        ...prev,
+                        otp: e.target.value.replace(/\D/g, "").slice(0, 6),
+                      }))
+                    }
+                    placeholder="Nhập 6 chữ số (VD: 123456)"
+                  />
+
+                  {error && <ErrorBox error={error} variant="inline" />}
+
+                  <button
+                    type="submit"
+                    className="btn btn-violet full nexa-auth-submit"
+                    disabled={submitting || emailVerificationStep.otp.trim().length !== 6}
+                  >
+                    {submitting ? "Đang xác minh..." : "Xác nhận & Hoàn tất ↗"}
+                  </button>
+
+                  <div style={{ display: "flex", gap: "10px", marginTop: "12px", justifyContent: "space-between" }}>
+                    <button
+                      type="button"
+                      className="btn btn-quiet"
+                      disabled={submitting}
+                      onClick={() => handleRequestEmailOtp()}
+                    >
+                      Gửi lại mã
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-quiet"
+                      disabled={submitting}
+                      onClick={() => {
+                        setError(null);
+                        setEmailVerificationStep((prev) => ({
+                          ...prev,
+                          stage: "request",
+                          otp: "",
+                        }));
+                      }}
+                    >
+                      Đổi Gmail khác
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          ) : (
+            <>
+              <h2>{isRegister ? "Tạo tài khoản" : "Đăng nhập"}</h2>
+
+              {/* Social login buttons visual */}
+              <div className="ux-social">
+                {googleClientId ? (
+                  <GoogleOAuthProvider clientId={googleClientId}>
+                    <ActiveGoogleButton
+                      disabled={submitting}
+                      onAccessToken={handleGoogleAccessToken}
+                      onError={(err) => setError(err)}
+                    />
+                  </GoogleOAuthProvider>
+                ) : (
+                  <button
+                    type="button"
+                    className="ux-social-button"
+                    disabled
+                    title="Đang cấu hình OAuth"
+                    style={{ opacity: 0.6, cursor: "not-allowed" }}
+                  >
+                    <GoogleIcon />
+                    <span>Google (Sắp mở)</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="ux-social-button"
+                  disabled={!facebookAppId || submitting}
+                  title={!facebookAppId ? "Đang cấu hình OAuth" : "Đăng nhập bằng Facebook"}
+                  style={!facebookAppId ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
+                  onClick={async () => {
+                    try {
+                      const facebook = await loadFacebookSdk(facebookAppId);
+                      facebook.login((response) => {
+                        const accessToken = response?.authResponse?.accessToken;
+                        if (accessToken) handleFacebookAccessToken(accessToken);
+                        else setError(new Error("Đăng nhập Facebook bị hủy hoặc không thành công."));
+                      }, { scope: "public_profile", return_scopes: true });
+                    } catch (err) {
+                      setError(err);
+                    }
+                  }}
+                >
+                  <svg className="facebook-f" viewBox="0 0 24 24" width="18" height="18" fill="#1877F2">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  </svg>
+                  <span>{facebookAppId ? "Facebook" : "Facebook (Sắp mở)"}</span>
+                </button>
               </div>
-            )}
 
-            <label htmlFor="auth-email">Địa chỉ Email</label>
-            <input
-              id="auth-email"
-              className="field"
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-              value={form.email}
-              onChange={handleChange}
-              placeholder="example@domain.com"
-            />
+              <div className="ux-separator">
+                <span>hoặc tiếp tục với email</span>
+              </div>
 
-            <label htmlFor="auth-password">Mật khẩu</label>
-            <input
-              id="auth-password"
-              className="field"
-              name="password"
-              type="password"
-              required
-              minLength={8}
-              autoComplete={isRegister ? "new-password" : "current-password"}
-              value={form.password}
-              onChange={handleChange}
-              placeholder="Tối thiểu 8 ký tự..."
-            />
+              <form onSubmit={handleSubmit}>
+                {isRegister && (
+                  <div className="form-grid">
+                    <div>
+                      <label htmlFor="reg-last">Họ</label>
+                      <input
+                        id="reg-last"
+                        className="field"
+                        name="last_name"
+                        required
+                        value={form.last_name}
+                        onChange={handleChange}
+                        placeholder="Nguyễn"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="reg-first">Tên</label>
+                      <input
+                        id="reg-first"
+                        className="field"
+                        name="first_name"
+                        required
+                        value={form.first_name}
+                        onChange={handleChange}
+                        placeholder="Văn An"
+                      />
+                    </div>
+                  </div>
+                )}
 
-            {error && <ErrorBox error={error} variant="inline" />}
+                <label htmlFor="auth-email">Địa chỉ Email</label>
+                <input
+                  id="auth-email"
+                  className="field"
+                  name="email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  placeholder="example@domain.com"
+                />
 
-            <button
-              type="submit"
-              className="btn btn-violet full nexa-auth-submit"
-              disabled={submitting}
-            >
-              {submitting ? "Đang xử lý..." : isRegister ? "Tạo tài khoản ↗" : "Đăng nhập ↗"}
-            </button>
+                <label htmlFor="auth-password">Mật khẩu</label>
+                <input
+                  id="auth-password"
+                  className="field"
+                  name="password"
+                  type="password"
+                  required
+                  minLength={8}
+                  autoComplete={isRegister ? "new-password" : "current-password"}
+                  value={form.password}
+                  onChange={handleChange}
+                  placeholder="Tối thiểu 8 ký tự..."
+                />
 
-            <p className="nexa-auth-switch">
-              {isRegister ? "Đã có tài khoản? " : "Chưa có tài khoản? "}
-              <Link className="ux-link" to={isRegister ? "/login" : "/register"}>
-                {isRegister ? "Đăng nhập" : "Đăng ký ngay"}
-              </Link>
-            </p>
-          </form>
+                {error && <ErrorBox error={error} variant="inline" />}
+
+                <button
+                  type="submit"
+                  className="btn btn-violet full nexa-auth-submit"
+                  disabled={submitting}
+                >
+                  {submitting ? "Đang xử lý..." : isRegister ? "Tạo tài khoản ↗" : "Đăng nhập ↗"}
+                </button>
+
+                <p className="nexa-auth-switch">
+                  {isRegister ? "Đã có tài khoản? " : "Chưa có tài khoản? "}
+                  <Link className="ux-link" to={isRegister ? "/login" : "/register"}>
+                    {isRegister ? "Đăng nhập" : "Đăng ký ngay"}
+                  </Link>
+                </p>
+              </form>
+            </>
+          )}
         </div>
 
         {/* Right Promo Card matching ux-auth-promo */}

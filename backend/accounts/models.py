@@ -13,9 +13,10 @@ class UserManager(BaseUserManager):
     use_in_migrations = True
 
     def create_user(self, email, password=None, **extra_fields):
-        if not email or not email.strip():
+        if (not email or not email.strip()) and not extra_fields.get('facebook_sub'):
             raise ValueError('Email is required.')
-        user = self.model(email=email.strip().lower(), **extra_fields)
+        normalized_email = email.strip().lower() if email else None
+        user = self.model(email=normalized_email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
         return user
@@ -30,7 +31,7 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    email = models.EmailField(max_length=254, unique=True)
+    email = models.EmailField(max_length=254, unique=True, null=True, blank=True)
     first_name = models.CharField(max_length=150, blank=True, default='')
     last_name = models.CharField(max_length=150, blank=True, default='')
     phone = models.CharField(max_length=20, blank=True, default='')
@@ -55,10 +56,10 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def clean(self):
         super().clean()
-        self.email = self.email.strip().lower()
+        self.email = self.email.strip().lower() if self.email else None
 
     def save(self, *args, **kwargs):
-        self.email = self.email.strip().lower()
+        self.email = self.email.strip().lower() if self.email else None
         super().save(*args, **kwargs)
 
     def get_full_name(self):
@@ -68,7 +69,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.first_name
 
     def __str__(self):
-        return self.email
+        return self.email or f'Facebook user {self.facebook_sub}'
 
 
 class Address(TimestampedModel):

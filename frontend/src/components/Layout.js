@@ -511,7 +511,7 @@ export default function Layout() {
               <Icon name="user" />
               {user ? (
                 <>
-                  <Link to="/account">{user.first_name || user.email.split("@")[0]}</Link>
+                  <Link to="/account">{user.first_name || user.email?.split("@")[0] || "Tài khoản"}</Link>
                   <button
                     className="gear-logout"
                     onClick={handleLogout}
@@ -579,7 +579,7 @@ export default function Layout() {
               {user ? (
                 <>
                   <Link to="/account" onClick={() => setMenuOpen(false)}>
-                    {user.first_name || user.email}
+                    {user.first_name || user.email || "Tài khoản"}
                   </Link>
                   <button
                     onClick={() => {

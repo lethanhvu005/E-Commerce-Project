@@ -216,7 +216,8 @@ def create_order(user, data):
         shipping_fee=shipping_fee, shipping_discount=shipping_discount, grand_total=grand_total,
         voucher=locked_voucher, voucher_code_snapshot=locked_voucher.code if locked_voucher else None,
         shipping_method=shipping, shipping_method_snapshot=shipping.name,
-        contact_email_snapshot=user.email, customer_note=data.get("note", ""),
+        contact_email_snapshot=user.email or f"facebook-{user.facebook_sub or user.id}@users.nexa.local",
+        customer_note=data.get("note", ""),
     )
     OrderAddress.objects.create(
         order=order, recipient_name=address.recipient_name, phone=address.phone,

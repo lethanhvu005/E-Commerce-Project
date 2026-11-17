@@ -184,6 +184,47 @@ class AccountAuthApiTests(APITestCase):
         self.assertEqual(self.user.email, "buyer@example.test")
         self.assertFalse(self.user.is_staff)
 
+    def test_facebook_user_can_add_email_from_profile(self):
+        facebook_user = User.objects.create_user(
+            email=None,
+            password=None,
+            facebook_sub="facebook-profile-email-001",
+            first_name="Facebook",
+        )
+        self.authenticate(facebook_user)
+
+        profile = self.client.get("/api/accounts/me/")
+        self.assertEqual(profile.status_code, status.HTTP_200_OK)
+        self.assertIsNone(profile.data["email"])
+        self.assertTrue(profile.data["can_edit_email"])
+
+        updated = self.client.patch(
+            "/api/accounts/me/",
+            {"email": "  Facebook.User@Example.test  "},
+            format="json",
+        )
+        self.assertEqual(updated.status_code, status.HTTP_200_OK)
+        self.assertEqual(updated.data["email"], "facebook.user@example.test")
+        facebook_user.refresh_from_db()
+        self.assertEqual(facebook_user.email, "facebook.user@example.test")
+        self.assertIsNone(facebook_user.email_verified_at)
+
+    def test_facebook_user_cannot_take_existing_email(self):
+        facebook_user = User.objects.create_user(
+            email=None,
+            password=None,
+            facebook_sub="facebook-profile-email-002",
+        )
+        self.authenticate(facebook_user)
+        response = self.client.patch(
+            "/api/accounts/me/",
+            {"email": "BUYER@example.test"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        facebook_user.refresh_from_db()
+        self.assertIsNone(facebook_user.email)
+
     def test_addresses_are_scoped_to_current_user(self):
         self.authenticate()
         created = self.client.post(
@@ -353,7 +394,7 @@ class AccountAuthApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
 
-    def test_facebook_login_rejects_profile_without_real_email(self):
+    def test_facebook_login_works_without_email_and_does_not_create_fake_email(self):
         from unittest.mock import patch
         from django.test import override_settings
 
@@ -370,7 +411,74 @@ class AccountAuthApiTests(APITestCase):
                     format="json",
                 )
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertFalse(User.objects.filter(facebook_sub="facebook-user-without-email").exists())
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["requires_email_verification"])
+        user = User.objects.get(facebook_sub="facebook-user-without-email")
+        self.assertIsNone(user.email)
+        self.assertIsNone(user.email_verified_at)
+
+    def test_facebook_user_email_otp_request_and_verify_flow(self):
+        from django.core import mail
+        from django.core.cache import cache
+
+        fb_user = User.objects.create_user(
+            email=None,
+            password=None,
+            facebook_sub="facebook-otp-user-001",
+            first_name="Minh",
+            last_name="Le",
+        )
+        self.authenticate(fb_user)
+
+        # 1. Cannot request OTP for an email already taken by another user
+        taken_res = self.client.post(
+            "/api/accounts/me/email-otp/request/",
+            {"email": "BUYER@example.test"},
+            format="json",
+        )
+        self.assertEqual(taken_res.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # 2. Request OTP for a new Gmail address
+        req_res = self.client.post(
+            "/api/accounts/me/email-otp/request/",
+            {"email": "  NewUser.FB@gmail.com  "},
+            format="json",
+        )
+        self.assertEqual(req_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(req_res.data["email"], "newuser.fb@gmail.com")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("newuser.fb@gmail.com", mail.outbox[0].to)
+
+        otp_record = cache.get(f"email_otp:{fb_user.pk}")
+        self.assertIsNotNone(otp_record)
+        code = otp_record["code"]
+        self.assertEqual(len(code), 6)
+        self.assertTrue(code.isdigit())
+
+        # 3. Wrong OTP is rejected
+        wrong_code = "000000" if code != "000000" else "999999"
+        wrong_res = self.client.post(
+            "/api/accounts/me/email-otp/verify/",
+            {"email": "newuser.fb@gmail.com", "otp": wrong_code},
+            format="json",
+        )
+        self.assertEqual(wrong_res.status_code, status.HTTP_400_BAD_REQUEST)
+        fb_user.refresh_from_db()
+        self.assertIsNone(fb_user.email)
+
+        # 4. Correct OTP verifies and binds the Gmail address
+        verify_res = self.client.post(
+            "/api/accounts/me/email-otp/verify/",
+            {"email": "newuser.fb@gmail.com", "otp": code},
+            format="json",
+        )
+        self.assertEqual(verify_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(verify_res.data["user"]["email"], "newuser.fb@gmail.com")
+        self.assertIsNotNone(verify_res.data["user"]["email_verified_at"])
+
+        fb_user.refresh_from_db()
+        self.assertEqual(fb_user.email, "newuser.fb@gmail.com")
+        self.assertIsNotNone(fb_user.email_verified_at)
+        self.assertIsNone(cache.get(f"email_otp:{fb_user.pk}"))
 
 

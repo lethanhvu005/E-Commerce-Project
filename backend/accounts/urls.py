@@ -6,6 +6,7 @@ from . import views
 urlpatterns = [
     path("auth/register/", views.register, name="register"),
     path("auth/login/", views.login, name="login"),
+    path("admin/auth/login/", views.admin_login, name="admin-login"),
     path("auth/google/", views.google_login, name="google-login"),
     path("auth/oauth/google/", views.google_login, name="oauth-google-login"),
     path("auth/facebook/config/", views.facebook_config, name="facebook-config"),
@@ -14,6 +15,8 @@ urlpatterns = [
     path("auth/token/refresh/", views.refresh_token, name="token-refresh"),
     path("auth/logout/", views.logout, name="logout"),
     path("accounts/me/", views.me, name="me"),
+    path("accounts/me/email-otp/request/", views.request_email_otp, name="email-otp-request"),
+    path("accounts/me/email-otp/verify/", views.verify_email_otp, name="email-otp-verify"),
     path("accounts/me/addresses/", views.address_list, name="address-list"),
     path("accounts/me/addresses/<int:address_id>/", views.address_detail, name="address-detail"),
 ]

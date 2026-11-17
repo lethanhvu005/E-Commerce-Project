@@ -12,13 +12,16 @@ def _validate_trimmed_body(value, min_length, label):
 
 
 class ReviewSerializer(serializers.ModelSerializer):
-    author = serializers.CharField(source="user.get_full_name", read_only=True)
+    author = serializers.SerializerMethodField()
     is_verified_buyer = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Review
         fields = ["id", "stars", "body", "order_item", "author", "is_verified_buyer", "status", "created_at", "updated_at"]
-        read_only_fields = ["id", "author", "is_verified_buyer", "status", "created_at", "updated_at"]
+        read_only_fields = ["id", "order_item", "author", "is_verified_buyer", "status", "created_at", "updated_at"]
+
+    def get_author(self, obj):
+        return obj.user.get_full_name().strip() or "Khách hàng NEXA"
 
     def validate_stars(self, value):
         if value < 1 or value > 5:
@@ -31,7 +34,7 @@ class ReviewSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         instance = Review(
             product=self.context["product"], user=self.context["request"].user,
-            order_item=attrs.get("order_item"), stars=attrs.get("stars", 1), body=attrs.get("body", ""),
+            order_item=self.context.get("order_item"), stars=attrs.get("stars", 1), body=attrs.get("body", ""),
         )
         try:
             instance.full_clean(exclude=["status"])

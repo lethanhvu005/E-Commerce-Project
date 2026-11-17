@@ -23,8 +23,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Fix Vietnamese diacritic rendering on all headings & display text */
-h1,
+/* Fix Vietnamese diacritic rendering on all headings & display text (excluding hero editorial serif) */
+h1:not(.gear-slide h1),
 h2,
 h3,
 h4,
@@ -47,34 +47,19 @@ h4,
   line-height: 1.25 !important;
 }
 
-.gear-kicker {
+.gear-kicker:not(.gear-slide-copy > .gear-kicker) {
   font-family: "Be Vietnam Pro", "Plus Jakarta Sans", sans-serif !important;
   font-weight: 700 !important;
   letter-spacing: 0.08em !important;
 }
 
-.gear-hero h1 {
-  font-family: "Plus Jakarta Sans", "Be Vietnam Pro", sans-serif !important;
-  font-weight: 800 !important;
-  letter-spacing: -0.03em !important;
-  line-height: 1.12 !important;
+/* Preserve frontend_html editorial serif typography & light/dark palette inside .gear-hero */
+.gear-hero {
+  --serif: "Cormorant Garamond", Georgia, serif;
 }
 
-.gear-hero h1 em {
-  font-family: "Plus Jakarta Sans", "Be Vietnam Pro", sans-serif !important;
-  font-style: normal !important;
-  font-weight: 800 !important;
-  background: linear-gradient(95deg, #9cc6ff 0%, #58a6ff 52%, #43e6e3 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent !important;
-}
-
-html[data-theme="light"] .gear-hero h1 em {
-  background: linear-gradient(95deg, #1558c9 0%, #2572e8 55%, #0984e3 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent !important;
+.gear-stage > picture {
+  display: contents;
 }
 
 /* Comfortable horizontal margins on both sides of the screen for content below Hero */
@@ -241,33 +226,15 @@ html[data-theme="dark"] .hero-image-light { opacity: 0; }
 
 .nexa-slider-stage .gear-slide.is-active .gear-stage {
   opacity: 1;
-  transform: perspective(1200px)
-    translate3d(var(--hero-tx, 0px), var(--hero-ty, 0px), 0)
-    rotateX(var(--hero-rx, 0deg))
-    rotateY(var(--hero-ry, 0deg))
-    scale(1);
+  transform: none;
 }
 
 .nexa-slider-stage .gear-slide.is-active .hero-product-image {
-  animation: heroProductFloat 6.2s ease-in-out infinite;
+  animation: none;
 }
 
 .nexa-stage-aura {
-  position: absolute;
-  inset: 12% 16%;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(46, 125, 255, 0.26) 0%, rgba(67, 230, 227, 0.08) 45%, transparent 72%);
-  filter: blur(34px);
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0;
-  transform: scale(0.75);
-  transition: opacity 0.9s ease 0.12s, transform 1s cubic-bezier(0.16, 1, 0.3, 1) 0.12s;
-}
-
-.nexa-slider-stage .gear-slide.is-active .nexa-stage-aura {
-  opacity: 1;
-  transform: scale(1.08);
+  display: none;
 }
 
 /* Wave Ribbon Motion */
@@ -281,8 +248,16 @@ html[data-theme="dark"] .hero-image-light { opacity: 0; }
 }
 
 .nexa-slider-stage .gear-slide.is-active .hero-waves {
-  opacity: 1;
-  transform: scale(1) translate3d(calc(var(--hero-tx, 0px) * -0.35), calc(var(--hero-ty, 0px) * -0.35), 0);
+  opacity: 0.55;
+  transform: none;
+}
+
+html[data-theme="light"] .nexa-slider-stage .gear-slide.is-active .hero-waves {
+  opacity: 0.28;
+}
+
+html[data-theme="light"] .nexa-hero-nav-arrows {
+  display: none;
 }
 
 /* Staggered Kinetic Text Reveal on Slide Change */
