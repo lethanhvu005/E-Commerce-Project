@@ -558,4 +558,188 @@ class AccountAuthApiTests(APITestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertIn("Tư vấn sản phẩm", mail.outbox[0].subject)
 
+    def test_profile_email_change_sends_otp_to_old_email_and_requires_new_email_otp_on_next_login(self):
+        from django.core import mail
+
+        user = User.objects.create_user(
+            "old.buyer@gmail.com",
+            "Buyer!Password123",
+            first_name="Lan",
+            last_name="Tran",
+            google_sub="google-sub-old-123",
+            email_verified_at=None,
+        )
+        self.authenticate(user)
+
+        # Cannot change to existing user's email
+        taken = self.client.post(
+            "/api/accounts/me/email-change/request/",
+            {"new_email": "buyer@example.test"},
+            format="json",
+        )
+        self.assertEqual(taken.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Request change -> OTP must go to OLD email
+        req_res = self.client.post(
+            "/api/accounts/me/email-change/request/",
+            {"new_email": "  New.Buyer@gmail.com "},
+            format="json",
+        )
+        self.assertEqual(req_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(req_res.data["old_email"], "old.buyer@gmail.com")
+        self.assertEqual(req_res.data["new_email"], "new.buyer@gmail.com")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["old.buyer@gmail.com"])
+
+        old_otp = cache.get(f"email_change_otp:{user.pk}")["code"]
+
+        # Wrong OTP rejected
+        wrong_verify = self.client.post(
+            "/api/accounts/me/email-change/verify/",
+            {"new_email": "new.buyer@gmail.com", "otp": "000000" if old_otp != "000000" else "999999"},
+            format="json",
+        )
+        self.assertEqual(wrong_verify.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Correct OTP changes email and marks requires_email_login_otp=True
+        ok_verify = self.client.post(
+            "/api/accounts/me/email-change/verify/",
+            {"new_email": "new.buyer@gmail.com", "otp": old_otp},
+            format="json",
+        )
+        self.assertEqual(ok_verify.status_code, status.HTTP_200_OK)
+        self.assertEqual(ok_verify.data["user"]["email"], "new.buyer@gmail.com")
+        user.refresh_from_db()
+        self.assertEqual(user.email, "new.buyer@gmail.com")
+        self.assertIsNone(user.email_verified_at)
+        self.assertTrue(user.requires_email_login_otp)
+        self.assertIsNone(user.google_sub)
+
+        # Next login with new email: wrong password rejected before OTP
+        self.client.credentials()
+        bad_pw = self.client.post(
+            "/api/auth/login/",
+            {"email": "new.buyer@gmail.com", "password": "WrongPassword!999"},
+            format="json",
+        )
+        self.assertEqual(bad_pw.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # Correct password triggers OTP sent to NEW email (no tokens issued yet)
+        mail.outbox.clear()
+        login_challenge = self.client.post(
+            "/api/auth/login/",
+            {"email": "new.buyer@gmail.com", "password": "Buyer!Password123"},
+            format="json",
+        )
+        self.assertEqual(login_challenge.status_code, status.HTTP_200_OK)
+        self.assertTrue(login_challenge.data["requires_email_verification"])
+        self.assertNotIn("access", login_challenge.data)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["new.buyer@gmail.com"])
+
+        new_login_otp = cache.get(f"login_new_email_otp:{user.pk}")["code"]
+
+        # Verify login OTP issues JWT tokens and clears flag
+        login_done = self.client.post(
+            "/api/auth/login/",
+            {"email": "new.buyer@gmail.com", "password": "Buyer!Password123", "otp": new_login_otp},
+            format="json",
+        )
+        self.assertEqual(login_done.status_code, status.HTTP_200_OK)
+        self.assertIn("access", login_done.data)
+        self.assertIn("refresh", login_done.data)
+
+        user.refresh_from_db()
+        self.assertFalse(user.requires_email_login_otp)
+        self.assertIsNotNone(user.email_verified_at)
+
+        # Following login proceeds directly without OTP
+        login_next = self.client.post(
+            "/api/auth/login/",
+            {"email": "new.buyer@gmail.com", "password": "Buyer!Password123"},
+            format="json",
+        )
+        self.assertEqual(login_next.status_code, status.HTTP_200_OK)
+        self.assertIn("access", login_next.data)
+
+    def test_forgot_password_request_and_confirm_flow(self):
+        from django.core import mail
+
+        # Unknown email returns generic 200 without sending email
+        unknown_res = self.client.post(
+            "/api/auth/password-reset/request/",
+            {"email": "nobody@gmail.com"},
+            format="json",
+        )
+        self.assertEqual(unknown_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 0)
+
+        # Registered user requests password reset
+        req_res = self.client.post(
+            "/api/auth/password-reset/request/",
+            {"email": "buyer@example.test"},
+            format="json",
+        )
+        self.assertEqual(req_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["buyer@example.test"])
+
+        reset_otp = cache.get(f"password_reset_otp:{self.user.pk}")["code"]
+
+        # Wrong OTP rejected
+        bad_otp = self.client.post(
+            "/api/auth/password-reset/confirm/",
+            {
+                "email": "buyer@example.test",
+                "otp": "000000" if reset_otp != "000000" else "999999",
+                "new_password": "NewStrong!Password456",
+                "confirm_password": "NewStrong!Password456",
+            },
+            format="json",
+        )
+        self.assertEqual(bad_otp.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Weak password rejected without consuming OTP
+        weak_pw = self.client.post(
+            "/api/auth/password-reset/confirm/",
+            {
+                "email": "buyer@example.test",
+                "otp": reset_otp,
+                "new_password": "123",
+                "confirm_password": "123",
+            },
+            format="json",
+        )
+        self.assertEqual(weak_pw.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Valid confirmation updates password
+        confirm_res = self.client.post(
+            "/api/auth/password-reset/confirm/",
+            {
+                "email": "buyer@example.test",
+                "otp": reset_otp,
+                "new_password": "NewStrong!Password456",
+                "confirm_password": "NewStrong!Password456",
+            },
+            format="json",
+        )
+        self.assertEqual(confirm_res.status_code, status.HTTP_200_OK)
+        self.assertIsNone(cache.get(f"password_reset_otp:{self.user.pk}"))
+
+        # Old password fails, new password succeeds
+        old_login = self.client.post(
+            "/api/auth/login/",
+            {"email": "buyer@example.test", "password": "Buyer!Password123"},
+            format="json",
+        )
+        self.assertEqual(old_login.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        new_login = self.client.post(
+            "/api/auth/login/",
+            {"email": "buyer@example.test", "password": "NewStrong!Password456"},
+            format="json",
+        )
+        self.assertEqual(new_login.status_code, status.HTTP_200_OK)
+        self.assertIn("access", new_login.data)
+
 

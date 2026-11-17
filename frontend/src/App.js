@@ -49,6 +49,7 @@ export default function App() {
             {/* Auth */}
             <Route path="login" element={<AuthPage />} />
             <Route path="register" element={<AuthPage mode="register" />} />
+            <Route path="forgot-password" element={<AuthPage mode="forgot" />} />
 
             {/* Commerce / Shopping */}
             <Route path="cart" element={protectedPage(<CartPage />)} />

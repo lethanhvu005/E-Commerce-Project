@@ -32,8 +32,11 @@ export function AuthProvider({ children }) {
   }, [loadUser]);
 
   const login = async (credentials) => {
-    const tokens = await authService.login(credentials);
-    saveTokens(tokens);
+    const res = await authService.login(credentials);
+    if (res?.requires_email_verification) {
+      return res;
+    }
+    saveTokens(res);
     return loadUser();
   };
 

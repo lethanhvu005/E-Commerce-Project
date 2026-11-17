@@ -75,6 +75,7 @@ function loadFacebookSdk(appId) {
 
 export default function AuthPage({ mode = "login" }) {
   const isRegister = mode === "register";
+  const isForgot = mode === "forgot";
   const { login, loginWithGoogle, loginWithFacebook, register, reloadUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -82,6 +83,32 @@ export default function AuthPage({ mode = "login" }) {
   const [facebookAppId, setFacebookAppId] = useState("");
   const [emailVerificationStep, setEmailVerificationStep] = useState(null);
   const [googleLinkStep, setGoogleLinkStep] = useState(null);
+  const [newEmailLoginOtpStep, setNewEmailLoginOtpStep] = useState(null);
+  const [forgotStep, setForgotStep] = useState({
+    stage: "request", // "request" | "confirm" | "done"
+    email: "",
+    otp: "",
+    newPassword: "",
+    confirmPassword: "",
+    infoMessage: "",
+    devOtp: "",
+  });
+
+  useEffect(() => {
+    setError(null);
+    setNewEmailLoginOtpStep(null);
+    setGoogleLinkStep(null);
+    setEmailVerificationStep(null);
+    setForgotStep({
+      stage: "request",
+      email: "",
+      otp: "",
+      newPassword: "",
+      confirmPassword: "",
+      infoMessage: "",
+      devOtp: "",
+    });
+  }, [mode]);
 
   useEffect(() => {
     let active = true;
@@ -280,13 +307,142 @@ export default function AuthPage({ mode = "login" }) {
           last_name: form.last_name.trim(),
         });
       } else {
-        profile = await login({
+        const result = await login({
           email: form.email.trim(),
           password: form.password,
         });
+        if (result?.requires_email_verification) {
+          setNewEmailLoginOtpStep({
+            email: result.email || form.email.trim().toLowerCase(),
+            password: form.password,
+            otp: "",
+            infoMessage:
+              result.detail ||
+              `Đã gửi mã xác nhận 6 chữ số đến ${result.email || form.email.trim()}.`,
+            devOtp: result.dev_otp || "",
+          });
+          return;
+        }
+        profile = result;
       }
 
       redirectAfterAuth(profile);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleConfirmNewEmailLoginOtp = async (e) => {
+    e.preventDefault();
+    if (!newEmailLoginOtpStep) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const profile = await login({
+        email: newEmailLoginOtpStep.email,
+        password: newEmailLoginOtpStep.password,
+        otp: newEmailLoginOtpStep.otp.trim(),
+      });
+      if (profile?.requires_email_verification) {
+        setNewEmailLoginOtpStep((prev) => ({
+          ...prev,
+          infoMessage: profile.detail || prev.infoMessage,
+          devOtp: profile.dev_otp || prev.devOtp,
+        }));
+        return;
+      }
+      setNewEmailLoginOtpStep(null);
+      redirectAfterAuth(profile);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResendNewEmailLoginOtp = async () => {
+    if (!newEmailLoginOtpStep) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await authService.login({
+        email: newEmailLoginOtpStep.email,
+        password: newEmailLoginOtpStep.password,
+        resend_otp: true,
+      });
+      setNewEmailLoginOtpStep((prev) => ({
+        ...prev,
+        otp: "",
+        infoMessage: res?.detail || `Đã gửi lại mã xác nhận 6 chữ số đến ${prev.email}.`,
+        devOtp: res?.dev_otp || "",
+      }));
+    } catch (err) {
+      setError(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRequestPasswordReset = async (e) => {
+    if (e?.preventDefault) e.preventDefault();
+    const trimmedEmail = forgotStep.email.trim().toLowerCase();
+    const emailCheck = validateEmailAddress(trimmedEmail);
+    if (!emailCheck.valid) {
+      setError(new Error(emailCheck.error));
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await authService.requestPasswordReset(trimmedEmail);
+      setForgotStep((prev) => ({
+        ...prev,
+        stage: "confirm",
+        email: trimmedEmail,
+        otp: "",
+        infoMessage:
+          res?.detail ||
+          `Nếu ${trimmedEmail} đã đăng ký trong hệ thống, mã OTP 6 chữ số đã được gửi tới hộp thư của bạn.`,
+        devOtp: res?.dev_otp || "",
+      }));
+    } catch (err) {
+      setError(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleConfirmPasswordReset = async (e) => {
+    e.preventDefault();
+    if (forgotStep.newPassword.length < 8) {
+      setError(new Error("Mật khẩu mới phải có tối thiểu 8 ký tự."));
+      return;
+    }
+    if (forgotStep.newPassword !== forgotStep.confirmPassword) {
+      setError(new Error("Mật khẩu xác nhận không khớp."));
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await authService.confirmPasswordReset({
+        email: forgotStep.email.trim().toLowerCase(),
+        otp: forgotStep.otp.trim(),
+        newPassword: forgotStep.newPassword,
+        confirmPassword: forgotStep.confirmPassword,
+      });
+      setForm((prev) => ({ ...prev, email: forgotStep.email.trim().toLowerCase(), password: "" }));
+      setForgotStep((prev) => ({
+        ...prev,
+        stage: "done",
+        otp: "",
+        newPassword: "",
+        confirmPassword: "",
+        infoMessage: res?.detail || "Đặt lại mật khẩu thành công! Bạn có thể đăng nhập ngay.",
+        devOtp: "",
+      }));
     } catch (err) {
       setError(err);
     } finally {
@@ -300,11 +456,17 @@ export default function AuthPage({ mode = "login" }) {
       <section className="ux-hero nexa-auth-hero">
         <div>
           <span className="ux-kicker">
-            {isRegister ? "Tài khoản thành viên · Đăng ký" : "Tài khoản thành viên · Đăng nhập"}
+            {isForgot
+              ? "Tài khoản thành viên · Khôi phục mật khẩu"
+              : isRegister
+              ? "Tài khoản thành viên · Đăng ký"
+              : "Tài khoản thành viên · Đăng nhập"}
           </span>
-          <h1>{isRegister ? "Tạo tài khoản NEXA Gear" : "Đăng nhập hệ thống"}</h1>
+          <h1>{isForgot ? "Quên mật khẩu" : isRegister ? "Tạo tài khoản NEXA Gear" : "Đăng nhập hệ thống"}</h1>
           <p>
-            {isRegister
+            {isForgot
+              ? "Nhận mã xác nhận 6 chữ số qua Gmail đã đăng ký để đặt lại mật khẩu mới an toàn."
+              : isRegister
               ? "Lưu địa chỉ nhận hàng mặc định, áp dụng mã giảm giá và kích hoạt bảo hành điện tử 24 tháng."
               : "Theo dõi tiến độ đơn hàng, tra cứu lịch sử bảo hành và quản lý danh sách sản phẩm đã lưu."}
           </p>
@@ -315,7 +477,244 @@ export default function AuthPage({ mode = "login" }) {
       <div className="ux-auth">
         {/* Left Form Card */}
         <div className="ux-card">
-          {googleLinkStep ? (
+          {newEmailLoginOtpStep ? (
+            <div>
+              <h2>Xác nhận email mới</h2>
+              <p style={{ color: "var(--muted)", fontSize: "14px", marginBottom: "16px", lineHeight: 1.5 }}>
+                {newEmailLoginOtpStep.infoMessage}
+              </p>
+
+              {newEmailLoginOtpStep.devOtp && (
+                <div
+                  style={{
+                    padding: "10px 14px",
+                    marginBottom: "14px",
+                    borderRadius: "10px",
+                    background: "rgba(99, 102, 241, 0.12)",
+                    border: "1px solid rgba(99, 102, 241, 0.35)",
+                    fontSize: "13px",
+                    color: "var(--ink)",
+                  }}
+                >
+                  Mã xác nhận (chế độ dev): <strong>{newEmailLoginOtpStep.devOtp}</strong>
+                </div>
+              )}
+
+              <form onSubmit={handleConfirmNewEmailLoginOtp}>
+                <label htmlFor="login-new-email-otp">Mã xác nhận gửi về {newEmailLoginOtpStep.email} (6 chữ số)</label>
+                <input
+                  id="login-new-email-otp"
+                  className="field"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  required
+                  autoComplete="one-time-code"
+                  value={newEmailLoginOtpStep.otp}
+                  onChange={(e) =>
+                    setNewEmailLoginOtpStep((prev) => ({
+                      ...prev,
+                      otp: e.target.value.replace(/\D/g, "").slice(0, 6),
+                    }))
+                  }
+                  placeholder="Nhập 6 chữ số (VD: 123456)"
+                />
+
+                {error && <ErrorBox error={error} variant="inline" />}
+
+                <button
+                  type="submit"
+                  className="btn btn-violet full nexa-auth-submit"
+                  disabled={submitting || newEmailLoginOtpStep.otp.trim().length !== 6}
+                >
+                  {submitting ? "Đang xác minh..." : "Xác nhận & Đăng nhập ↗"}
+                </button>
+
+                <div style={{ display: "flex", gap: "10px", marginTop: "12px", justifyContent: "space-between", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    className="btn btn-quiet"
+                    disabled={submitting}
+                    onClick={handleResendNewEmailLoginOtp}
+                  >
+                    Gửi lại mã
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-quiet"
+                    disabled={submitting}
+                    onClick={() => {
+                      setError(null);
+                      setNewEmailLoginOtpStep(null);
+                    }}
+                  >
+                    Quay lại đăng nhập
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : isForgot ? (
+            <div>
+              <h2>Khôi phục mật khẩu</h2>
+              {forgotStep.stage === "done" ? (
+                <div>
+                  <div
+                    style={{
+                      padding: "14px",
+                      marginBottom: "16px",
+                      borderRadius: "10px",
+                      background: "rgba(22, 149, 105, 0.12)",
+                      border: "1px solid rgba(22, 149, 105, 0.35)",
+                      color: "var(--ink)",
+                      fontSize: "14px",
+                    }}
+                  >
+                    {forgotStep.infoMessage}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-violet full nexa-auth-submit"
+                    onClick={() => navigate("/login")}
+                  >
+                    Đăng nhập bằng mật khẩu mới ↗
+                  </button>
+                </div>
+              ) : forgotStep.stage === "request" ? (
+                <form onSubmit={handleRequestPasswordReset}>
+                  <p style={{ color: "var(--muted)", fontSize: "14px", marginBottom: "16px", lineHeight: 1.5 }}>
+                    Nhập địa chỉ email bạn đã đăng ký với NEXA. Hệ thống sẽ gửi mã OTP 6 chữ số để bạn đặt lại mật khẩu.
+                  </p>
+                  <label htmlFor="forgot-email">Địa chỉ Email</label>
+                  <input
+                    id="forgot-email"
+                    className="field"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={forgotStep.email}
+                    onChange={(e) => setForgotStep((prev) => ({ ...prev, email: e.target.value }))}
+                    placeholder="yourname@gmail.com"
+                  />
+
+                  {error && <ErrorBox error={error} variant="inline" />}
+
+                  <button
+                    type="submit"
+                    className="btn btn-violet full nexa-auth-submit"
+                    disabled={submitting}
+                  >
+                    {submitting ? "Đang gửi mã..." : "Gửi mã xác nhận ↗"}
+                  </button>
+
+                  <p className="nexa-auth-switch">
+                    Đã nhớ mật khẩu?{" "}
+                    <Link className="ux-link" to="/login">
+                      Quay lại đăng nhập
+                    </Link>
+                  </p>
+                </form>
+              ) : (
+                <form onSubmit={handleConfirmPasswordReset}>
+                  <p style={{ color: "var(--muted)", fontSize: "14px", marginBottom: "12px", lineHeight: 1.5 }}>
+                    {forgotStep.infoMessage}
+                  </p>
+
+                  {forgotStep.devOtp && (
+                    <div
+                      style={{
+                        padding: "10px 14px",
+                        marginBottom: "14px",
+                        borderRadius: "10px",
+                        background: "rgba(99, 102, 241, 0.12)",
+                        border: "1px solid rgba(99, 102, 241, 0.35)",
+                        fontSize: "13px",
+                        color: "var(--ink)",
+                      }}
+                    >
+                      Mã khôi phục (chế độ dev): <strong>{forgotStep.devOtp}</strong>
+                    </div>
+                  )}
+
+                  <label htmlFor="forgot-otp">Mã xác nhận OTP (6 chữ số)</label>
+                  <input
+                    id="forgot-otp"
+                    className="field"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    required
+                    autoComplete="one-time-code"
+                    value={forgotStep.otp}
+                    onChange={(e) =>
+                      setForgotStep((prev) => ({
+                        ...prev,
+                        otp: e.target.value.replace(/\D/g, "").slice(0, 6),
+                      }))
+                    }
+                    placeholder="Nhập 6 chữ số (VD: 123456)"
+                  />
+
+                  <label htmlFor="forgot-new-password">Mật khẩu mới</label>
+                  <input
+                    id="forgot-new-password"
+                    className="field"
+                    type="password"
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                    value={forgotStep.newPassword}
+                    onChange={(e) => setForgotStep((prev) => ({ ...prev, newPassword: e.target.value }))}
+                    placeholder="Tối thiểu 8 ký tự..."
+                  />
+
+                  <label htmlFor="forgot-confirm-password">Xác nhận mật khẩu mới</label>
+                  <input
+                    id="forgot-confirm-password"
+                    className="field"
+                    type="password"
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                    value={forgotStep.confirmPassword}
+                    onChange={(e) => setForgotStep((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                    placeholder="Nhập lại mật khẩu mới..."
+                  />
+
+                  {error && <ErrorBox error={error} variant="inline" />}
+
+                  <button
+                    type="submit"
+                    className="btn btn-violet full nexa-auth-submit"
+                    disabled={submitting || forgotStep.otp.trim().length !== 6}
+                  >
+                    {submitting ? "Đang cập nhật..." : "Đặt lại mật khẩu ↗"}
+                  </button>
+
+                  <div style={{ display: "flex", gap: "10px", marginTop: "12px", justifyContent: "space-between", flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      className="btn btn-quiet"
+                      disabled={submitting}
+                      onClick={() => handleRequestPasswordReset()}
+                    >
+                      Gửi lại mã
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-quiet"
+                      disabled={submitting}
+                      onClick={() => {
+                        setError(null);
+                        setForgotStep((prev) => ({ ...prev, stage: "request", otp: "" }));
+                      }}
+                    >
+                      Đổi email khác
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          ) : googleLinkStep ? (
             <div>
               <h2>Xác minh liên kết Google</h2>
               <p style={{ color: "var(--muted)", fontSize: "14px", marginBottom: "16px", lineHeight: 1.5 }}>
@@ -627,7 +1026,14 @@ export default function AuthPage({ mode = "login" }) {
                   placeholder="example@domain.com"
                 />
 
-                <label htmlFor="auth-password">Mật khẩu</label>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                  <label htmlFor="auth-password">Mật khẩu</label>
+                  {!isRegister && (
+                    <Link className="ux-link" to="/forgot-password" style={{ fontSize: "12.5px" }}>
+                      Quên mật khẩu?
+                    </Link>
+                  )}
+                </div>
                 <input
                   id="auth-password"
                   className="field"

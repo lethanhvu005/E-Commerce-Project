@@ -6,6 +6,8 @@ from . import views
 urlpatterns = [
     path("auth/register/", views.register, name="register"),
     path("auth/login/", views.login, name="login"),
+    path("auth/password-reset/request/", views.request_password_reset, name="password-reset-request"),
+    path("auth/password-reset/confirm/", views.confirm_password_reset, name="password-reset-confirm"),
     path("admin/auth/login/", views.admin_login, name="admin-login"),
     path("auth/google/", views.google_login, name="google-login"),
     path("auth/oauth/google/", views.google_login, name="oauth-google-login"),
@@ -17,6 +19,8 @@ urlpatterns = [
     path("accounts/me/", views.me, name="me"),
     path("accounts/me/email-otp/request/", views.request_email_otp, name="email-otp-request"),
     path("accounts/me/email-otp/verify/", views.verify_email_otp, name="email-otp-verify"),
+    path("accounts/me/email-change/request/", views.request_email_change_otp, name="email-change-request"),
+    path("accounts/me/email-change/verify/", views.verify_email_change_otp, name="email-change-verify"),
     path("accounts/me/addresses/", views.address_list, name="address-list"),
     path("accounts/me/addresses/<int:address_id>/", views.address_detail, name="address-detail"),
     path("accounts/support-contact/", views.support_contact, name="support-contact"),

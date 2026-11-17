@@ -106,6 +106,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     permissions = serializers.SerializerMethodField()
     can_edit_email = serializers.SerializerMethodField()
+    has_password = serializers.SerializerMethodField()
     email = serializers.EmailField(required=False, allow_null=True, allow_blank=True)
 
     class Meta:
@@ -117,25 +118,32 @@ class UserSerializer(serializers.ModelSerializer):
             "last_name",
             "phone",
             "email_verified_at",
+            "requires_email_login_otp",
             "date_joined",
             "is_staff",
             "permissions",
             "can_edit_email",
+            "has_password",
         ]
         read_only_fields = [
             "id",
             "email_verified_at",
+            "requires_email_login_otp",
             "date_joined",
             "is_staff",
             "permissions",
             "can_edit_email",
+            "has_password",
         ]
 
     def get_permissions(self, user):
         return sorted(user.get_all_permissions()) if user.is_staff else []
 
     def get_can_edit_email(self, user):
-        return bool(user.facebook_sub)
+        return True
+
+    def get_has_password(self, user):
+        return bool(user.has_usable_password())
 
     def validate_phone(self, value):
         return validate_vn_phone_value(value, allow_blank=True)
@@ -153,7 +161,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     def to_internal_value(self, data):
         allowed_fields = {"first_name", "last_name", "phone"}
-        if self.instance and self.instance.facebook_sub:
+        if self.instance and self.instance.facebook_sub and not self.instance.email:
             allowed_fields.add("email")
         rejected_fields = set(data) - allowed_fields
         if rejected_fields:
@@ -171,6 +179,8 @@ class UserSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, trim_whitespace=False)
+    otp = serializers.CharField(required=False, allow_blank=True, trim_whitespace=True)
+    resend_otp = serializers.BooleanField(required=False, default=False)
 
     def validate_email(self, value):
         return value.strip().lower()
@@ -197,6 +207,13 @@ class FacebookLoginSerializer(serializers.Serializer):
     access_token = serializers.CharField(trim_whitespace=False)
 
 
+def _validate_six_digit_otp(value):
+    code = str(value or "").strip()
+    if not code.isdigit() or len(code) != 6:
+        raise serializers.ValidationError("Mã xác thực phải gồm đúng 6 chữ số.")
+    return code
+
+
 class EmailOtpRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
@@ -212,10 +229,51 @@ class EmailOtpVerifySerializer(serializers.Serializer):
         return value.strip().lower()
 
     def validate_otp(self, value):
-        code = value.strip()
-        if not code.isdigit() or len(code) != 6:
-            raise serializers.ValidationError("Mã xác thực phải gồm đúng 6 chữ số.")
-        return code
+        return _validate_six_digit_otp(value)
+
+
+class EmailChangeRequestSerializer(serializers.Serializer):
+    new_email = serializers.EmailField()
+
+    def validate_new_email(self, value):
+        return validate_email_format_value(value)
+
+
+class EmailChangeVerifySerializer(serializers.Serializer):
+    new_email = serializers.EmailField()
+    otp = serializers.CharField(min_length=6, max_length=6, trim_whitespace=True)
+
+    def validate_new_email(self, value):
+        return validate_email_format_value(value)
+
+    def validate_otp(self, value):
+        return _validate_six_digit_otp(value)
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        return validate_email_format_value(value)
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.CharField(min_length=6, max_length=6, trim_whitespace=True)
+    new_password = serializers.CharField(write_only=True, trim_whitespace=False)
+    confirm_password = serializers.CharField(write_only=True, trim_whitespace=False, required=False)
+
+    def validate_email(self, value):
+        return validate_email_format_value(value)
+
+    def validate_otp(self, value):
+        return _validate_six_digit_otp(value)
+
+    def validate(self, attrs):
+        confirm = attrs.get("confirm_password")
+        if confirm is not None and attrs["new_password"] != confirm:
+            raise serializers.ValidationError({"confirm_password": "Mật khẩu xác nhận không khớp."})
+        return attrs
 
 
 class SupportContactSerializer(serializers.Serializer):

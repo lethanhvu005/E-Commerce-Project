@@ -23,7 +23,9 @@ export default function AccountPage() {
   });
   const [emailOtpState, setEmailOtpState] = useState({
     active: false,
+    mode: "add", // "add" | "change"
     email: "",
+    oldEmail: "",
     otp: "",
     infoMessage: "",
     devOtp: "",
@@ -100,7 +102,7 @@ export default function AccountPage() {
     }
     const nextEmail = profileForm.email.trim().toLowerCase();
     const currentEmail = (user.email || "").trim().toLowerCase();
-    const emailChanged = Boolean(user.can_edit_email && nextEmail && nextEmail !== currentEmail);
+    const emailChanged = Boolean((user.can_edit_email ?? true) && nextEmail && nextEmail !== currentEmail);
     if (emailChanged) {
       const emailCheck = validateEmailAddress(nextEmail);
       if (!emailCheck.valid) {
@@ -119,22 +121,70 @@ export default function AccountPage() {
       await authService.updateProfile(profilePayload);
 
       if (emailChanged) {
-        const otpRes = await authService.requestEmailOtp(nextEmail);
-        setEmailOtpState({
-          active: true,
-          email: nextEmail,
-          otp: "",
-          infoMessage: otpRes?.detail || `Đã gửi mã xác thực 6 chữ số đến ${nextEmail}.`,
-          devOtp: otpRes?.dev_otp || "",
-        });
-        setToastMsg("Đã gửi mã xác thực đến Gmail của bạn!");
+        if (currentEmail) {
+          const otpRes = await authService.requestEmailChangeOtp(nextEmail);
+          setEmailOtpState({
+            active: true,
+            mode: "change",
+            email: nextEmail,
+            oldEmail: otpRes?.old_email || currentEmail,
+            otp: "",
+            infoMessage:
+              otpRes?.detail ||
+              `Đã gửi mã xác nhận 6 chữ số đến Gmail cũ (${currentEmail}) để xác nhận đổi sang ${nextEmail}.`,
+            devOtp: otpRes?.dev_otp || "",
+          });
+          setToastMsg(`Đã gửi mã xác nhận tới Gmail cũ (${currentEmail})!`);
+        } else {
+          const otpRes = await authService.requestEmailOtp(nextEmail);
+          setEmailOtpState({
+            active: true,
+            mode: "add",
+            email: nextEmail,
+            oldEmail: "",
+            otp: "",
+            infoMessage: otpRes?.detail || `Đã gửi mã xác thực 6 chữ số đến ${nextEmail}.`,
+            devOtp: otpRes?.dev_otp || "",
+          });
+          setToastMsg("Đã gửi mã xác thực đến Gmail của bạn!");
+        }
         return;
       }
 
       await reloadUser();
       setEditingProfile(false);
-      setEmailOtpState({ active: false, email: "", otp: "", infoMessage: "", devOtp: "" });
+      setEmailOtpState({ active: false, mode: "add", email: "", oldEmail: "", otp: "", infoMessage: "", devOtp: "" });
       setToastMsg("Đã cập nhật thông tin hồ sơ thành công!");
+    } catch (err) {
+      setProfileError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleResendProfileEmailOtp = async () => {
+    if (!emailOtpState.email) return;
+    setBusy(true);
+    setProfileError(null);
+    try {
+      if (emailOtpState.mode === "change") {
+        const otpRes = await authService.requestEmailChangeOtp(emailOtpState.email);
+        setEmailOtpState((prev) => ({
+          ...prev,
+          infoMessage:
+            otpRes?.detail ||
+            `Đã gửi lại mã xác nhận đến Gmail cũ (${prev.oldEmail}) để đổi sang ${prev.email}.`,
+          devOtp: otpRes?.dev_otp || "",
+        }));
+      } else {
+        const otpRes = await authService.requestEmailOtp(emailOtpState.email);
+        setEmailOtpState((prev) => ({
+          ...prev,
+          infoMessage: otpRes?.detail || `Đã gửi lại mã xác thực đến ${prev.email}.`,
+          devOtp: otpRes?.dev_otp || "",
+        }));
+      }
+      setToastMsg("Đã gửi lại mã xác thực 6 chữ số.");
     } catch (err) {
       setProfileError(err);
     } finally {
@@ -147,14 +197,21 @@ export default function AccountPage() {
     setBusy(true);
     setProfileError(null);
     try {
-      await authService.verifyEmailOtp({
-        email: emailOtpState.email.trim().toLowerCase(),
-        otp: emailOtpState.otp.trim(),
-      });
+      const targetEmail = emailOtpState.email.trim().toLowerCase();
+      const otpCode = emailOtpState.otp.trim();
+      const verifyRes =
+        emailOtpState.mode === "change"
+          ? await authService.verifyEmailChangeOtp({ newEmail: targetEmail, otp: otpCode })
+          : await authService.verifyEmailOtp({ email: targetEmail, otp: otpCode });
       await reloadUser();
-      setEmailOtpState({ active: false, email: "", otp: "", infoMessage: "", devOtp: "" });
+      setEmailOtpState({ active: false, mode: "add", email: "", oldEmail: "", otp: "", infoMessage: "", devOtp: "" });
       setEditingProfile(false);
-      setToastMsg("Đã xác thực và thêm Gmail thành công!");
+      setToastMsg(
+        verifyRes?.detail ||
+          (emailOtpState.mode === "change"
+            ? "Đã đổi Gmail thành công! Lần đăng nhập sau sẽ yêu cầu mã xác nhận ở Gmail mới."
+            : "Đã xác thực và thêm Gmail thành công!")
+      );
     } catch (err) {
       setProfileError(err);
     } finally {
@@ -332,7 +389,7 @@ export default function AccountPage() {
               />
               {profilePhoneError && <ErrorBox error={profilePhoneError} />}
 
-              {user.can_edit_email && (
+              {(user.can_edit_email ?? true) && (
                 <>
                   <label htmlFor="p-email">Địa chỉ Gmail / Email</label>
                   <input
@@ -347,6 +404,11 @@ export default function AccountPage() {
                     }}
                     placeholder="yourname@gmail.com"
                   />
+                  {user.email && !emailOtpState.active && (
+                    <small style={{ color: "var(--muted)", fontSize: "12px", display: "block", marginTop: "4px" }}>
+                      Đổi sang Gmail mới sẽ gửi mã xác nhận về Gmail cũ ({user.email}) và yêu cầu xác nhận Gmail mới ở lần đăng nhập kế tiếp.
+                    </small>
+                  )}
                   {profileEmailError && <ErrorBox error={profileEmailError} />}
                 </>
               )}
@@ -370,7 +432,11 @@ export default function AccountPage() {
                       </>
                     ) : null}
                   </p>
-                  <label htmlFor="p-email-otp">Mã xác thực (6 chữ số)</label>
+                  <label htmlFor="p-email-otp">
+                    {emailOtpState.mode === "change"
+                      ? "Mã xác nhận gửi về Gmail cũ (6 chữ số)"
+                      : "Mã xác thực (6 chữ số)"}
+                  </label>
                   <input
                     id="p-email-otp"
                     className="field"
@@ -387,14 +453,26 @@ export default function AccountPage() {
                     placeholder="Nhập 6 chữ số (VD: 123456)"
                   />
                   {profileError && <ErrorBox error={profileError} />}
-                  <div style={{ marginTop: "10px", display: "flex", gap: "8px" }}>
+                  <div style={{ marginTop: "10px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
                     <button
                       type="button"
                       className="btn btn-primary"
                       disabled={busy || emailOtpState.otp.trim().length !== 6}
                       onClick={handleConfirmProfileEmailOtp}
                     >
-                      {busy ? "Đang xác minh..." : "Xác nhận mã OTP"}
+                      {busy
+                        ? "Đang xác minh..."
+                        : emailOtpState.mode === "change"
+                        ? "Xác nhận đổi Gmail"
+                        : "Xác nhận mã OTP"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-quiet"
+                      disabled={busy}
+                      onClick={handleResendProfileEmailOtp}
+                    >
+                      Gửi lại mã
                     </button>
                     <button
                       type="button"
@@ -404,14 +482,16 @@ export default function AccountPage() {
                         setProfileError(null);
                         setEmailOtpState({
                           active: false,
+                          mode: "add",
                           email: "",
+                          oldEmail: "",
                           otp: "",
                           infoMessage: "",
                           devOtp: "",
                         });
                       }}
                     >
-                      Đổi Gmail
+                      Nhập Gmail khác
                     </button>
                   </div>
                 </div>
@@ -431,6 +511,15 @@ export default function AccountPage() {
                       setProfileError(null);
                       setProfilePhoneError("");
                       setProfileEmailError("");
+                      setEmailOtpState({
+                        active: false,
+                        mode: "add",
+                        email: "",
+                        oldEmail: "",
+                        otp: "",
+                        infoMessage: "",
+                        devOtp: "",
+                      });
                       setEditingProfile(false);
                     }}
                   >
@@ -448,6 +537,11 @@ export default function AccountPage() {
               <div style={{ padding: "8px 0" }}>
                 <small style={{ color: "var(--muted)", display: "block", fontSize: "11px" }}>ĐỊA CHỈ EMAIL</small>
                 <strong>{user.email || "Chưa cập nhật"}</strong>
+                {user.requires_email_login_otp && (
+                  <small style={{ display: "block", color: "#b45309", marginTop: "4px", fontSize: "12px" }}>
+                    Email mới · Lần đăng nhập tiếp theo sẽ gửi mã xác nhận tới địa chỉ này
+                  </small>
+                )}
               </div>
               <div style={{ padding: "8px 0" }}>
                 <small style={{ color: "var(--muted)", display: "block", fontSize: "11px" }}>SỐ ĐIỆN THOẠI</small>

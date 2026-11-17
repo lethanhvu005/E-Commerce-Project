@@ -7,7 +7,9 @@ from urllib.request import Request, urlopen
 
 from django.conf import settings
 from django.contrib.auth import authenticate
+from django.contrib.auth.password_validation import validate_password
 from django.core.cache import cache
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.mail import EmailMessage, send_mail
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
@@ -25,21 +27,81 @@ from operations.models import AuditLog
 from .models import Address, User
 from .serializers import (
     AddressSerializer,
+    EmailChangeRequestSerializer,
+    EmailChangeVerifySerializer,
     EmailOtpRequestSerializer,
     EmailOtpVerifySerializer,
     FacebookLoginSerializer,
     GoogleLoginSerializer,
     LoginSerializer,
+    PasswordResetConfirmSerializer,
+    PasswordResetRequestSerializer,
     RefreshSerializer,
     RegisterSerializer,
     SupportContactSerializer,
     UserSerializer,
 )
-from .throttles import LoginRateThrottle, RegisterRateThrottle
+from .throttles import LoginRateThrottle, PasswordResetRateThrottle, RegisterRateThrottle
 
 logger = logging.getLogger(__name__)
 EMAIL_OTP_TTL_SECONDS = 600
 EMAIL_OTP_MAX_ATTEMPTS = 5
+
+
+def _smtp_is_configured() -> bool:
+    return bool(
+        getattr(settings, "EMAIL_HOST_USER", "").strip()
+        and getattr(settings, "EMAIL_HOST_PASSWORD", "").strip()
+    )
+
+
+def _dispatch_otp_email(*, subject: str, message: str, recipient_email: str, log_context: str) -> tuple[bool, bool]:
+    smtp_configured = _smtp_is_configured()
+    try:
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@nexa.vn"),
+            recipient_list=[recipient_email],
+            fail_silently=False,
+        )
+        return True, smtp_configured
+    except Exception:
+        logger.warning("Failed to send OTP email (%s)", log_context)
+        return False, smtp_configured
+
+
+def _verify_cached_otp(*, cache_key: str, otp: str, expected_match: dict | None = None):
+    otp_record = cache.get(cache_key)
+    if not otp_record or any(otp_record.get(k) != v for k, v in (expected_match or {}).items()):
+        return None, Response(
+            {"detail": "Mã xác thực đã hết hạn hoặc chưa được yêu cầu. Vui lòng gửi lại mã."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    attempts = int(otp_record.get("attempts", 0))
+    if attempts >= EMAIL_OTP_MAX_ATTEMPTS:
+        cache.delete(cache_key)
+        return None, Response(
+            {"detail": "Bạn đã nhập sai quá số lần cho phép. Vui lòng yêu cầu mã xác thực mới."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not secrets.compare_digest(str(otp_record.get("code", "")), str(otp)):
+        otp_record["attempts"] = attempts + 1
+        if otp_record["attempts"] >= EMAIL_OTP_MAX_ATTEMPTS:
+            cache.delete(cache_key)
+            return None, Response(
+                {"detail": "Bạn đã nhập sai quá số lần cho phép. Vui lòng yêu cầu mã xác thực mới."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        cache.set(cache_key, otp_record, timeout=EMAIL_OTP_TTL_SECONDS)
+        return None, Response(
+            {"otp": ["Mã xác thực không chính xác."]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    return otp_record, None
 
 
 VALID_GOOGLE_ISSUERS = {"accounts.google.com", "https://accounts.google.com"}
@@ -153,6 +215,80 @@ def login(request):
             {"detail": "Tài khoản quản trị phải đăng nhập tại cổng Admin."},
             status=status.HTTP_403_FORBIDDEN,
         )
+
+    if user.requires_email_login_otp:
+        otp = (serializer.validated_data.get("otp") or "").strip()
+        resend_otp = bool(serializer.validated_data.get("resend_otp"))
+        cache_key = f"login_new_email_otp:{user.pk}"
+
+        if not otp or resend_otp:
+            code = f"{secrets.randbelow(1000000):06d}"
+            cache.set(
+                cache_key,
+                {"email": user.email, "code": code, "attempts": 0},
+                timeout=EMAIL_OTP_TTL_SECONDS,
+            )
+            mail_sent, smtp_configured = _dispatch_otp_email(
+                subject=f"[NEXA] Mã xác nhận email mới khi đăng nhập: {code}",
+                message=(
+                    f"Xin chào {user.get_full_name() or user.email},\n\n"
+                    f"Bạn vừa đăng nhập lần đầu sau khi thay đổi email sang {user.email}.\n"
+                    f"Mã xác nhận (OTP) của bạn là:\n\n"
+                    f"{code}\n\n"
+                    f"Mã có hiệu lực trong vòng 10 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai."
+                ),
+                recipient_email=user.email,
+                log_context=f"new_email_login user_id={user.pk}",
+            )
+            if not settings.DEBUG and not mail_sent:
+                cache.delete(cache_key)
+                return Response(
+                    {"detail": "Không thể gửi mã xác nhận qua email lúc này. Vui lòng thử lại sau."},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+            payload = {
+                "requires_email_verification": True,
+                "email": user.email,
+                "expires_in": EMAIL_OTP_TTL_SECONDS,
+                "smtp_configured": smtp_configured,
+                "detail": (
+                    f"Đây là lần đăng nhập đầu tiên sau khi đổi email. "
+                    f"Đã gửi mã xác nhận gồm 6 chữ số đến {user.email}."
+                ),
+            }
+            if settings.DEBUG and (not smtp_configured or not mail_sent):
+                payload["dev_otp"] = code
+            return Response(payload, status=status.HTTP_200_OK)
+
+        if not otp.isdigit() or len(otp) != 6:
+            return Response(
+                {"otp": ["Mã xác thực phải gồm đúng 6 chữ số."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        _, err_response = _verify_cached_otp(
+            cache_key=cache_key,
+            otp=otp,
+            expected_match={"email": user.email},
+        )
+        if err_response is not None:
+            return err_response
+
+        with transaction.atomic():
+            locked_user = User.objects.select_for_update().get(pk=user.pk)
+            locked_user.email_verified_at = timezone.now()
+            locked_user.requires_email_login_otp = False
+            locked_user.save(update_fields=["email_verified_at", "requires_email_login_otp"])
+            AuditLog.objects.create(
+                actor=locked_user,
+                action="account.new_email_login_verified",
+                entity_type="User",
+                entity_id=str(locked_user.pk),
+                changes={"email": locked_user.email},
+            )
+        cache.delete(cache_key)
+        user = locked_user
+
     refresh = RefreshToken.for_user(user)
     return Response({"access": str(refresh.access_token), "refresh": str(refresh)})
 
@@ -403,6 +539,9 @@ def google_login(request):
                         if existing_by_email.email_verified_at is None:
                             existing_by_email.email_verified_at = now
                             update_fields.append("email_verified_at")
+                        if existing_by_email.requires_email_login_otp:
+                            existing_by_email.requires_email_login_otp = False
+                            update_fields.append("requires_email_login_otp")
                         existing_by_email.save(update_fields=update_fields)
                         AuditLog.objects.create(
                             actor=existing_by_email,
@@ -424,6 +563,9 @@ def google_login(request):
                         if existing_by_email.email_verified_at is None:
                             existing_by_email.email_verified_at = now
                             update_fields.append("email_verified_at")
+                        if existing_by_email.requires_email_login_otp:
+                            existing_by_email.requires_email_login_otp = False
+                            update_fields.append("requires_email_login_otp")
                         existing_by_email.save(update_fields=update_fields)
                         user = existing_by_email
                 else:
@@ -739,6 +881,254 @@ def verify_email_otp(request):
             "detail": "Đã xác thực và thêm Gmail thành công!",
             "user": UserSerializer(user).data,
         },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def request_email_change_otp(request):
+    current_email = (request.user.email or "").strip().lower()
+    if not current_email:
+        return Response(
+            {"detail": "Tài khoản chưa có email hiện tại. Vui lòng thêm email bằng luồng xác thực email mới."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    serializer = EmailChangeRequestSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    new_email = serializer.validated_data["new_email"]
+
+    if new_email == current_email:
+        return Response(
+            {"new_email": ["Email mới phải khác với email hiện tại."]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if User.objects.filter(email__iexact=new_email).exclude(pk=request.user.pk).exists():
+        return Response(
+            {"new_email": ["Email này đã được tài khoản khác sử dụng."]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    code = f"{secrets.randbelow(1000000):06d}"
+    cache_key = f"email_change_otp:{request.user.pk}"
+    cache.set(
+        cache_key,
+        {"old_email": current_email, "new_email": new_email, "code": code, "attempts": 0},
+        timeout=EMAIL_OTP_TTL_SECONDS,
+    )
+
+    mail_sent, smtp_configured = _dispatch_otp_email(
+        subject=f"[NEXA] Mã xác nhận đổi địa chỉ email: {code}",
+        message=(
+            f"Xin chào {request.user.get_full_name() or current_email},\n\n"
+            f"Bạn vừa yêu cầu đổi địa chỉ email tài khoản NEXA từ {current_email} sang {new_email}.\n"
+            f"Mã xác nhận (OTP) của bạn là:\n\n"
+            f"{code}\n\n"
+            f"Mã có hiệu lực trong vòng 10 phút.\n"
+            f"Lưu ý: Sau khi đổi email thành công, lần đăng nhập tiếp theo hệ thống sẽ gửi mã xác nhận tới {new_email}."
+        ),
+        recipient_email=current_email,
+        log_context=f"email_change user_id={request.user.pk}",
+    )
+    if not settings.DEBUG and not mail_sent:
+        cache.delete(cache_key)
+        return Response(
+            {"detail": "Không thể gửi mã xác nhận đến email cũ lúc này. Vui lòng thử lại sau."},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    payload = {
+        "detail": f"Đã gửi mã xác nhận gồm 6 chữ số đến Gmail cũ ({current_email}) để xác nhận đổi sang {new_email}.",
+        "old_email": current_email,
+        "new_email": new_email,
+        "expires_in": EMAIL_OTP_TTL_SECONDS,
+        "smtp_configured": smtp_configured,
+    }
+    if settings.DEBUG and (not smtp_configured or not mail_sent):
+        payload["dev_otp"] = code
+    return Response(payload, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def verify_email_change_otp(request):
+    current_email = (request.user.email or "").strip().lower()
+    if not current_email:
+        return Response(
+            {"detail": "Tài khoản chưa có email hiện tại để đổi."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    serializer = EmailChangeVerifySerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    new_email = serializer.validated_data["new_email"]
+    otp = serializer.validated_data["otp"]
+
+    cache_key = f"email_change_otp:{request.user.pk}"
+    _, err_response = _verify_cached_otp(
+        cache_key=cache_key,
+        otp=otp,
+        expected_match={"old_email": current_email, "new_email": new_email},
+    )
+    if err_response is not None:
+        return err_response
+
+    try:
+        with transaction.atomic():
+            user = User.objects.select_for_update().get(pk=request.user.pk)
+            if User.objects.filter(email__iexact=new_email).exclude(pk=user.pk).exists():
+                return Response(
+                    {"new_email": ["Email này đã được tài khoản khác sử dụng."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            old_email = user.email
+            user.email = new_email
+            user.email_verified_at = None
+            user.requires_email_login_otp = True
+            update_fields = ["email", "email_verified_at", "requires_email_login_otp"]
+            if user.google_sub:
+                user.google_sub = None
+                update_fields.append("google_sub")
+            user.save(update_fields=update_fields)
+            AuditLog.objects.create(
+                actor=user,
+                action="account.email_changed",
+                entity_type="User",
+                entity_id=str(user.pk),
+                changes={"old_email": old_email, "new_email": new_email},
+            )
+    except IntegrityError:
+        return Response(
+            {"new_email": ["Email này đã được tài khoản khác sử dụng."]},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    cache.delete(cache_key)
+    return Response(
+        {
+            "detail": (
+                f"Đã đổi email sang {new_email} thành công! "
+                f"Lần đăng nhập tiếp theo hệ thống sẽ gửi mã xác nhận tới {new_email}."
+            ),
+            "user": UserSerializer(user).data,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+@throttle_classes([PasswordResetRateThrottle])
+def request_password_reset(request):
+    serializer = PasswordResetRequestSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    email = serializer.validated_data["email"]
+
+    generic_detail = (
+        f"Nếu địa chỉ {email} đã đăng ký trong hệ thống, "
+        f"mã xác nhận 6 chữ số để đặt lại mật khẩu đã được gửi tới hộp thư của bạn."
+    )
+    payload = {
+        "detail": generic_detail,
+        "email": email,
+        "expires_in": EMAIL_OTP_TTL_SECONDS,
+    }
+
+    user = User.objects.filter(
+        email__iexact=email,
+        is_active=True,
+        is_staff=False,
+        is_superuser=False,
+    ).first()
+    if user is None:
+        return Response(payload, status=status.HTTP_200_OK)
+
+    code = f"{secrets.randbelow(1000000):06d}"
+    cache_key = f"password_reset_otp:{user.pk}"
+    cache.set(
+        cache_key,
+        {"email": user.email, "code": code, "attempts": 0},
+        timeout=EMAIL_OTP_TTL_SECONDS,
+    )
+    mail_sent, smtp_configured = _dispatch_otp_email(
+        subject=f"[NEXA] Mã xác nhận đặt lại mật khẩu: {code}",
+        message=(
+            f"Xin chào {user.get_full_name() or user.email},\n\n"
+            f"Mã xác nhận (OTP) để đặt lại mật khẩu tài khoản NEXA ({user.email}) của bạn là:\n\n"
+            f"{code}\n\n"
+            f"Mã có hiệu lực trong vòng 10 phút. Nếu không phải bạn yêu cầu, vui lòng bỏ qua email này."
+        ),
+        recipient_email=user.email,
+        log_context=f"password_reset user_id={user.pk}",
+    )
+    if not settings.DEBUG and not mail_sent:
+        cache.delete(cache_key)
+        return Response(
+            {"detail": "Không thể gửi mã đặt lại mật khẩu qua email lúc này. Vui lòng thử lại sau."},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    payload["smtp_configured"] = smtp_configured
+    if settings.DEBUG and (not smtp_configured or not mail_sent):
+        payload["dev_otp"] = code
+    return Response(payload, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+@throttle_classes([PasswordResetRateThrottle])
+def confirm_password_reset(request):
+    serializer = PasswordResetConfirmSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    email = serializer.validated_data["email"]
+    otp = serializer.validated_data["otp"]
+    new_password = serializer.validated_data["new_password"]
+
+    user = User.objects.filter(
+        email__iexact=email,
+        is_active=True,
+        is_staff=False,
+        is_superuser=False,
+    ).first()
+    if user is None:
+        return Response(
+            {"detail": "Mã xác thực đã hết hạn hoặc chưa được yêu cầu. Vui lòng gửi lại mã."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    cache_key = f"password_reset_otp:{user.pk}"
+    _, err_response = _verify_cached_otp(
+        cache_key=cache_key,
+        otp=otp,
+        expected_match={"email": user.email},
+    )
+    if err_response is not None:
+        return err_response
+
+    try:
+        validate_password(new_password, user=user)
+    except DjangoValidationError as exc:
+        return Response({"new_password": exc.messages}, status=status.HTTP_400_BAD_REQUEST)
+
+    with transaction.atomic():
+        locked_user = User.objects.select_for_update().get(pk=user.pk)
+        locked_user.set_password(new_password)
+        locked_user.save(update_fields=["password"])
+        AuditLog.objects.create(
+            actor=locked_user,
+            action="account.password_reset",
+            entity_type="User",
+            entity_id=str(locked_user.pk),
+            changes={"email": locked_user.email},
+        )
+
+    cache.delete(cache_key)
+    return Response(
+        {"detail": "Đặt lại mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới."},
         status=status.HTTP_200_OK,
     )
 

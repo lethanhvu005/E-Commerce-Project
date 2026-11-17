@@ -172,11 +172,22 @@ export const authService = {
   getFacebookConfig: () => api.publicGet("/auth/facebook/config/"),
   loginWithFacebook: (payload) => api.post("/auth/facebook/", payload),
   register: (payload) => api.post("/auth/register/", payload),
+  requestPasswordReset: (email) => api.post("/auth/password-reset/request/", { email }),
+  confirmPasswordReset: ({ email, otp, newPassword, confirmPassword }) =>
+    api.post("/auth/password-reset/confirm/", {
+      email,
+      otp,
+      new_password: newPassword,
+      confirm_password: confirmPassword,
+    }),
   logout: (refreshToken) => api.post("/auth/logout/", { refresh: refreshToken }),
   getProfile: () => api.get("/accounts/me/"),
   updateProfile: (profile) => api.patch("/accounts/me/", profile),
   requestEmailOtp: (email) => api.post("/accounts/me/email-otp/request/", { email }),
   verifyEmailOtp: ({ email, otp }) => api.post("/accounts/me/email-otp/verify/", { email, otp }),
+  requestEmailChangeOtp: (newEmail) => api.post("/accounts/me/email-change/request/", { new_email: newEmail }),
+  verifyEmailChangeOtp: ({ newEmail, otp }) =>
+    api.post("/accounts/me/email-change/verify/", { new_email: newEmail, otp }),
   getAddresses: () => api.get("/accounts/me/addresses/"),
   addAddress: (addr) => api.post("/accounts/me/addresses/", addr),
   updateAddress: (id, addr) => api.patch(`/accounts/me/addresses/${id}/`, addr),
