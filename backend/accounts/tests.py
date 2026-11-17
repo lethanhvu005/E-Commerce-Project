@@ -514,6 +514,32 @@ class AccountAuthApiTests(APITestCase):
         self.assertIsNotNone(fb_user.email_verified_at)
         self.assertIsNone(cache.get(f"email_otp:{fb_user.pk}"))
 
+    def test_phone_and_email_must_have_valid_format(self):
+        self.authenticate()
+        bad_phone = self.client.patch("/api/accounts/me/", {"phone": "12345"}, format="json")
+        self.assertEqual(bad_phone.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("phone", bad_phone.data)
+
+        ok_phone = self.client.patch("/api/accounts/me/", {"phone": "+84 947 243 014"}, format="json")
+        self.assertEqual(ok_phone.status_code, status.HTTP_200_OK)
+        self.assertEqual(ok_phone.data["phone"], "0947243014")
+
+        bad_addr = self.client.post(
+            "/api/accounts/me/addresses/",
+            {"recipient": "A", "phone": "0123456789", "address": "1 X", "ward": "W", "province": "P"},
+            format="json",
+        )
+        self.assertEqual(bad_addr.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("phone", bad_addr.data)
+
+        fb_user = User.objects.create_user(email=None, password=None, facebook_sub="fb-format-001")
+        self.authenticate(fb_user)
+        for bad_email in ("not-an-email", "abc@gmai.com", "a b@gmail.com"):
+            res = self.client.post(
+                "/api/accounts/me/email-otp/request/", {"email": bad_email}, format="json"
+            )
+            self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST, bad_email)
+
     def test_support_contact_dispatches_email(self):
         from django.core import mail
 

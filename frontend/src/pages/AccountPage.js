@@ -3,6 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { authService } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { ErrorBox, Loading, Toast } from "../components/Feedback";
+import {
+  fetchCurrentLocationAddress,
+  validateEmailAddress,
+  validateVietnamPhone,
+} from "../utils/validationAndLocation";
 
 export default function AccountPage() {
   const { user, reloadUser, logout } = useAuth();
@@ -42,6 +47,11 @@ export default function AccountPage() {
   const [error, setError] = useState(null);
   const [toastMsg, setToastMsg] = useState("");
 
+  // Large error card renders at the top of the page: bring it into view
+  useEffect(() => {
+    if (error) window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [error]);
+
   // Sync profileForm with user data
   useEffect(() => {
     if (user) {
@@ -78,19 +88,34 @@ export default function AccountPage() {
   // Handle Profile Update
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
-    setBusy(true);
     setError(null);
+
+    const phoneCheck = validateVietnamPhone(profileForm.phone, { allowEmpty: true });
+    if (!phoneCheck.valid) {
+      setError(new Error(phoneCheck.error));
+      return;
+    }
+    const nextEmail = profileForm.email.trim().toLowerCase();
+    const currentEmail = (user.email || "").trim().toLowerCase();
+    const emailChanged = Boolean(user.can_edit_email && nextEmail && nextEmail !== currentEmail);
+    if (emailChanged) {
+      const emailCheck = validateEmailAddress(nextEmail);
+      if (!emailCheck.valid) {
+        setError(new Error(emailCheck.error));
+        return;
+      }
+    }
+
+    setBusy(true);
     try {
       const profilePayload = {
         first_name: profileForm.first_name.trim(),
         last_name: profileForm.last_name.trim(),
-        phone: profileForm.phone.trim(),
+        phone: phoneCheck.normalized,
       };
       await authService.updateProfile(profilePayload);
 
-      const nextEmail = profileForm.email.trim().toLowerCase();
-      const currentEmail = (user.email || "").trim().toLowerCase();
-      if (user.can_edit_email && nextEmail && nextEmail !== currentEmail) {
+      if (emailChanged) {
         const otpRes = await authService.requestEmailOtp(nextEmail);
         setEmailOtpState({
           active: true,
@@ -134,13 +159,39 @@ export default function AccountPage() {
     }
   };
 
+  const [locating, setLocating] = useState(false);
+
+  const handleUseCurrentLocation = async () => {
+    setLocating(true);
+    setError(null);
+    try {
+      const loc = await fetchCurrentLocationAddress();
+      setAddressForm((prev) => ({
+        ...prev,
+        address: loc.address,
+        ward: loc.ward,
+        province: loc.province,
+      }));
+      setToastMsg("Đã điền địa chỉ từ vị trí hiện tại. Hãy kiểm tra lại số nhà trước khi lưu.");
+    } catch (err) {
+      setError(err);
+    } finally {
+      setLocating(false);
+    }
+  };
+
   // Handle Add Address
   const handleAddAddress = async (e) => {
     e.preventDefault();
-    setBusy(true);
     setError(null);
+    const phoneCheck = validateVietnamPhone(addressForm.phone);
+    if (!phoneCheck.valid) {
+      setError(new Error(phoneCheck.error));
+      return;
+    }
+    setBusy(true);
     try {
-      await authService.addAddress(addressForm);
+      await authService.addAddress({ ...addressForm, phone: phoneCheck.normalized });
       setAddressForm({ recipient: "", phone: "", address: "", ward: "", province: "", is_default: false });
       setShowAddAddress(false);
       setToastMsg("Đã lưu địa chỉ mới.");
@@ -480,6 +531,16 @@ export default function AccountPage() {
                 />
               </div>
             </div>
+
+            <button
+              type="button"
+              className="btn btn-quiet"
+              style={{ marginTop: "12px" }}
+              disabled={locating}
+              onClick={handleUseCurrentLocation}
+            >
+              {locating ? "Đang lấy vị trí..." : "📍 Dùng vị trí hiện tại của tôi"}
+            </button>
 
             <label className="field-label">Địa chỉ (số nhà, tên đường)</label>
             <input

@@ -8,6 +8,51 @@ from .models import Address
 
 User = get_user_model()
 
+import re
+
+VN_PHONE_RE = re.compile(r"^0[35789]\d{8}$")
+EMAIL_STRICT_RE = re.compile(r"^[a-z0-9]+([._%+-][a-z0-9]+)*@([a-z0-9-]+\.)+[a-z]{2,}$")
+GMAIL_TYPO_DOMAINS = {
+    "gmai.com", "gmial.com", "gmal.com", "gmail.co", "gmail.vn",
+    "gmail.con", "gmail.cm", "gamil.com", "gnail.com",
+}
+
+
+def normalize_vn_phone(value):
+    cleaned = re.sub(r"[\s.\-()]+", "", str(value or "").strip())
+    if cleaned.startswith("+84"):
+        cleaned = "0" + cleaned[3:]
+    elif cleaned.startswith("84") and len(cleaned) == 11:
+        cleaned = "0" + cleaned[2:]
+    return cleaned
+
+
+def validate_vn_phone_value(value, allow_blank=False):
+    if value is None or not str(value).strip():
+        if allow_blank:
+            return ""
+        raise serializers.ValidationError("Vui lòng nhập số điện thoại.")
+    phone = normalize_vn_phone(value)
+    if not VN_PHONE_RE.match(phone):
+        raise serializers.ValidationError(
+            "Số điện thoại không đúng định dạng. Cần đúng 10 chữ số di động Việt Nam, "
+            "bắt đầu bằng 03, 05, 07, 08 hoặc 09 (VD: 0947243014)."
+        )
+    return phone
+
+
+def validate_email_format_value(value):
+    email = str(value or "").strip().lower()
+    if not EMAIL_STRICT_RE.match(email):
+        raise serializers.ValidationError("Địa chỉ email không đúng định dạng (VD: tenban@gmail.com).")
+    domain = email.split("@", 1)[1]
+    if domain in GMAIL_TYPO_DOMAINS:
+        raise serializers.ValidationError(
+            f'Tên miền "@{domain}" không hợp lệ. Ý bạn có phải là "@gmail.com"?'
+        )
+    return email
+
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
@@ -92,10 +137,13 @@ class UserSerializer(serializers.ModelSerializer):
     def get_can_edit_email(self, user):
         return bool(user.facebook_sub)
 
+    def validate_phone(self, value):
+        return validate_vn_phone_value(value, allow_blank=True)
+
     def validate_email(self, value):
         if value is None or not value.strip():
             return None
-        email = value.strip().lower()
+        email = validate_email_format_value(value)
         queryset = User.objects.filter(email__iexact=email)
         if self.instance:
             queryset = queryset.exclude(pk=self.instance.pk)
@@ -153,7 +201,7 @@ class EmailOtpRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
     def validate_email(self, value):
-        return value.strip().lower()
+        return validate_email_format_value(value)
 
 
 class EmailOtpVerifySerializer(serializers.Serializer):
@@ -178,12 +226,18 @@ class SupportContactSerializer(serializers.Serializer):
     message = serializers.CharField(min_length=10, max_length=1000, trim_whitespace=True)
 
     def validate_email(self, value):
-        return value.strip().lower()
+        return validate_email_format_value(value)
+
+    def validate_phone(self, value):
+        return validate_vn_phone_value(value, allow_blank=True)
 
 
 class AddressSerializer(serializers.ModelSerializer):
     recipient = serializers.CharField(source="recipient_name", max_length=150)
     address = serializers.CharField(source="address_line", max_length=300)
+
+    def validate_phone(self, value):
+        return validate_vn_phone_value(value)
 
     class Meta:
         model = Address

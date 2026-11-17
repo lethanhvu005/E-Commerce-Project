@@ -2930,3 +2930,75 @@ html[data-theme="light"] .gear-section-head .gear-kicker {
     transform: none !important;
   }
 }
+
+/* ==========================================================================
+   LARGE ERROR / ALERT FEEDBACK (same language as <Empty/>: icon circle + title + text)
+   ========================================================================== */
+.empty.nexa-error-card {
+  padding: 46px 22px;
+  border-color: rgba(214, 47, 87, 0.35);
+}
+
+.empty-illustration.nexa-error-illustration {
+  color: #d62f57;
+  background: rgba(214, 47, 87, 0.12);
+}
+
+html[data-theme="dark"] .empty-illustration.nexa-error-illustration {
+  color: #ff8fa8;
+  background: rgba(255, 143, 168, 0.14);
+}
+
+.nexa-error-card h2 {
+  font-size: clamp(20px, 2.2vw, 26px);
+  color: var(--ink);
+}
+
+.nexa-error-card p {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.nexa-alert-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(6, 12, 24, 0.62);
+}
+
+.nexa-alert-dialog {
+  width: min(520px, 100%);
+  padding: 40px 28px 30px;
+  text-align: center;
+  background: #fff;
+  color: #17243a;
+  border: 1px solid rgba(214, 47, 87, 0.4);
+  border-radius: 14px;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
+}
+
+html[data-theme="dark"] .nexa-alert-dialog {
+  background: #0f1a2e;
+  color: #eef4ff;
+  border-color: rgba(255, 143, 168, 0.4);
+}
+
+.nexa-alert-dialog h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.nexa-alert-dialog p {
+  margin: 0 auto 22px;
+  max-width: 420px;
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: #4a5b78;
+}
+
+html[data-theme="dark"] .nexa-alert-dialog p {
+  color: #b4c3dc;
+}

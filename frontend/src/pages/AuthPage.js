@@ -4,6 +4,7 @@ import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
 import { useAuth } from "../auth/AuthContext";
 import { authService } from "../api/client";
 import { ErrorBox } from "../components/Feedback";
+import { validateEmailAddress } from "../utils/validationAndLocation";
 
 function GoogleIcon() {
   return (
@@ -217,6 +218,11 @@ export default function AuthPage({ mode = "login" }) {
     if (!emailVerificationStep) return;
     const trimmedEmail = emailVerificationStep.email.trim().toLowerCase();
     if (!trimmedEmail) return;
+    const emailCheck = validateEmailAddress(trimmedEmail);
+    if (!emailCheck.valid) {
+      setError(new Error(emailCheck.error));
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {

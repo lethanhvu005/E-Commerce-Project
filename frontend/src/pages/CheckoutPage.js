@@ -4,6 +4,7 @@ import { authService, cartService, orderService } from "../api/client";
 import { fallbackProductImage, money, productImage } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import { Empty, ErrorBox, Loading, Toast } from "../components/Feedback";
+import { fetchCurrentLocationAddress, validateVietnamPhone } from "../utils/validationAndLocation";
 
 function generateCheckoutUUID() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -135,10 +136,39 @@ export default function CheckoutPage() {
   }, [selectedAddressId, selectedMethodId]);
 
   // Handle Create Address
+  const [locating, setLocating] = useState(false);
+
+  const handleUseCurrentLocation = async () => {
+    setLocating(true);
+    try {
+      const loc = await fetchCurrentLocationAddress();
+      setNewAddress((prev) => ({
+        ...prev,
+        address: loc.address,
+        ward: loc.ward,
+        province: loc.province,
+      }));
+      setToastMsg("Đã điền địa chỉ từ vị trí hiện tại. Hãy kiểm tra lại số nhà trước khi lưu.");
+    } catch (err) {
+      setToastMsg(err.message || "Không thể lấy vị trí hiện tại.");
+    } finally {
+      setLocating(false);
+    }
+  };
+
   const handleCreateAddress = async (e) => {
     e.preventDefault();
+    const phoneCheck = validateVietnamPhone(newAddress.phone);
+    if (!phoneCheck.valid) {
+      setToastMsg(phoneCheck.error);
+      return;
+    }
+    if (!newAddress.recipient.trim() || !newAddress.address.trim() || !newAddress.ward.trim() || !newAddress.province.trim()) {
+      setToastMsg("Vui lòng nhập đầy đủ họ tên, địa chỉ, phường/xã và tỉnh/thành phố.");
+      return;
+    }
     try {
-      const created = await authService.addAddress(newAddress);
+      const created = await authService.addAddress({ ...newAddress, phone: phoneCheck.normalized });
       setAddresses((prev) => [created, ...prev]);
       setSelectedAddressId(String(created.id));
       setShowAddAddress(false);
@@ -272,6 +302,15 @@ export default function CheckoutPage() {
                     />
                   </div>
                 </div>
+                <button
+                  type="button"
+                  className="btn btn-quiet"
+                  style={{ margin: "10px 0 4px" }}
+                  disabled={locating}
+                  onClick={handleUseCurrentLocation}
+                >
+                  {locating ? "Đang lấy vị trí..." : "📍 Dùng vị trí hiện tại của tôi"}
+                </button>
                 <label className="field-label">Địa chỉ (số nhà, tên đường)</label>
                 <input
                   className="field"

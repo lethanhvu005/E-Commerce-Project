@@ -4,6 +4,7 @@ import { authService, orderService } from "../api/client";
 import { money, dateTime, orderStatusLabel } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import { Loading, ErrorBox } from "../components/Feedback";
+import { validateEmailAddress, validateVietnamPhone } from "../utils/validationAndLocation";
 
 export function AboutPage() {
   return (
@@ -100,13 +101,23 @@ export function ContactPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitting(true);
     setSubmitError(null);
+    const emailCheck = validateEmailAddress(formState.email);
+    if (!emailCheck.valid) {
+      setSubmitError(new Error(emailCheck.error));
+      return;
+    }
+    const phoneCheck = validateVietnamPhone(formState.phone, { allowEmpty: true });
+    if (!phoneCheck.valid) {
+      setSubmitError(new Error(phoneCheck.error));
+      return;
+    }
+    setSubmitting(true);
     try {
       await authService.submitSupportContact({
         name: formState.name.trim(),
-        email: formState.email.trim(),
-        phone: formState.phone.trim(),
+        email: emailCheck.normalized,
+        phone: phoneCheck.normalized,
         subject: formState.subject,
         message: formState.message.trim(),
       });
