@@ -67,7 +67,7 @@ def _dispatch_otp_email(*, subject: str, message: str, recipient_email: str, log
         )
         return True, smtp_configured
     except Exception:
-        logger.warning("Failed to send OTP email (%s)", log_context)
+        logger.exception("Failed to send OTP email (%s)", log_context)
         return False, smtp_configured
 
 
@@ -441,21 +441,26 @@ def google_login(request):
                                 {"google_sub": google_sub, "code": code, "attempts": 0},
                                 timeout=EMAIL_OTP_TTL_SECONDS,
                             )
-                            try:
-                                send_mail(
-                                    subject=f"[NEXA] Mã xác minh liên kết Google OAuth: {code}",
-                                    message=(
-                                        f"Xin chào {existing_by_email.get_full_name() or email},\n\n"
-                                        f"Mã xác minh (OTP) để liên kết đăng nhập Google với tài khoản NEXA ({email}) của bạn là:\n\n"
-                                        f"{code}\n\n"
-                                        f"Mã có hiệu lực trong 10 phút. Nếu không phải bạn thực hiện, vui lòng bỏ qua email này."
-                                    ),
-                                    from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@nexa.vn"),
-                                    recipient_list=[email],
-                                    fail_silently=False,
+                            mail_sent, smtp_configured = _dispatch_otp_email(
+                                subject=f"[NEXA] Mã xác minh liên kết Google OAuth: {code}",
+                                message=(
+                                    f"Xin chào {existing_by_email.get_full_name() or email},\n\n"
+                                    f"Mã xác minh (OTP) để liên kết đăng nhập Google với tài khoản NEXA ({email}) của bạn là:\n\n"
+                                    f"{code}\n\n"
+                                    f"Mã có hiệu lực trong 10 phút. Nếu không phải bạn thực hiện, vui lòng bỏ qua email này."
+                                ),
+                                recipient_email=email,
+                                log_context=f"google-link user_id={existing_by_email.pk}",
+                            )
+                            if not smtp_configured or not mail_sent:
+                                cache.delete(cache_key)
+                                return Response(
+                                    {
+                                        "otp_sent": False,
+                                        "detail": "Không thể gửi email OTP. Vui lòng kiểm tra cấu hình Gmail trên máy chủ và thử lại.",
+                                    },
+                                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
                                 )
-                            except Exception:
-                                logger.warning("Failed to send Google link OTP for user_id=%s", existing_by_email.pk)
                             return Response(
                                 {
                                     "otp_sent": True,
