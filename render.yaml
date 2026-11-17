@@ -38,6 +38,16 @@ services:
         sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
+      - key: FRONTEND_URL
+        value: https://nexa-commerceos-lethanhvu005.onrender.com
+      - key: VNPAY_PAYMENT_URL
+        value: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+      - key: VNPAY_RETURN_URL
+        value: https://nexa-commerceos-lethanhvu005.onrender.com/payment/vnpay-return
+      - key: VNPAY_TMN_CODE
+        sync: false
+      - key: VNPAY_HASH_SECRET
+        sync: false
 
   - type: web
     name: nexa-commerceos-lethanhvu005
