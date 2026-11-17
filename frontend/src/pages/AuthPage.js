@@ -480,22 +480,12 @@ export default function AuthPage({ mode = "login" }) {
           {newEmailLoginOtpStep ? (
             <div>
               <h2>Xác nhận email mới</h2>
-              <p style={{ color: "var(--muted)", fontSize: "14px", marginBottom: "16px", lineHeight: 1.5 }}>
+              <p className="nexa-auth-helper">
                 {newEmailLoginOtpStep.infoMessage}
               </p>
 
               {newEmailLoginOtpStep.devOtp && (
-                <div
-                  style={{
-                    padding: "10px 14px",
-                    marginBottom: "14px",
-                    borderRadius: "10px",
-                    background: "rgba(99, 102, 241, 0.12)",
-                    border: "1px solid rgba(99, 102, 241, 0.35)",
-                    fontSize: "13px",
-                    color: "var(--ink)",
-                  }}
-                >
+                <div className="nexa-auth-dev-otp">
                   Mã xác nhận (chế độ dev): <strong>{newEmailLoginOtpStep.devOtp}</strong>
                 </div>
               )}
@@ -530,7 +520,7 @@ export default function AuthPage({ mode = "login" }) {
                   {submitting ? "Đang xác minh..." : "Xác nhận & Đăng nhập ↗"}
                 </button>
 
-                <div style={{ display: "flex", gap: "10px", marginTop: "12px", justifyContent: "space-between", flexWrap: "wrap" }}>
+                <div className="nexa-auth-actions">
                   <button
                     type="button"
                     className="btn btn-quiet"
@@ -558,17 +548,7 @@ export default function AuthPage({ mode = "login" }) {
               <h2>Khôi phục mật khẩu</h2>
               {forgotStep.stage === "done" ? (
                 <div>
-                  <div
-                    style={{
-                      padding: "14px",
-                      marginBottom: "16px",
-                      borderRadius: "10px",
-                      background: "rgba(22, 149, 105, 0.12)",
-                      border: "1px solid rgba(22, 149, 105, 0.35)",
-                      color: "var(--ink)",
-                      fontSize: "14px",
-                    }}
-                  >
+                  <div className="nexa-auth-success">
                     {forgotStep.infoMessage}
                   </div>
                   <button
@@ -581,7 +561,7 @@ export default function AuthPage({ mode = "login" }) {
                 </div>
               ) : forgotStep.stage === "request" ? (
                 <form onSubmit={handleRequestPasswordReset}>
-                  <p style={{ color: "var(--muted)", fontSize: "14px", marginBottom: "16px", lineHeight: 1.5 }}>
+                  <p className="nexa-auth-helper">
                     Nhập địa chỉ email bạn đã đăng ký với NEXA. Hệ thống sẽ gửi mã OTP 6 chữ số để bạn đặt lại mật khẩu.
                   </p>
                   <label htmlFor="forgot-email">Địa chỉ Email</label>
@@ -615,22 +595,12 @@ export default function AuthPage({ mode = "login" }) {
                 </form>
               ) : (
                 <form onSubmit={handleConfirmPasswordReset}>
-                  <p style={{ color: "var(--muted)", fontSize: "14px", marginBottom: "12px", lineHeight: 1.5 }}>
+                  <p className="nexa-auth-helper">
                     {forgotStep.infoMessage}
                   </p>
 
                   {forgotStep.devOtp && (
-                    <div
-                      style={{
-                        padding: "10px 14px",
-                        marginBottom: "14px",
-                        borderRadius: "10px",
-                        background: "rgba(99, 102, 241, 0.12)",
-                        border: "1px solid rgba(99, 102, 241, 0.35)",
-                        fontSize: "13px",
-                        color: "var(--ink)",
-                      }}
-                    >
+                    <div className="nexa-auth-dev-otp">
                       Mã khôi phục (chế độ dev): <strong>{forgotStep.devOtp}</strong>
                     </div>
                   )}
@@ -690,7 +660,7 @@ export default function AuthPage({ mode = "login" }) {
                     {submitting ? "Đang cập nhật..." : "Đặt lại mật khẩu ↗"}
                   </button>
 
-                  <div style={{ display: "flex", gap: "10px", marginTop: "12px", justifyContent: "space-between", flexWrap: "wrap" }}>
+                  <div className="nexa-auth-actions">
                     <button
                       type="button"
                       className="btn btn-quiet"
@@ -785,7 +755,7 @@ export default function AuthPage({ mode = "login" }) {
                   {submitting ? "Đang xác minh..." : "Xác minh & Liên kết Google ↗"}
                 </button>
 
-                <div style={{ display: "flex", gap: "10px", marginTop: "12px", justifyContent: "space-between", flexWrap: "wrap" }}>
+                <div className="nexa-auth-actions">
                   <button
                     type="button"
                     className="btn btn-quiet"
@@ -815,24 +785,14 @@ export default function AuthPage({ mode = "login" }) {
                   ? "Bổ sung địa chỉ Gmail"
                   : "Xác thực mã OTP"}
               </h2>
-              <p style={{ color: "var(--muted)", fontSize: "14px", marginBottom: "16px", lineHeight: 1.5 }}>
+              <p className="nexa-auth-helper">
                 {emailVerificationStep.stage === "request"
                   ? "Đăng nhập Facebook thành công! Tài khoản Facebook của bạn chưa cung cấp địa chỉ email. Vui lòng nhập Gmail để nhận mã xác thực 6 chữ số."
                   : emailVerificationStep.infoMessage || `Mã xác thực 6 chữ số đã được gửi đến ${emailVerificationStep.email}.`}
               </p>
 
               {emailVerificationStep.stage === "verify" && emailVerificationStep.devOtp && (
-                <div
-                  style={{
-                    padding: "10px 14px",
-                    marginBottom: "14px",
-                    borderRadius: "10px",
-                    background: "rgba(99, 102, 241, 0.12)",
-                    border: "1px solid rgba(99, 102, 241, 0.35)",
-                    fontSize: "13px",
-                    color: "var(--ink)",
-                  }}
-                >
+                <div className="nexa-auth-dev-otp">
                   Mã xác thực (chế độ dev): <strong>{emailVerificationStep.devOtp}</strong>
                 </div>
               )}
@@ -899,7 +859,7 @@ export default function AuthPage({ mode = "login" }) {
                     {submitting ? "Đang xác minh..." : "Xác nhận & Hoàn tất ↗"}
                   </button>
 
-                  <div style={{ display: "flex", gap: "10px", marginTop: "12px", justifyContent: "space-between" }}>
+                  <div className="nexa-auth-actions">
                     <button
                       type="button"
                       className="btn btn-quiet"

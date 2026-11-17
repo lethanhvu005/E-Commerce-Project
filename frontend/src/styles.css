@@ -1852,6 +1852,78 @@ html[data-theme] .main-with-mobile .nexa-auth-page .ux-card .nexa-auth-switch {
   font-size: 12px;
 }
 
+.nexa-auth-helper {
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.55;
+  margin: 0 0 14px;
+}
+
+.nexa-auth-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.nexa-auth-dev-otp {
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  border-radius: 8px;
+  background: rgba(21, 88, 201, 0.14);
+  border: 1px solid rgba(91, 157, 255, 0.35);
+  font-size: 13px;
+  color: var(--ink);
+}
+
+html[data-theme="light"] .nexa-auth-dev-otp {
+  background: #edf4ff;
+  border-color: #bfd4fa;
+  color: #163059;
+}
+
+.nexa-auth-success {
+  padding: 14px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  background: rgba(22, 149, 105, 0.14);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  color: #d1fae5;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+html[data-theme="light"] .nexa-auth-success {
+  background: #ecfdf5;
+  border-color: #86efac;
+  color: #065f46;
+}
+
+html[data-theme="dark"] .light-area .btn-quiet {
+  background: #15233b;
+  border-color: #2c4166;
+  color: #e2ecff;
+}
+
+html[data-theme="dark"] .light-area .btn-quiet:hover:not(:disabled) {
+  background: #1c2f4f;
+  border-color: #4672b8;
+  color: #ffffff;
+}
+
+html[data-theme="light"] .light-area .btn-quiet {
+  background: #f8faff;
+  border-color: #cbd8ec;
+  color: #1c2b45;
+}
+
+html[data-theme="light"] .light-area .btn-quiet:hover:not(:disabled) {
+  background: #edf3fc;
+  border-color: #93b0df;
+  color: #10213d;
+}
+
 html[data-theme] .main-with-mobile .nexa-auth-page .ux-auth-promo {
   min-height: 0;
   padding: 22px 26px;

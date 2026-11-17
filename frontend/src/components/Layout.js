@@ -297,6 +297,8 @@ export default function Layout() {
   const isAccount =
     pathname.startsWith("/account") ||
     pathname.startsWith("/login") ||
+    pathname.startsWith("/register") ||
+    pathname.startsWith("/forgot-password") ||
     pathname.startsWith("/orders");
 
   // Internal pages use the adaptive .light-area container (styled in both light.css and detail-dark.css)
@@ -304,12 +306,14 @@ export default function Layout() {
     "/cart",
     "/checkout",
     "/orders",
+    "/payment",
     "/wishlist",
     "/account",
     "/profile",
     "/products",
     "/login",
     "/register",
+    "/forgot-password",
     "/vouchers",
     "/reviews",
     "/about",

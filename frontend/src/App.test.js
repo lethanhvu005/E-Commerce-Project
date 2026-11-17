@@ -388,3 +388,12 @@ test("login prompts for new-email OTP after email change and forgot password flo
 
   expect(await screen.findByText(/đặt lại mật khẩu thành công/i)).toBeInTheDocument();
 });
+
+test("forgot-password route wraps main content in adaptive light-area container", async () => {
+  window.history.pushState({}, "", "/forgot-password");
+  render(<App />);
+  const mainEl = await screen.findByRole("main");
+  expect(mainEl).toHaveClass("light-area");
+  expect(screen.getByRole("heading", { name: /quên mật khẩu/i })).toBeInTheDocument();
+  window.history.pushState({}, "", "/");
+});
