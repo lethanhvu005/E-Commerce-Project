@@ -22,7 +22,10 @@ class Command(BaseCommand):
                 f"{p.content_type.app_label}.{p.codename}"
                 for p in group.permissions.all()
             ]
-            self.stdout.write(f"[Group] {group.name}: {len(perms)} permissions -> {', '.join(sorted(perms))}")
+            # Keep management-command output portable on Windows terminals that
+            # still default to cp1252 while preserving the original group name.
+            safe_group_name = group.name.encode("ascii", "backslashreplace").decode("ascii")
+            self.stdout.write(f"[Group] {safe_group_name}: {len(perms)} permissions -> {', '.join(sorted(perms))}")
 
         non_staff_with_groups = User.objects.filter(is_staff=False, is_superuser=False, groups__isnull=False).distinct()
         count = non_staff_with_groups.count()

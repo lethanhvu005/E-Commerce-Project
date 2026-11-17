@@ -9,5 +9,5 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         released_count = release_expired_reservations()
         self.stdout.write(
-            self.style.SUCCESS(f"Đã giải phóng {released_count} giữ chỗ tồn kho quá hạn.")
+            self.style.SUCCESS(f"Released {released_count} expired inventory reservations.")
         )

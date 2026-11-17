@@ -1646,5 +1646,5 @@ class Command(BaseCommand):
                 )
 
         self.stdout.write(self.style.SUCCESS(
-            "Đã nạp đầy đủ dữ liệu mẫu (Đơn hàng, Đánh giá, Hỏi đáp, Tồn kho, Khuyến mãi...) cho TẤT CẢ các bảng và sản phẩm trong PostgreSQL thành công!"
+            "Demo data loaded successfully into PostgreSQL."
         ))

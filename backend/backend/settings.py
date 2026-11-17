@@ -99,6 +99,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -132,19 +133,28 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB', 'commerceos_apps'),
-        'USER': os.getenv('POSTGRES_USER', 'commerceos'),
-        'PASSWORD': os.environ['POSTGRES_PASSWORD'],
-        'HOST': os.getenv('POSTGRES_HOST', '127.0.0.1'),
-        'PORT': os.getenv('POSTGRES_PORT', '5432'),
-        # Persistent connections in production (default 60s). DEBUG keeps Django's
-        # previous behaviour (0 = close after each request) unless overridden.
-        'CONN_MAX_AGE': int(os.getenv('DJANGO_CONN_MAX_AGE', '0' if DEBUG else '60')),
+DATABASE_URL = os.getenv('DATABASE_URL', '').strip()
+
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=int(os.getenv('DJANGO_CONN_MAX_AGE', '60')),
+            ssl_require=True,
+        )
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('POSTGRES_DB', 'commerceos_apps'),
+            'USER': os.getenv('POSTGRES_USER', 'commerceos'),
+            'PASSWORD': os.environ['POSTGRES_PASSWORD'],
+            'HOST': os.getenv('POSTGRES_HOST', '127.0.0.1'),
+            'PORT': os.getenv('POSTGRES_PORT', '5432'),
+            'CONN_MAX_AGE': int(os.getenv('DJANGO_CONN_MAX_AGE', '0' if DEBUG else '60')),
+        }
+    }
 
 
 # Password validation
@@ -208,9 +218,18 @@ VNPAY_ALLOW_RETURN_RECONCILE = env_bool("VNPAY_ALLOW_RETURN_RECONCILE", DEBUG)
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 # Target directory for `python manage.py collectstatic` (served by nginx/WhiteNoise in production).
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
