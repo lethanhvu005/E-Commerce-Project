@@ -87,7 +87,10 @@ export default function ReviewsPage() {
     setReplyingReviewId(reviewId);
     try {
       await communityService.createReviewReply(reviewId, { body });
-      setToastMsg("Phản hồi của bạn đã được gửi và đang chờ kiểm duyệt.");
+      const freshReviews = await communityService.getProductReviews(selectedSlug);
+      setReviews(freshReviews.results || freshReviews || []);
+      setEligibility(freshReviews.eligibility || null);
+      setToastMsg("Phản hồi của bạn đã được đăng.");
       return true;
     } catch (err) {
       setToastMsg(err.message || "Không thể gửi phản hồi.");

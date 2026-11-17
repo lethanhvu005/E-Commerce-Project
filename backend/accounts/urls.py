@@ -19,4 +19,5 @@ urlpatterns = [
     path("accounts/me/email-otp/verify/", views.verify_email_otp, name="email-otp-verify"),
     path("accounts/me/addresses/", views.address_list, name="address-list"),
     path("accounts/me/addresses/<int:address_id>/", views.address_detail, name="address-detail"),
+    path("accounts/support-contact/", views.support_contact, name="support-contact"),
 ]

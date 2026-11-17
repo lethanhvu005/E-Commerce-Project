@@ -111,9 +111,15 @@ class CommunityApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["status"], ModerationStatus.PENDING)
+        self.assertEqual(response.data["status"], ModerationStatus.PUBLISHED)
         reply = ReviewReply.objects.get(review=review, user=visitor)
         self.assertEqual(reply.body, "Bạn dùng sản phẩm được bao lâu rồi?")
+        public_reviews = self.client.get(f"/api/products/{self.product.slug}/reviews/")
+        self.assertEqual(len(public_reviews.data["results"][0]["replies"]), 1)
+        self.assertEqual(
+            public_reviews.data["results"][0]["replies"][0]["body"],
+            "Bạn dùng sản phẩm được bao lâu rồi?",
+        )
 
     def test_question_is_pending(self):
         response = self.client.post(

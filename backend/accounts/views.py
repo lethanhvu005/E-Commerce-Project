@@ -30,6 +30,7 @@ from .serializers import (
     LoginSerializer,
     RefreshSerializer,
     RegisterSerializer,
+    SupportContactSerializer,
     UserSerializer,
 )
 from .throttles import LoginRateThrottle, RegisterRateThrottle
@@ -648,3 +649,38 @@ def address_detail(request, address_id):
     serializer.is_valid(raise_exception=True)
     address = _save_address(serializer, request.user)
     return Response(AddressSerializer(address).data)
+
+
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def support_contact(request):
+    serializer = SupportContactSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+
+    support_email = getattr(settings, "EMAIL_HOST_USER", "").strip() or "lethanhvu005@gmail.com"
+    try:
+        send_mail(
+            subject=f"[NEXA Hỗ trợ] [{data['subject']}] từ {data['name']}",
+            message=(
+                f"Họ và tên: {data['name']}\n"
+                f"Email: {data['email']}\n"
+                f"Số điện thoại: {data.get('phone') or 'Không cung cấp'}\n"
+                f"Chủ đề: {data['subject']}\n\n"
+                f"Nội dung:\n{data['message']}\n"
+            ),
+            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", support_email),
+            recipient_list=[support_email],
+            fail_silently=True,
+        )
+    except Exception:
+        logger.warning("Failed to dispatch support contact email from %s", data["email"])
+
+    return Response(
+        {
+            "detail": "Yêu cầu hỗ trợ của bạn đã được gửi thành công! Chúng tôi sẽ phản hồi sớm nhất.",
+            "support_email": support_email,
+        },
+        status=status.HTTP_201_CREATED,
+    )

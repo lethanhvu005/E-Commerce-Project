@@ -481,4 +481,22 @@ class AccountAuthApiTests(APITestCase):
         self.assertIsNotNone(fb_user.email_verified_at)
         self.assertIsNone(cache.get(f"email_otp:{fb_user.pk}"))
 
+    def test_support_contact_dispatches_email(self):
+        from django.core import mail
+
+        res = self.client.post(
+            "/api/accounts/support-contact/",
+            {
+                "name": "Khách Hàng Test",
+                "email": "khach@example.test",
+                "phone": "0901234567",
+                "subject": "Tư vấn sản phẩm",
+                "message": "Tôi muốn tư vấn thêm về bàn phím cơ không dây NEXA.",
+            },
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("Tư vấn sản phẩm", mail.outbox[0].subject)
+
 

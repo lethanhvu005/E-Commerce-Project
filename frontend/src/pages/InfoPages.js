@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { orderService } from "../api/client";
+import { authService, orderService } from "../api/client";
 import { money, dateTime, orderStatusLabel } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import { Loading, ErrorBox } from "../components/Feedback";
@@ -51,23 +51,79 @@ export function AboutPage() {
 }
 
 export function ContactPage() {
+  const { user } = useAuth();
+  const supportEmail = (process.env.REACT_APP_SUPPORT_EMAIL || "lethanhvu005@gmail.com").trim();
+  const supportPhone = (process.env.REACT_APP_SUPPORT_PHONE || "0901 234 567").trim();
+  const supportPhoneRaw = supportPhone.replace(/\s+/g, "");
+  const supportAddress = (
+    process.env.REACT_APP_SUPPORT_ADDRESS ||
+    "128 Nguyễn Cơ Thạch, Khu đô thị Sala, Phường An Lợi Đông, TP. Thủ Đức, TP. Hồ Chí Minh"
+  ).trim();
+  const googleMapsApiKey = (process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "").trim();
+
+  const mapEmbedUrl = googleMapsApiKey
+    ? `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(googleMapsApiKey)}&q=${encodeURIComponent(
+        supportAddress
+      )}&zoom=16`
+    : `https://maps.google.com/maps?q=${encodeURIComponent(
+        supportAddress
+      )}&t=&z=16&ie=UTF8&iwloc=&output=embed`;
+
+  const mapDirectionsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    supportAddress
+  )}`;
+
   const [formState, setFormState] = useState({
     name: "",
     email: "",
+    phone: "",
     subject: "Tư vấn sản phẩm",
     message: "",
   });
+  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+  const [copiedField, setCopiedField] = useState("");
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    if (user) {
+      const fullName = [user.last_name, user.first_name].filter(Boolean).join(" ").trim();
+      setFormState((prev) => ({
+        ...prev,
+        name: prev.name || fullName || "",
+        email: prev.email || user.email || "",
+        phone: prev.phone || user.phone || "",
+      }));
+    }
+  }, [user]);
+
+  const handleCopy = (label, text) => {
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopiedField(label);
+        setTimeout(() => setCopiedField(""), 2000);
+      });
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const mailto = `mailto:support@nexa.example?subject=${encodeURIComponent(
-      `[${formState.subject}] từ ${formState.name}`
-    )}&body=${encodeURIComponent(
-      `Họ tên: ${formState.name}\nEmail: ${formState.email}\n\nNội dung:\n${formState.message}`
-    )}`;
-    window.location.href = mailto;
-    setSubmitted(true);
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await authService.submitSupportContact({
+        name: formState.name.trim(),
+        email: formState.email.trim(),
+        phone: formState.phone.trim(),
+        subject: formState.subject,
+        message: formState.message.trim(),
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setSubmitError(err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -76,50 +132,96 @@ export function ContactPage() {
         <div>
           <span className="ux-kicker">NEXA / SUPPORT / CONTACT</span>
           <h1>
-            Let’s <em>talk.</em>
+            Liên hệ &amp; <em>Hỗ trợ.</em>
           </h1>
-          <p>Bạn có câu hỏi về sản phẩm, đơn hàng hay hợp tác? Hãy để lại lời nhắn.</p>
+          <p>
+            Kết nối trực tiếp qua Gmail, Hotline hoặc ghé thăm Showroom NEXA. Đội ngũ kỹ thuật luôn
+            sẵn sàng hỗ trợ bạn.
+          </p>
         </div>
         <span className="ux-hero-orbit" aria-hidden="true">
           N
         </span>
       </section>
+
       <div className="ux-two">
+        {/* Left: Support Request Form */}
         <section className="ux-card">
           <h2>Gửi yêu cầu hỗ trợ</h2>
           {submitted ? (
-            <div style={{ padding: "16px 0", color: "#10b981", fontWeight: 600 }}>
-              ✓ Đã mở ứng dụng gửi thư. Đội ngũ NEXA sẽ phản hồi bạn sớm nhất!
+            <div style={{ padding: "18px 0" }}>
+              <div
+                style={{
+                  padding: "14px 16px",
+                  borderRadius: "12px",
+                  background: "rgba(16, 185, 129, 0.12)",
+                  border: "1px solid rgba(16, 185, 129, 0.35)",
+                  color: "#10b981",
+                  fontWeight: 600,
+                  marginBottom: "14px",
+                }}
+              >
+                ✓ Đã gửi yêu cầu hỗ trợ thành công tới <strong>{supportEmail}</strong>! Chúng tôi sẽ
+                phản hồi bạn sớm nhất.
+              </div>
+              <button
+                type="button"
+                className="btn btn-quiet"
+                onClick={() => {
+                  setSubmitted(false);
+                  setFormState((prev) => ({ ...prev, message: "" }));
+                }}
+              >
+                Gửi yêu cầu khác
+              </button>
             </div>
           ) : (
             <form onSubmit={handleSubmit}>
               <label>
-                Họ tên
+                Họ và tên
                 <input
                   className="field"
                   name="name"
                   value={formState.name}
                   onChange={(e) => setFormState({ ...formState, name: e.target.value })}
-                  placeholder="Họ tên của bạn"
+                  placeholder="Họ và tên của bạn"
                   maxLength={80}
                   required
                 />
               </label>
+              <div className="form-grid">
+                <div>
+                  <label>
+                    Địa chỉ Email / Gmail
+                    <input
+                      className="field"
+                      name="email"
+                      type="email"
+                      value={formState.email}
+                      onChange={(e) => setFormState({ ...formState, email: e.target.value })}
+                      placeholder="yourname@gmail.com"
+                      maxLength={120}
+                      required
+                    />
+                  </label>
+                </div>
+                <div>
+                  <label>
+                    Số điện thoại
+                    <input
+                      className="field"
+                      name="phone"
+                      type="tel"
+                      value={formState.phone}
+                      onChange={(e) => setFormState({ ...formState, phone: e.target.value })}
+                      placeholder="0901 234 567"
+                      maxLength={20}
+                    />
+                  </label>
+                </div>
+              </div>
               <label>
-                Email
-                <input
-                  className="field"
-                  name="email"
-                  type="email"
-                  value={formState.email}
-                  onChange={(e) => setFormState({ ...formState, email: e.target.value })}
-                  placeholder="example@gmail.com"
-                  maxLength={120}
-                  required
-                />
-              </label>
-              <label>
-                Chủ đề
+                Chủ đề cần hỗ trợ
                 <select
                   className="field"
                   name="subject"
@@ -133,7 +235,7 @@ export function ContactPage() {
                 </select>
               </label>
               <label>
-                Nội dung
+                Nội dung chi tiết
                 <textarea
                   className="field"
                   name="message"
@@ -143,43 +245,155 @@ export function ContactPage() {
                   required
                   value={formState.message}
                   onChange={(e) => setFormState({ ...formState, message: e.target.value })}
-                  placeholder="Nội dung cần hỗ trợ..."
+                  placeholder="Mô tả chi tiết yêu cầu hỗ trợ, mã đơn hàng hoặc sản phẩm bạn quan tâm..."
                 />
               </label>
-              <button type="submit" className="btn btn-violet nexa-btn-3d">
-                Gửi yêu cầu hỗ trợ ↗
-              </button>
+
+              {submitError && <ErrorBox error={submitError} variant="inline" />}
+
+              <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "8px" }}>
+                <button
+                  type="submit"
+                  className="btn btn-violet nexa-btn-3d"
+                  disabled={submitting}
+                >
+                  {submitting ? "Đang gửi..." : "Gửi yêu cầu hỗ trợ ↗"}
+                </button>
+                <a
+                  className="btn btn-quiet"
+                  href={`mailto:${supportEmail}?subject=${encodeURIComponent(
+                    `[${formState.subject}] từ ${formState.name || "Khách hàng"}`
+                  )}`}
+                >
+                  Mở ứng dụng Gmail ✉
+                </a>
+              </div>
             </form>
           )}
-          <p className="ux-note">
-            Ứng dụng email của bạn sẽ được kích hoạt để gửi trực tiếp đến trung tâm hỗ trợ.
+          <p className="ux-note" style={{ marginTop: "14px" }}>
+            Yêu cầu của bạn được gửi trực tiếp qua hệ thống máy chủ NEXA tới hộp thư{" "}
+            <strong>{supportEmail}</strong>.
           </p>
         </section>
+
+        {/* Right: Direct Contact Cards (Gmail, Phone, Address, Hours) */}
         <section className="ux-card">
-          <h2>Chúng tôi luôn ở đây.</h2>
-          <div className="ux-contact-tile">
+          <h2>Thông tin liên hệ trực tiếp</h2>
+
+          <div className="ux-contact-tile" style={{ alignItems: "center" }}>
             <span>✉</span>
-            <div>
-              <b>Liên hệ qua email</b>
-              <p>support@nexa.example</p>
+            <div style={{ flex: 1 }}>
+              <b>Gmail hỗ trợ trực tuyến</b>
+              <p style={{ margin: "4px 0 0" }}>
+                <a
+                  href={`mailto:${supportEmail}`}
+                  style={{ color: "var(--accent)", fontWeight: 700, textDecoration: "none" }}
+                >
+                  {supportEmail}
+                </a>
+              </p>
             </div>
+            <button
+              type="button"
+              className="btn btn-quiet"
+              style={{ padding: "6px 12px", fontSize: "12px" }}
+              onClick={() => handleCopy("email", supportEmail)}
+            >
+              {copiedField === "email" ? "Đã chép ✓" : "Sao chép"}
+            </button>
           </div>
-          <div className="ux-contact-tile">
-            <span>▷</span>
-            <div>
-              <b>Giờ hoạt động</b>
-              <p>Thứ 2 – Thứ 7, 8:00 – 20:00</p>
-            </div>
-          </div>
-          <div className="ux-contact-tile">
+
+          <div className="ux-contact-tile" style={{ alignItems: "center" }}>
             <span>☎</span>
+            <div style={{ flex: 1 }}>
+              <b>Hotline / Zalo hỗ trợ</b>
+              <p style={{ margin: "4px 0 0" }}>
+                <a
+                  href={`tel:${supportPhoneRaw}`}
+                  style={{ color: "var(--accent)", fontWeight: 700, textDecoration: "none" }}
+                >
+                  {supportPhone}
+                </a>
+              </p>
+            </div>
+            <a
+              href={`tel:${supportPhoneRaw}`}
+              className="btn btn-quiet"
+              style={{ padding: "6px 12px", fontSize: "12px" }}
+            >
+              Gọi ngay
+            </a>
+          </div>
+
+          <div className="ux-contact-tile" style={{ alignItems: "flex-start" }}>
+            <span>📍</span>
+            <div style={{ flex: 1 }}>
+              <b>Địa chỉ Showroom &amp; Trung tâm bảo hành</b>
+              <p style={{ margin: "4px 0 0", lineHeight: 1.55 }}>{supportAddress}</p>
+            </div>
+          </div>
+
+          <div className="ux-contact-tile">
+            <span>🕒</span>
             <div>
-              <b>Hỗ trợ kỹ thuật</b>
-              <p>Phản hồi trong vòng 24 giờ</p>
+              <b>Giờ mở cửa &amp; Tiếp nhận bảo hành</b>
+              <p style={{ margin: "4px 0 0" }}>Thứ 2 – Chủ Nhật, 08:00 – 21:00</p>
             </div>
           </div>
         </section>
       </div>
+
+      {/* Full-width Google Maps Integration Section */}
+      <section className="ux-card" style={{ marginTop: "24px", padding: "24px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "12px",
+            marginBottom: "16px",
+          }}
+        >
+          <div>
+            <span className="ux-kicker">GOOGLE MAPS / VỊ TRÍ SHOWROOM</span>
+            <h2 style={{ margin: "4px 0 0" }}>Bản đồ đường đi đến NEXA</h2>
+            <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: "13.5px" }}>
+              {supportAddress}
+            </p>
+          </div>
+          <a
+            href={mapDirectionsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-primary"
+          >
+            Chỉ đường trên Google Maps ↗
+          </a>
+        </div>
+
+        <div
+          style={{
+            width: "100%",
+            height: "400px",
+            borderRadius: "14px",
+            overflow: "hidden",
+            border: "1px solid var(--edge)",
+            background: "var(--bg2)",
+          }}
+        >
+          <iframe
+            title="Bản đồ vị trí NEXA trên Google Maps"
+            src={mapEmbedUrl}
+            width="100%"
+            height="100%"
+            style={{ border: 0, display: "block" }}
+            allowFullScreen
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        </div>
+      </section>
     </div>
   );
 }

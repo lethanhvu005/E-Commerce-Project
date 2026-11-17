@@ -48,6 +48,7 @@ export function StarRatingInput({ value, onChange, disabled = false }) {
 export function ReviewCard({ review, isAuthenticated = false, onReply, replying = false }) {
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyBody, setReplyBody] = useState("");
+  const [showAllReplies, setShowAllReplies] = useState(false);
   const authorName = review.author || "Khách hàng NEXA";
   const initial = (authorName[0] || "K").toUpperCase();
   const createdAt = review.created_at
@@ -81,7 +82,7 @@ export function ReviewCard({ review, isAuthenticated = false, onReply, replying 
 
       {review.replies?.length > 0 && (
         <div className="review-reply-list" aria-label="Các phản hồi">
-          {review.replies.map((reply) => (
+          {(showAllReplies ? review.replies : review.replies.slice(0, 2)).map((reply) => (
             <div className="review-reply" key={reply.id}>
               <span className="review-reply-line" aria-hidden="true" />
               <div>
@@ -95,6 +96,18 @@ export function ReviewCard({ review, isAuthenticated = false, onReply, replying 
               </div>
             </div>
           ))}
+          {review.replies.length > 2 && (
+            <button
+              type="button"
+              className="review-replies-toggle"
+              aria-expanded={showAllReplies}
+              onClick={() => setShowAllReplies((expanded) => !expanded)}
+            >
+              {showAllReplies
+                ? "Thu gọn phản hồi"
+                : `Xem ${review.replies.length - 2} phản hồi còn lại`}
+            </button>
+          )}
         </div>
       )}
 

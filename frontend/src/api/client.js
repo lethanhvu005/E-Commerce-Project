@@ -172,6 +172,7 @@ export const authService = {
   addAddress: (addr) => api.post("/accounts/me/addresses/", addr),
   updateAddress: (id, addr) => api.patch(`/accounts/me/addresses/${id}/`, addr),
   deleteAddress: (id) => api.delete(`/accounts/me/addresses/${id}/`),
+  submitSupportContact: (payload) => api.post("/accounts/support-contact/", payload),
 };
 
 export const catalogService = {

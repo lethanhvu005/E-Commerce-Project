@@ -456,6 +456,10 @@ export default function Layout() {
               <Icon name="support" />
               Kho Voucher
             </NavLink>
+            <NavLink to="/contact">
+              <Icon name="support" />
+              Liên Hệ
+            </NavLink>
           </nav>
 
           {/* Search Form */}
@@ -636,6 +640,9 @@ export default function Layout() {
             </Link>
             <Link to="/tracking" onClick={() => setMenuOpen(false)}>
               Theo dõi vận chuyển
+            </Link>
+            <Link to="/contact" onClick={() => setMenuOpen(false)}>
+              Liên hệ hỗ trợ
             </Link>
             <Link to="/account" onClick={() => setMenuOpen(false)}>
               Tài khoản

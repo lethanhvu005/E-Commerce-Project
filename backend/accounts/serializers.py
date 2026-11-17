@@ -167,6 +167,17 @@ class EmailOtpVerifySerializer(serializers.Serializer):
         return code
 
 
+class SupportContactSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=80, trim_whitespace=True)
+    email = serializers.EmailField()
+    phone = serializers.CharField(max_length=20, required=False, allow_blank=True, trim_whitespace=True)
+    subject = serializers.CharField(max_length=120, trim_whitespace=True)
+    message = serializers.CharField(min_length=10, max_length=1000, trim_whitespace=True)
+
+    def validate_email(self, value):
+        return value.strip().lower()
+
+
 class AddressSerializer(serializers.ModelSerializer):
     recipient = serializers.CharField(source="recipient_name", max_length=150)
     address = serializers.CharField(source="address_line", max_length=300)

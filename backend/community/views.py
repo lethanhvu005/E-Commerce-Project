@@ -140,7 +140,7 @@ def review_replies(request, review_id):
         return auth_error
     serializer = ReviewReplySerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    reply = serializer.save(review=review, user=request.user, status=ModerationStatus.PENDING)
+    reply = serializer.save(review=review, user=request.user, status=ModerationStatus.PUBLISHED)
     return Response(ReviewReplySerializer(reply).data, status=status.HTTP_201_CREATED)
 
 

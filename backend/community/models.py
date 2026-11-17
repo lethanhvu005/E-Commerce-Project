@@ -54,7 +54,7 @@ class ReviewReply(models.Model):
     review = models.ForeignKey(Review, on_delete=models.PROTECT, related_name="replies")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="review_replies")
     body = models.CharField(max_length=1000)
-    status = models.CharField(max_length=12, choices=ModerationStatus.choices, default=ModerationStatus.PENDING)
+    status = models.CharField(max_length=12, choices=ModerationStatus.choices, default=ModerationStatus.PUBLISHED)
     created_at = models.DateTimeField(default=timezone.now, editable=False)
 
     class Meta:
