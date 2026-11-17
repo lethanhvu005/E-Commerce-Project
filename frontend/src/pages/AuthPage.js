@@ -1026,14 +1026,7 @@ export default function AuthPage({ mode = "login" }) {
                   placeholder="example@domain.com"
                 />
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                  <label htmlFor="auth-password">Mật khẩu</label>
-                  {!isRegister && (
-                    <Link className="ux-link" to="/forgot-password" style={{ fontSize: "12.5px" }}>
-                      Quên mật khẩu?
-                    </Link>
-                  )}
-                </div>
+                <label htmlFor="auth-password">Mật khẩu</label>
                 <input
                   id="auth-password"
                   className="field"
@@ -1046,6 +1039,13 @@ export default function AuthPage({ mode = "login" }) {
                   onChange={handleChange}
                   placeholder="Tối thiểu 8 ký tự..."
                 />
+                {!isRegister && (
+                  <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "8px" }}>
+                    <Link className="ux-link" to="/forgot-password" style={{ fontSize: "12.5px" }}>
+                      Quên mật khẩu?
+                    </Link>
+                  </div>
+                )}
 
                 {error && <ErrorBox error={error} variant="inline" />}
 
