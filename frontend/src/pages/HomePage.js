@@ -72,7 +72,6 @@ function getCampaignMeta(banner, isLight = false) {
       darkImg,
       lightImg,
       eyebrow: "DÀNH CHO NHỮNG ĐIỀU BẠN TẠO NÊN",
-      indexLabel: "BỘ SƯU TẬP BÀN PHÍM",
       noteLines: ["Thiết kế tinh gọn.", "Cảm hứng bất tận."],
       alt: banner?.title || "Ảnh ý tưởng bàn phím giữa những cánh hoa xanh cobalt",
     };
@@ -88,7 +87,6 @@ function getCampaignMeta(banner, isLight = false) {
       darkImg,
       lightImg,
       eyebrow: "CÔNG NGHỆ HÒA VÀO NHỊP SỐNG",
-      indexLabel: "BỘ SƯU TẬP CHUỘT",
       noteLines: ["Chuyển động tự nhiên.", "Trải nghiệm liền mạch."],
       alt: banner?.title || "Ảnh ý tưởng chuột giữa những cánh hoa xanh cobalt",
     };
@@ -112,7 +110,6 @@ function getCampaignMeta(banner, isLight = false) {
     darkImg,
     lightImg,
     eyebrow: "ÂM THANH ĐỒNG HÀNH CÙNG BẠN",
-    indexLabel: "BỘ SƯU TẬP TAI NGHE",
     noteLines: ["Chạm vào âm nhạc.", "Chạm đến cảm xúc."],
     alt: banner?.title || "Ảnh ý tưởng tai nghe giữa những cánh hoa xanh cobalt",
   };
@@ -528,9 +525,6 @@ export default function HomePage() {
                         >
                           Khám phá ngay <ArrowIcon />
                         </Link>
-                      </div>
-                      <div className="campaign-index">
-                        <span>{String(index + 1).padStart(2, "0")}</span> / {meta.indexLabel}
                       </div>
                     </div>
 
