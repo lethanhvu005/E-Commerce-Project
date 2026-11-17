@@ -121,7 +121,7 @@ export default function OrderDetailPage() {
   }
 
   const items = order.items || [];
-  const canCancel = ["pending", "confirmed", "packing"].includes(order.status);
+  const canCancel = order.status === "pending";
 
   return (
     <div className="container" style={{ paddingBottom: "60px" }}>
@@ -293,11 +293,11 @@ export default function OrderDetailPage() {
           </div>
 
           {/* Cancel Order Action */}
-          {canCancel && (
+          {canCancel ? (
             <div className="whitebox" style={{ borderColor: "#ff4d6133" }}>
               <h3>Hủy đơn hàng</h3>
               <p style={{ fontSize: "12px", color: "var(--muted)", margin: "0 0 12px" }}>
-                Đơn hàng đang ở trạng thái chuẩn bị. Bạn có thể yêu cầu hủy đơn nếu thay đổi nhu cầu.
+                Đơn hàng đang chờ xác nhận. Bạn có thể yêu cầu hủy đơn nếu thay đổi nhu cầu.
               </p>
 
               {showCancelPrompt ? (
@@ -334,7 +334,14 @@ export default function OrderDetailPage() {
                 </button>
               )}
             </div>
-          )}
+          ) : ["confirmed", "packing", "shipped"].includes(order.status) ? (
+            <div className="whitebox">
+              <h3 style={{ marginBottom: "6px" }}>Đơn hàng đang được xử lý</h3>
+              <p style={{ fontSize: "12px", color: "var(--muted)", margin: 0, lineHeight: 1.5 }}>
+                Đơn hàng đã được xác nhận nên không thể hủy trực tuyến. Nếu cần hỗ trợ đặc biệt, vui lòng liên hệ CSKH NEXA.
+              </p>
+            </div>
+          ) : null}
         </aside>
       </div>
     </div>

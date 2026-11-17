@@ -3,6 +3,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import * as apiClient from "../api/client";
 import { ErrorBox, Toast } from "../components/Feedback";
 import VnpayReturnPage from "../pages/VnpayReturnPage";
+import OrderDetailPage from "../pages/OrderDetailPage";
 import {
   fetchCurrentLocationAddress,
   validateEmailAddress,
@@ -157,5 +158,37 @@ describe("VnpayReturnPage", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveClass("nexa-error-banner");
     expect(alert).toHaveTextContent("Chữ ký giao dịch VNPay không hợp lệ.");
+  });
+});
+
+describe("OrderDetailPage cancellation rules", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test("disallows cancelling once order status is confirmed", async () => {
+    jest.spyOn(apiClient.orderService, "getOrderDetail").mockResolvedValue({
+      public_id: "22222222-2222-2222-2222-222222222222",
+      order_number: "NX999",
+      status: "confirmed",
+      subtotal: 500000,
+      shipping_fee: 30000,
+      grand_total: 530000,
+      currency: "VND",
+      items: [],
+    });
+    jest.spyOn(apiClient.orderService, "getOrderHistory").mockResolvedValue({ results: [] });
+    jest.spyOn(apiClient.paymentService, "getConfig").mockResolvedValue({ vnpay_enabled: true });
+
+    render(
+      <MemoryRouter initialEntries={["/orders/22222222-2222-2222-2222-222222222222"]}>
+        <Routes>
+          <Route path="/orders/:id" element={<OrderDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText(/Đơn hàng đã được xác nhận nên không thể hủy trực tuyến/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /yêu cầu hủy đơn hàng/i })).not.toBeInTheDocument();
   });
 });

@@ -251,9 +251,16 @@ def create_order(user, data):
 
 
 @transaction.atomic
-def cancel_order(order, user, reason):
+def cancel_order(order, user, reason, *, allow_confirmed=False):
     order = Order.objects.select_for_update().get(pk=order.pk)
-    if order.status not in {OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PACKING}:
+    allowed_statuses = (
+        {OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.PACKING}
+        if allow_confirmed
+        else {OrderStatus.PENDING}
+    )
+    if order.status not in allowed_statuses:
+        if not allow_confirmed and order.status in {OrderStatus.CONFIRMED, OrderStatus.PACKING}:
+            raise ValidationError({"status": ["Đơn hàng đã được xác nhận nên không thể hủy."]})
         raise ValidationError({"status": ["Đơn hàng không còn có thể hủy."]})
     old_status = order.status
     now = timezone.now()
@@ -338,7 +345,7 @@ def transition_order_status(order, to_status, actor, reason="", confirm_cod_paym
     default_reason = reason.strip() if reason else f"Cập nhật trạng thái đơn sang {to_status}"
 
     if to_status == OrderStatus.CANCELLED:
-        canceled = cancel_order(order, actor, default_reason)
+        canceled = cancel_order(order, actor, default_reason, allow_confirmed=True)
         AuditLog.objects.create(
             actor=actor,
             action="order.status_transition",

@@ -165,6 +165,22 @@ class OrderApiTests(APITestCase):
         recreated = self.client.post("/api/orders/", self.payload(), format="json")
         self.assertEqual(recreated.status_code, status.HTTP_201_CREATED)
 
+    def test_customer_cannot_cancel_confirmed_order(self):
+        created = self.client.post("/api/orders/", self.payload(), format="json")
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED)
+        order_obj = Order.objects.get(public_id=created.data["public_id"])
+        order_obj.status = OrderStatus.CONFIRMED
+        order_obj.save(update_fields=["status"])
+
+        res = self.client.post(
+            f"/api/orders/{order_obj.public_id}/cancel/",
+            {"reason": "Thay đổi ý"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        order_obj.refresh_from_db()
+        self.assertEqual(order_obj.status, OrderStatus.CONFIRMED)
+
     def test_release_expired_reservations_command_expires_order_and_restores_stock(self):
         voucher = Voucher.objects.create(
             code="EXP10",
