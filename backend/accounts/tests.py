@@ -786,4 +786,47 @@ class AccountAuthApiTests(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
         self.assertIsNone(cache.get(f"password_reset_otp:{self.user.pk}"))
 
+    def test_webhook_mail_validates_json_ok_response(self):
+        from unittest.mock import MagicMock, patch
+        from django.test import override_settings
+
+        ok_resp = MagicMock()
+        ok_resp.status = 200
+        ok_resp.read.return_value = b'{"ok": true}'
+        ok_resp.__enter__.return_value = ok_resp
+
+        with override_settings(
+            EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend",
+            BREVO_API_KEY="",
+            RESEND_API_KEY="",
+            EMAIL_WEBHOOK_URL="https://script.google.com/macros/s/demo/exec",
+            EMAIL_WEBHOOK_SECRET="sec-1",
+        ), patch("accounts.mailer.urlopen", return_value=ok_resp):
+            res_ok = self.client.post(
+                "/api/auth/password-reset/request/",
+                {"email": "buyer@example.test"},
+                format="json",
+            )
+        self.assertEqual(res_ok.status_code, status.HTTP_200_OK)
+
+        bad_resp = MagicMock()
+        bad_resp.status = 200
+        bad_resp.read.return_value = b'{"ok": false, "error": "unauthorized"}'
+        bad_resp.__enter__.return_value = bad_resp
+
+        with override_settings(
+            DEBUG=False,
+            EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend",
+            BREVO_API_KEY="",
+            RESEND_API_KEY="",
+            EMAIL_WEBHOOK_URL="https://script.google.com/macros/s/demo/exec",
+            EMAIL_WEBHOOK_SECRET="wrong",
+        ), patch("accounts.mailer.urlopen", return_value=bad_resp):
+            res_bad = self.client.post(
+                "/api/auth/password-reset/request/",
+                {"email": "buyer@example.test"},
+                format="json",
+            )
+        self.assertEqual(res_bad.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+
 

@@ -33,7 +33,7 @@ def email_transport_configured() -> bool:
     return https_mail_provider_configured() or smtp_credentials_configured()
 
 
-def _post_json(url: str, payload: dict, headers: dict | None = None) -> None:
+def _post_json(url: str, payload: dict, headers: dict | None = None) -> bytes:
     parsed = urlparse(url)
     if parsed.scheme != "https" or not parsed.netloc:
         raise ValueError("URL dịch vụ gửi email phải sử dụng giao thức HTTPS hợp lệ.")
@@ -48,6 +48,7 @@ def _post_json(url: str, payload: dict, headers: dict | None = None) -> None:
     with urlopen(req, timeout=HTTPS_MAIL_TIMEOUT_SECONDS) as resp:  # nosec B310
         if resp.status >= 400:
             raise RuntimeError(f"Email API returned HTTP {resp.status}")
+        return resp.read() if hasattr(resp, "read") else b""
 
 
 def _send_via_brevo(*, subject: str, message: str, recipient_email: str, reply_to: str = "") -> None:
@@ -103,7 +104,14 @@ def _send_via_webhook(*, subject: str, message: str, recipient_email: str, reply
         payload["reply_to"] = reply_to
     if webhook_secret:
         payload["secret"] = webhook_secret
-    _post_json(webhook_url, payload)
+    raw = _post_json(webhook_url, payload)
+    if raw:
+        try:
+            body = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise RuntimeError("Email webhook did not return valid JSON (check Apps Script 'Who has access: Anyone' and deployment).") from exc
+        if isinstance(body, dict) and body.get("ok") is False:
+            raise RuntimeError(f"Email webhook rejected request: {body.get('error') or 'unknown error'}")
 
 
 def _probe_smtp_reachable(host: str, port: int, timeout_seconds: float = 2.5) -> None:
