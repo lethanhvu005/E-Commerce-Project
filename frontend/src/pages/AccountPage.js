@@ -599,7 +599,7 @@ export default function AccountPage() {
             {user?.is_staff && (
               <Link
                 to="/admin/inventory"
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", background: "#edf4ff", border: "1px solid #1558c933", color: "var(--action)", borderRadius: "10px", fontWeight: 700 }}
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", background: "var(--bg2)", border: "1px solid var(--edge)", color: "var(--action)", borderRadius: "10px", fontWeight: 700 }}
               >
                 <span>⚡ Quản trị kho (Staff Portal)</span>
                 <b>↗</b>

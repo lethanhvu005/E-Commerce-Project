@@ -2987,6 +2987,58 @@ html[data-theme="light"] .gear-section-head .gear-kicker {
   }
 }
 
+/* Day/Night theme adaptation for Vouchers, Badges & Pills */
+html[data-theme="dark"] .ux-voucher,
+html[data-theme="dark"] .ux-voucher:nth-child(2),
+html[data-theme="dark"] .ux-voucher:nth-child(3) {
+  background: linear-gradient(145deg, #0c172b, #12233f) !important;
+  border: 1px solid #28426b !important;
+  color: #e9f1ff !important;
+}
+
+html[data-theme="dark"] .ux-voucher h2 {
+  color: #f4f7ff !important;
+}
+
+html[data-theme="dark"] .ux-voucher p {
+  color: #b8c7e0 !important;
+}
+
+html[data-theme="dark"] .ux-voucher code {
+  background: #162947 !important;
+  border-color: #31507e !important;
+  color: #9cc6ff !important;
+}
+
+html[data-theme="light"] .ux-voucher,
+html[data-theme="light"] .ux-voucher:nth-child(2),
+html[data-theme="light"] .ux-voucher:nth-child(3) {
+  background: linear-gradient(145deg, #ffffff, #edf3fc) !important;
+  border: 1px solid #c9d8ef !important;
+  color: #13223d !important;
+  box-shadow: 0 4px 16px rgba(24, 48, 84, 0.06);
+}
+
+html[data-theme="light"] .ux-voucher h2 {
+  color: #0f1f3d !important;
+}
+
+html[data-theme="light"] .ux-voucher p {
+  color: #475c7a !important;
+}
+
+html[data-theme="light"] .ux-voucher code {
+  background: #e8f0fe !important;
+  border-color: #bfd4fa !important;
+  color: #1558c9 !important;
+}
+
+html[data-theme="dark"] .demo-pill {
+  background: #172a47;
+  color: #9cc6ff;
+  border: 1px solid #2b4875;
+}
+
 /* Order status timeline: 5 steps in a single clean row & dark mode connector contrast */
 ol.order-timeline {
   grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
