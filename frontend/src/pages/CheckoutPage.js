@@ -495,7 +495,7 @@ export default function CheckoutPage() {
                   <div style={{ color: "#6e7f98", fontSize: "11.5px" }}>
                     {vnpayEnabled
                       ? "Chuyển hướng an toàn qua cổng VNPay · xác nhận đơn tự động"
-                      : "Chưa cấu hình VNPAY_TMN_CODE & VNPAY_HASH_SECRET trên máy chủ"}
+                      : "Cổng thanh toán VNPay tạm thời chưa sẵn sàng. Bạn có thể chọn thanh toán COD."}
                   </div>
                 </div>
               </div>
