@@ -61,6 +61,10 @@ describe("Compact inline error feedback", () => {
     rerender(<ErrorBox error={new TypeError("Failed to fetch")} />);
     expect(screen.queryByText(/^Failed to fetch$/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Không thể kết nối đến máy chủ/i)).toBeInTheDocument();
+
+    expect(
+      apiClient.formatErrorMessage("<!doctype html><html><title>Server Error (500)</title></html>", 500)
+    ).toMatch(/Máy chủ đang gặp sự cố/i);
   });
 
   test("Toast always stays compact (no giant centered modal dialog)", () => {

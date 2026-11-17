@@ -36,7 +36,16 @@ export function clearTokens() {
 // DRF Error Message Formatter
 export function formatErrorMessage(payload, status) {
   if (!payload) return `Yêu cầu thất bại (${status || "Lỗi mạng"}).`;
-  if (typeof payload === "string") return payload;
+  if (typeof payload === "string") {
+    const trimmed = payload.trim();
+    if (/^<(?:!doctype|html|head|body)\b/i.test(trimmed) || /<html[\s>]/i.test(trimmed)) {
+      if (status >= 500) {
+        return `Máy chủ đang gặp sự cố tạm thời (HTTP ${status}). Vui lòng thử lại sau hoặc kiểm tra migration database trên server.`;
+      }
+      return `Máy chủ trả về phản hồi không hợp lệ (HTTP ${status || "Lỗi"}).`;
+    }
+    return trimmed;
+  }
   if (payload.detail) return payload.detail;
   if (payload.message) return payload.message;
   if (payload.error) return payload.error;

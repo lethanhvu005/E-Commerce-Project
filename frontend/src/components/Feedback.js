@@ -68,6 +68,9 @@ export function formatErrorMessage(error) {
     if (parts.length) return parts.join(" · ");
   }
   const msg = String(error?.message || "").trim();
+  if (/^<(?:!doctype|html|head|body)\b/i.test(msg) || /<html[\s>]/i.test(msg)) {
+    return "Máy chủ đang gặp sự cố tạm thời (HTTP 500). Vui lòng thử lại sau.";
+  }
   if (/^failed to fetch$/i.test(msg)) {
     return "Không thể kết nối đến máy chủ hoặc dịch vụ tra cứu. Vui lòng thử lại.";
   }
