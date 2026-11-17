@@ -1,6 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { ErrorBox, Toast } from "../components/Feedback";
-import { validateEmailAddress, validateVietnamPhone } from "../utils/validationAndLocation";
+import {
+  fetchCurrentLocationAddress,
+  validateEmailAddress,
+  validateVietnamPhone,
+} from "../utils/validationAndLocation";
 
 describe("Vietnam phone validation", () => {
   test("accepts valid mobile numbers and normalizes +84", () => {
@@ -34,31 +38,70 @@ describe("Email validation", () => {
   });
 });
 
-describe("Large error feedback", () => {
-  test("ErrorBox renders a large alert card with the message and retry", () => {
+describe("Compact inline error feedback", () => {
+  test("ErrorBox always renders a compact inline banner without large modal/card chrome", () => {
     const onRetry = jest.fn();
     render(<ErrorBox error={new Error("Số điện thoại không đúng định dạng.")} onRetry={onRetry} />);
-    expect(screen.getByRole("alert")).toHaveClass("nexa-error-card");
-    expect(screen.getByRole("heading", { name: /đã xảy ra lỗi/i })).toBeInTheDocument();
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveClass("nexa-error-banner");
+    expect(alert).not.toHaveClass("nexa-error-card");
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /thử lại/i }));
     expect(onRetry).toHaveBeenCalled();
   });
 
-  test("ErrorBox surfaces DRF field errors from payload", () => {
+  test("ErrorBox surfaces DRF field errors and translates raw Failed to fetch", () => {
     const err = Object.assign(new Error("Bad Request"), { payload: { phone: ["Sai định dạng SĐT."] } });
-    render(<ErrorBox error={err} />);
+    const { rerender } = render(<ErrorBox error={err} />);
     expect(screen.getByText("Sai định dạng SĐT.")).toBeInTheDocument();
+
+    rerender(<ErrorBox error={new TypeError("Failed to fetch")} />);
+    expect(screen.queryByText(/^Failed to fetch$/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Không thể kết nối đến máy chủ/i)).toBeInTheDocument();
   });
 
-  test("Toast shows error messages as a centered alert dialog and success as a compact toast", () => {
+  test("Toast always stays compact (no giant centered modal dialog)", () => {
     const onClose = jest.fn();
     const { rerender } = render(<Toast message="Không thể thêm địa chỉ." onClose={onClose} />);
-    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /đã hiểu/i }));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("alert").firstChild).toHaveClass("warn");
+    fireEvent.click(screen.getByRole("button", { name: /đóng/i }));
     expect(onClose).toHaveBeenCalled();
 
     rerender(<Toast message="Đã lưu địa chỉ mới." onClose={onClose} />);
-    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Đã lưu địa chỉ mới.");
+  });
+});
+
+describe("Geolocation reverse geocoding fallback", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test("resolves address cleanly via ArcGIS and falls back to BigDataCloud when first provider fails", async () => {
+    Object.defineProperty(global.navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition: (success) =>
+          success({ coords: { latitude: 16.0176, longitude: 108.2504 } }),
+      },
+    });
+
+    global.fetch = jest
+      .fn()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          locality: "Ngũ Hành Sơn",
+          city: "Đà Nẵng",
+          principalSubdivision: "Đà Nẵng",
+        }),
+      });
+
+    const loc = await fetchCurrentLocationAddress();
+    expect(loc.ward).toBe("Ngũ Hành Sơn");
+    expect(loc.province).toBe("Đà Nẵng");
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 });

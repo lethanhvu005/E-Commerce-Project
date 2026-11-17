@@ -3,7 +3,7 @@ import { Link, useNavigate, useOutletContext } from "react-router-dom";
 import { authService, cartService, orderService } from "../api/client";
 import { fallbackProductImage, money, productImage } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
-import { Empty, ErrorBox, Loading, Toast } from "../components/Feedback";
+import { ErrorBox, Loading, Toast } from "../components/Feedback";
 import { fetchCurrentLocationAddress, validateVietnamPhone } from "../utils/validationAndLocation";
 
 function generateCheckoutUUID() {
@@ -137,9 +137,14 @@ export default function CheckoutPage() {
 
   // Handle Create Address
   const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState(null);
+  const [addressPhoneError, setAddressPhoneError] = useState("");
+  const [newAddressError, setNewAddressError] = useState(null);
 
   const handleUseCurrentLocation = async () => {
     setLocating(true);
+    setLocationError(null);
+    setNewAddressError(null);
     try {
       const loc = await fetchCurrentLocationAddress();
       setNewAddress((prev) => ({
@@ -150,7 +155,7 @@ export default function CheckoutPage() {
       }));
       setToastMsg("Đã điền địa chỉ từ vị trí hiện tại. Hãy kiểm tra lại số nhà trước khi lưu.");
     } catch (err) {
-      setToastMsg(err.message || "Không thể lấy vị trí hiện tại.");
+      setLocationError(err);
     } finally {
       setLocating(false);
     }
@@ -158,13 +163,15 @@ export default function CheckoutPage() {
 
   const handleCreateAddress = async (e) => {
     e.preventDefault();
+    setNewAddressError(null);
+    setAddressPhoneError("");
     const phoneCheck = validateVietnamPhone(newAddress.phone);
     if (!phoneCheck.valid) {
-      setToastMsg(phoneCheck.error);
+      setAddressPhoneError(phoneCheck.error);
       return;
     }
     if (!newAddress.recipient.trim() || !newAddress.address.trim() || !newAddress.ward.trim() || !newAddress.province.trim()) {
-      setToastMsg("Vui lòng nhập đầy đủ họ tên, địa chỉ, phường/xã và tỉnh/thành phố.");
+      setNewAddressError(new Error("Vui lòng nhập đầy đủ họ tên, địa chỉ, phường/xã và tỉnh/thành phố."));
       return;
     }
     try {
@@ -175,7 +182,7 @@ export default function CheckoutPage() {
       setNewAddress({ recipient: "", phone: "", address: "", ward: "", province: "", is_default: false });
       setToastMsg("Đã thêm địa chỉ giao hàng mới.");
     } catch (err) {
-      setToastMsg(err.message || "Không thể thêm địa chỉ.");
+      setNewAddressError(err);
     }
   };
 
@@ -259,8 +266,6 @@ export default function CheckoutPage() {
         </span>
       </nav>
 
-      {error && <ErrorBox error={error} variant="inline" />}
-
       <div className="checkout-grid">
         {/* Left Form Column */}
         <form onSubmit={handlePlaceOrder}>
@@ -298,8 +303,12 @@ export default function CheckoutPage() {
                       className="field"
                       required
                       value={newAddress.phone}
-                      onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
+                      onChange={(e) => {
+                        setAddressPhoneError("");
+                        setNewAddress({ ...newAddress, phone: e.target.value });
+                      }}
                     />
+                    {addressPhoneError && <ErrorBox error={addressPhoneError} />}
                   </div>
                 </div>
                 <button
@@ -311,6 +320,7 @@ export default function CheckoutPage() {
                 >
                   {locating ? "Đang lấy vị trí..." : "📍 Dùng vị trí hiện tại của tôi"}
                 </button>
+                {locationError && <ErrorBox error={locationError} />}
                 <label className="field-label">Địa chỉ (số nhà, tên đường)</label>
                 <input
                   className="field"
@@ -338,11 +348,21 @@ export default function CheckoutPage() {
                     />
                   </div>
                 </div>
+                {newAddressError && <ErrorBox error={newAddressError} />}
                 <div style={{ marginTop: "12px", display: "flex", gap: "8px" }}>
                   <button type="button" className="btn btn-primary" onClick={handleCreateAddress}>
                     Lưu địa chỉ
                   </button>
-                  <button type="button" className="btn btn-quiet" onClick={() => setShowAddAddress(false)}>
+                  <button
+                    type="button"
+                    className="btn btn-quiet"
+                    onClick={() => {
+                      setLocationError(null);
+                      setAddressPhoneError("");
+                      setNewAddressError(null);
+                      setShowAddAddress(false);
+                    }}
+                  >
                     Hủy
                   </button>
                 </div>
@@ -351,10 +371,12 @@ export default function CheckoutPage() {
 
             {/* Address Selection List */}
             {addresses.length === 0 ? (
-              <Empty
-                title="Chưa có địa chỉ nào"
-                text="Vui lòng bấm 'Thêm địa chỉ mới' ở trên để nhập thông tin giao nhận."
-              />
+              <p className="nexa-error-banner" style={{ margin: "4px 0 0" }}>
+                <span className="nexa-error-icon" aria-hidden="true">ℹ</span>
+                <span className="nexa-error-text">
+                  Chưa có địa chỉ giao hàng nào. Bấm <strong>+ Thêm địa chỉ mới</strong> ở trên để nhập thông tin nhận hàng.
+                </span>
+              </p>
             ) : (
               <div className="address-options">
                 {addresses.map((addr) => (
@@ -538,6 +560,8 @@ export default function CheckoutPage() {
               ? `Đặt hàng · ${money(preview.grand_total || preview.total)} ↗`
               : "Không thể báo giá đơn hàng"}
           </button>
+
+          {error && <ErrorBox error={error} />}
 
           <p style={{ fontSize: "11px", color: "var(--muted)", textAlign: "center", marginTop: "12px", lineHeight: "1.4" }}>
             Bằng việc nhấn đặt hàng, bạn đồng ý với Điều khoản mua sắm và Chính sách vận chuyển của NEXA.

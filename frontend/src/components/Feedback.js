@@ -67,28 +67,27 @@ export function formatErrorMessage(error) {
     });
     if (parts.length) return parts.join(" · ");
   }
-  return error?.message || "Không thể kết nối đến máy chủ backend.";
+  const msg = String(error?.message || "").trim();
+  if (/^failed to fetch$/i.test(msg)) {
+    return "Không thể kết nối đến máy chủ hoặc dịch vụ tra cứu. Vui lòng thử lại.";
+  }
+  return msg || "Không thể kết nối đến máy chủ backend.";
 }
 
 /**
- * Large centered error card (same visual language as <Empty/>): icon circle + title + message.
- * `variant` is kept for backward compatibility; every variant now renders the large card.
+ * Compact inline error message displayed directly below the offending control/section.
  */
-export function ErrorBox({ error, onRetry, title = "Đã xảy ra lỗi" }) {
+export function ErrorBox({ error, onRetry }) {
   if (!error) return null;
   const message = formatErrorMessage(error);
   return (
-    <div className="empty nexa-error-card" role="alert" style={{ margin: "18px 0 28px" }}>
-      <div className="empty-illustration nexa-error-illustration" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 7v6M12 16.5h.01" />
-        </svg>
-      </div>
-      <h2>{title}</h2>
-      <p style={{ maxWidth: "520px", margin: "6px auto 18px", color: "var(--muted)" }}>{message}</p>
+    <div className="nexa-error-banner" role="alert">
+      <span className="nexa-error-icon" aria-hidden="true">
+        ⚠
+      </span>
+      <span className="nexa-error-text">{message}</span>
       {onRetry && (
-        <button type="button" className="btn btn-primary" onClick={onRetry}>
+        <button type="button" className="nexa-error-retry" onClick={onRetry}>
           Thử lại
         </button>
       )}
@@ -99,56 +98,22 @@ export function ErrorBox({ error, onRetry, title = "Đã xảy ra lỗi" }) {
 const ERROR_HINT = /(không thể|không được|không đúng|không hợp lệ|không tìm thấy|không đủ|lỗi|thất bại|hết hạn|sai |vui lòng|chưa (?:đăng nhập|chọn|nhập)|bị từ chối|quá )/i;
 
 /**
- * Toast: success/info stays a compact top-right toast; errors/warnings are shown as a
- * large centered dialog (icon circle + title + message + close) so they cannot be missed.
+ * Compact floating toast notification (top-right).
  */
 export function Toast({ message, type, onClose }) {
-  const isError = type === "error" || type === "warn" || (!type && ERROR_HINT.test(String(message || "")));
+  const isWarn = type === "error" || type === "warn" || (!type && ERROR_HINT.test(String(message || "")));
 
   useEffect(() => {
     if (!message || !onClose) return undefined;
-    const timer = window.setTimeout(onClose, isError ? 8000 : 3600);
+    const timer = window.setTimeout(onClose, isWarn ? 4500 : 3400);
     return () => window.clearTimeout(timer);
-  }, [message, onClose, isError]);
-
-  useEffect(() => {
-    if (!message || !isError || !onClose) return undefined;
-    const onKey = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [message, isError, onClose]);
+  }, [message, onClose, isWarn]);
 
   if (!message) return null;
 
-  const content = isError ? (
-    <div className="nexa-alert-backdrop" onClick={onClose}>
-      <div
-        className="nexa-alert-dialog"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="nexa-alert-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="empty-illustration nexa-error-illustration" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M12 7v6M12 16.5h.01" />
-          </svg>
-        </div>
-        <h2 id="nexa-alert-title">Không thực hiện được</h2>
-        <p>{message}</p>
-        {onClose && (
-          <button type="button" className="btn btn-primary" autoFocus onClick={onClose}>
-            Đã hiểu
-          </button>
-        )}
-      </div>
-    </div>
-  ) : (
-    <div className="toast-region" role="status" aria-live="polite">
-      <div className="toast">
+  const content = (
+    <div className="toast-region" role={isWarn ? "alert" : "status"} aria-live="polite">
+      <div className={`toast ${isWarn ? "warn" : ""}`}>
         <span>{message}</span>
         {onClose && (
           <button type="button" className="toast-action" onClick={onClose}>

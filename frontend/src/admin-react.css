@@ -620,27 +620,27 @@ html[data-theme="dark"] .mini-product .mini-img {
 .admin-login-card .full { width: 100%; margin-top: 22px; }
 .admin-login-back { display: block; margin-top: 22px; color: #8ebcff; text-align: center; }
 
-/* Large, unmissable admin error feedback (matches storefront .nexa-error-card) */
+/* Compact inline admin error message */
 .admin-hero-note.admin-error {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px 18px;
-  padding: 26px 24px;
-  margin: 14px 0 20px;
-  text-align: center;
-  font-size: 15.5px;
+  gap: 8px 12px;
+  padding: 9px 12px;
+  margin: 10px 0 0;
+  text-align: left;
+  font-size: 12.5px;
   font-weight: 600;
-  line-height: 1.6;
+  line-height: 1.45;
   color: #b4234a;
   background: rgba(214, 47, 87, 0.08);
-  border: 1px solid rgba(214, 47, 87, 0.4);
-  border-radius: 12px;
+  border: 1px solid rgba(214, 47, 87, 0.35);
+  border-radius: 8px;
 }
 
 html[data-theme="dark"] .admin-hero-note.admin-error {
-  color: #ffb3c4;
-  background: rgba(255, 143, 168, 0.1);
-  border-color: rgba(255, 143, 168, 0.4);
+  color: #ff9cb2;
+  background: rgba(255, 143, 168, 0.12);
+  border-color: rgba(255, 143, 168, 0.38);
 }

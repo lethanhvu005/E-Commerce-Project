@@ -92,6 +92,118 @@ export function validateEmailAddress(raw = "", { requireGmail = false } = {}) {
   return { valid: true, normalized: email, error: "" };
 }
 
+async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 6000) {
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = controller ? window.setTimeout(() => controller.abort(), timeoutMs) : null;
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller ? controller.signal : undefined,
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    return await response.json();
+  } finally {
+    if (timer) window.clearTimeout(timer);
+  }
+}
+
+async function reverseViaArcGIS(latitude, longitude) {
+  const url = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?location=${encodeURIComponent(
+    `${longitude},${latitude}`
+  )}&f=json&langCode=vi`;
+  const data = await fetchJsonWithTimeout(url, { headers: { Accept: "application/json" } });
+  const addr = data?.address;
+  if (!addr || (!addr.Address && !addr.Match_addr && !addr.City && !addr.Region)) {
+    throw new Error("ArcGIS empty address");
+  }
+  const addressLine =
+    [addr.AddNum, addr.Address].filter(Boolean).join(" ").trim() ||
+    addr.ShortLabel ||
+    addr.Match_addr ||
+    `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+  const ward = addr.Neighborhood || addr.District || addr.City || addr.Subregion || "Phường trung tâm";
+  const province = addr.Region || addr.Subregion || addr.City || "Việt Nam";
+  return {
+    address: addressLine,
+    ward,
+    province,
+    latitude,
+    longitude,
+    displayName: addr.Match_addr || addr.LongLabel || `${addressLine}, ${ward}, ${province}`,
+  };
+}
+
+async function reverseViaBigDataCloud(latitude, longitude) {
+  const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${encodeURIComponent(
+    latitude
+  )}&longitude=${encodeURIComponent(longitude)}&localityLanguage=vi`;
+  const data = await fetchJsonWithTimeout(url, { headers: { Accept: "application/json" } });
+  const ward = data?.locality || "";
+  const province = data?.city || data?.principalSubdivision || "";
+  if (!ward && !province) {
+    throw new Error("BigDataCloud empty address");
+  }
+  const addressLine = [data?.locality, data?.city || data?.principalSubdivision]
+    .filter(Boolean)
+    .join(", ");
+  return {
+    address: addressLine || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`,
+    ward: ward || "Phường trung tâm",
+    province: province || "Việt Nam",
+    latitude,
+    longitude,
+    displayName: `${addressLine || province}`,
+  };
+}
+
+async function reverseViaNominatim(latitude, longitude) {
+  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(
+    latitude
+  )}&lon=${encodeURIComponent(longitude)}&accept-language=vi&addressdetails=1`;
+  const data = await fetchJsonWithTimeout(url, { headers: { Accept: "application/json" } });
+  const addr = data?.address || {};
+  const streetParts = [
+    addr.house_number,
+    addr.road || addr.pedestrian || addr.residential || addr.hamlet || addr.neighbourhood,
+  ].filter(Boolean);
+  const ward =
+    addr.suburb ||
+    addr.quarter ||
+    addr.village ||
+    addr.town ||
+    addr.city_district ||
+    addr.municipality ||
+    "";
+  const province = addr.city || addr.state || addr.province || addr.county || "";
+  const rawDisplayParts = String(data?.display_name || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const addressLine =
+    streetParts.join(" ").trim() ||
+    rawDisplayParts.slice(0, 2).join(", ") ||
+    `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+  const resolvedWard =
+    ward || (rawDisplayParts.length >= 3 ? rawDisplayParts[2] : "Phường trung tâm");
+  const resolvedProvince =
+    province ||
+    (rawDisplayParts.length >= 2
+      ? rawDisplayParts[rawDisplayParts.length - 2]
+      : "Việt Nam");
+
+  return {
+    address: addressLine,
+    ward: resolvedWard,
+    province: resolvedProvince,
+    latitude,
+    longitude,
+    displayName: data?.display_name || `${addressLine}, ${resolvedWard}, ${resolvedProvince}`,
+  };
+}
+
 /**
  * Get current GPS coordinates from browser and reverse-geocode into { address, ward, province, displayName }.
  */
@@ -105,76 +217,21 @@ export function fetchCurrentLocationAddress() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        try {
-          const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(
-            latitude
-          )}&lon=${encodeURIComponent(longitude)}&accept-language=vi&addressdetails=1`;
-          const response = await fetch(url, {
-            headers: {
-              Accept: "application/json",
-            },
-          });
-          if (!response.ok) {
-            throw new Error("Không thể tra cứu tên đường từ tọa độ hiện tại.");
+        const providers = [reverseViaArcGIS, reverseViaBigDataCloud, reverseViaNominatim];
+        for (const provider of providers) {
+          try {
+            const resolved = await provider(latitude, longitude);
+            resolve(resolved);
+            return;
+          } catch {
+            // Try next reverse geocoding provider
           }
-          const data = await response.json();
-          const addr = data?.address || {};
-
-          const streetParts = [
-            addr.house_number,
-            addr.road || addr.pedestrian || addr.residential || addr.hamlet || addr.neighbourhood,
-          ].filter(Boolean);
-
-          const ward =
-            addr.suburb ||
-            addr.quarter ||
-            addr.village ||
-            addr.town ||
-            addr.city_district ||
-            addr.municipality ||
-            "";
-
-          const province =
-            addr.city ||
-            addr.state ||
-            addr.province ||
-            addr.county ||
-            "";
-
-          const rawDisplayParts = String(data?.display_name || "")
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean);
-
-          const addressLine =
-            streetParts.join(" ").trim() ||
-            rawDisplayParts.slice(0, 2).join(", ") ||
-            `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-
-          const resolvedWard =
-            ward || (rawDisplayParts.length >= 3 ? rawDisplayParts[2] : "Phường trung tâm");
-          const resolvedProvince =
-            province ||
-            (rawDisplayParts.length >= 2
-              ? rawDisplayParts[rawDisplayParts.length - 2]
-              : "Việt Nam");
-
-          resolve({
-            address: addressLine,
-            ward: resolvedWard,
-            province: resolvedProvince,
-            latitude,
-            longitude,
-            displayName: data?.display_name || `${addressLine}, ${resolvedWard}, ${resolvedProvince}`,
-          });
-        } catch (err) {
-          reject(
-            new Error(
-              err?.message ||
-                "Đã lấy được tọa độ nhưng không thể phân giải tên đường tự động. Vui lòng nhập tay."
-            )
-          );
         }
+        reject(
+          new Error(
+            "Không thể kết nối dịch vụ tra cứu địa chỉ từ tọa độ hiện tại. Vui lòng kiểm tra kết nối mạng hoặc nhập tay địa chỉ."
+          )
+        );
       },
       (geoErr) => {
         if (geoErr?.code === 1) {

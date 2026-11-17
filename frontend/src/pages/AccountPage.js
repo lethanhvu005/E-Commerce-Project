@@ -45,12 +45,13 @@ export default function AccountPage() {
   // Status & Feedback
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [profileError, setProfileError] = useState(null);
+  const [profilePhoneError, setProfilePhoneError] = useState("");
+  const [profileEmailError, setProfileEmailError] = useState("");
+  const [addressError, setAddressError] = useState(null);
+  const [addressPhoneError, setAddressPhoneError] = useState("");
+  const [locationError, setLocationError] = useState(null);
   const [toastMsg, setToastMsg] = useState("");
-
-  // Large error card renders at the top of the page: bring it into view
-  useEffect(() => {
-    if (error) window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [error]);
 
   // Sync profileForm with user data
   useEffect(() => {
@@ -88,11 +89,13 @@ export default function AccountPage() {
   // Handle Profile Update
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
-    setError(null);
+    setProfileError(null);
+    setProfilePhoneError("");
+    setProfileEmailError("");
 
     const phoneCheck = validateVietnamPhone(profileForm.phone, { allowEmpty: true });
     if (!phoneCheck.valid) {
-      setError(new Error(phoneCheck.error));
+      setProfilePhoneError(phoneCheck.error);
       return;
     }
     const nextEmail = profileForm.email.trim().toLowerCase();
@@ -101,7 +104,7 @@ export default function AccountPage() {
     if (emailChanged) {
       const emailCheck = validateEmailAddress(nextEmail);
       if (!emailCheck.valid) {
-        setError(new Error(emailCheck.error));
+        setProfileEmailError(emailCheck.error);
         return;
       }
     }
@@ -133,7 +136,7 @@ export default function AccountPage() {
       setEmailOtpState({ active: false, email: "", otp: "", infoMessage: "", devOtp: "" });
       setToastMsg("Đã cập nhật thông tin hồ sơ thành công!");
     } catch (err) {
-      setError(err);
+      setProfileError(err);
     } finally {
       setBusy(false);
     }
@@ -142,7 +145,7 @@ export default function AccountPage() {
   const handleConfirmProfileEmailOtp = async (e) => {
     e.preventDefault();
     setBusy(true);
-    setError(null);
+    setProfileError(null);
     try {
       await authService.verifyEmailOtp({
         email: emailOtpState.email.trim().toLowerCase(),
@@ -153,7 +156,7 @@ export default function AccountPage() {
       setEditingProfile(false);
       setToastMsg("Đã xác thực và thêm Gmail thành công!");
     } catch (err) {
-      setError(err);
+      setProfileError(err);
     } finally {
       setBusy(false);
     }
@@ -163,7 +166,8 @@ export default function AccountPage() {
 
   const handleUseCurrentLocation = async () => {
     setLocating(true);
-    setError(null);
+    setLocationError(null);
+    setAddressError(null);
     try {
       const loc = await fetchCurrentLocationAddress();
       setAddressForm((prev) => ({
@@ -174,7 +178,7 @@ export default function AccountPage() {
       }));
       setToastMsg("Đã điền địa chỉ từ vị trí hiện tại. Hãy kiểm tra lại số nhà trước khi lưu.");
     } catch (err) {
-      setError(err);
+      setLocationError(err);
     } finally {
       setLocating(false);
     }
@@ -183,10 +187,11 @@ export default function AccountPage() {
   // Handle Add Address
   const handleAddAddress = async (e) => {
     e.preventDefault();
-    setError(null);
+    setAddressError(null);
+    setAddressPhoneError("");
     const phoneCheck = validateVietnamPhone(addressForm.phone);
     if (!phoneCheck.valid) {
-      setError(new Error(phoneCheck.error));
+      setAddressPhoneError(phoneCheck.error);
       return;
     }
     setBusy(true);
@@ -197,7 +202,7 @@ export default function AccountPage() {
       setToastMsg("Đã lưu địa chỉ mới.");
       loadAddresses();
     } catch (err) {
-      setError(err);
+      setAddressError(err);
     } finally {
       setBusy(false);
     }
@@ -248,14 +253,11 @@ export default function AccountPage() {
       {/* Hero Header matching profile.html */}
       <section className="ux-hero">
         <div>
-          <span className="ux-kicker">ACCOUNT / PROFILE</span>
-          <h1>Không gian <em>của bạn.</em></h1>
-          <p>Quản lý thông tin cá nhân, đơn hàng và danh sách yêu thích.</p>
+          <span className="ux-kicker">Tài khoản · Hồ sơ cá nhân</span>
+          <h1>Hồ sơ và Sổ địa chỉ</h1>
+          <p>Quản lý thông tin liên hệ, địa chỉ giao hàng và danh sách sản phẩm yêu thích.</p>
         </div>
-        <span className="ux-hero-orbit" aria-hidden="true">N</span>
       </section>
-
-      {error && <ErrorBox error={error} variant="inline" />}
 
       {/* Two Column Section matching profile.html */}
       <div className="ux-two">
@@ -295,7 +297,7 @@ export default function AccountPage() {
           </div>
 
           {editingProfile ? (
-            <form onSubmit={handleUpdateProfile}>
+            <form onSubmit={handleUpdateProfile} noValidate>
               <div className="form-grid">
                 <div>
                   <label htmlFor="p-last">Họ</label>
@@ -322,9 +324,13 @@ export default function AccountPage() {
                 id="p-phone"
                 className="field"
                 value={profileForm.phone}
-                onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                onChange={(e) => {
+                  setProfilePhoneError("");
+                  setProfileForm({ ...profileForm, phone: e.target.value });
+                }}
                 placeholder="0901234567"
               />
+              {profilePhoneError && <ErrorBox error={profilePhoneError} />}
 
               {user.can_edit_email && (
                 <>
@@ -335,9 +341,13 @@ export default function AccountPage() {
                     type="email"
                     value={profileForm.email}
                     disabled={emailOtpState.active}
-                    onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                    onChange={(e) => {
+                      setProfileEmailError("");
+                      setProfileForm({ ...profileForm, email: e.target.value });
+                    }}
                     placeholder="yourname@gmail.com"
                   />
+                  {profileEmailError && <ErrorBox error={profileEmailError} />}
                 </>
               )}
 
@@ -347,8 +357,8 @@ export default function AccountPage() {
                     marginTop: "12px",
                     padding: "12px",
                     borderRadius: "10px",
-                    background: "rgba(99, 102, 241, 0.08)",
-                    border: "1px solid rgba(99, 102, 241, 0.25)",
+                    background: "rgba(21, 88, 201, 0.08)",
+                    border: "1px solid rgba(21, 88, 201, 0.25)",
                   }}
                 >
                   <p style={{ margin: "0 0 8px", fontSize: "13px", color: "var(--ink)" }}>
@@ -376,6 +386,7 @@ export default function AccountPage() {
                     }
                     placeholder="Nhập 6 chữ số (VD: 123456)"
                   />
+                  {profileError && <ErrorBox error={profileError} />}
                   <div style={{ marginTop: "10px", display: "flex", gap: "8px" }}>
                     <button
                       type="button"
@@ -389,15 +400,16 @@ export default function AccountPage() {
                       type="button"
                       className="btn btn-quiet"
                       disabled={busy}
-                      onClick={() =>
+                      onClick={() => {
+                        setProfileError(null);
                         setEmailOtpState({
                           active: false,
                           email: "",
                           otp: "",
                           infoMessage: "",
                           devOtp: "",
-                        })
-                      }
+                        });
+                      }}
                     >
                       Đổi Gmail
                     </button>
@@ -405,12 +417,23 @@ export default function AccountPage() {
                 </div>
               )}
 
+              {!emailOtpState.active && profileError && <ErrorBox error={profileError} />}
+
               {!emailOtpState.active && (
                 <div style={{ marginTop: "16px", display: "flex", gap: "10px" }}>
                   <button type="submit" className="btn btn-primary" disabled={busy}>
                     {busy ? "Đang lưu..." : "Lưu thay đổi"}
                   </button>
-                  <button type="button" className="btn btn-quiet" onClick={() => setEditingProfile(false)}>
+                  <button
+                    type="button"
+                    className="btn btn-quiet"
+                    onClick={() => {
+                      setProfileError(null);
+                      setProfilePhoneError("");
+                      setProfileEmailError("");
+                      setEditingProfile(false);
+                    }}
+                  >
                     Hủy
                   </button>
                 </div>
@@ -507,7 +530,7 @@ export default function AccountPage() {
 
         {/* Add Address Form */}
         {showAddAddress && (
-          <form onSubmit={handleAddAddress} style={{ background: "var(--bg2)", border: "1px solid var(--edge)", borderRadius: "12px", padding: "20px", marginBottom: "20px" }}>
+          <form onSubmit={handleAddAddress} noValidate style={{ background: "var(--bg2)", border: "1px solid var(--edge)", borderRadius: "12px", padding: "20px", marginBottom: "20px" }}>
             <h3 style={{ margin: "0 0 14px" }}>Thêm địa chỉ giao nhận</h3>
             <div className="form-grid">
               <div>
@@ -526,9 +549,13 @@ export default function AccountPage() {
                   className="field"
                   required
                   value={addressForm.phone}
-                  onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
+                  onChange={(e) => {
+                    setAddressPhoneError("");
+                    setAddressForm({ ...addressForm, phone: e.target.value });
+                  }}
                   placeholder="0901234567"
                 />
+                {addressPhoneError && <ErrorBox error={addressPhoneError} />}
               </div>
             </div>
 
@@ -541,6 +568,7 @@ export default function AccountPage() {
             >
               {locating ? "Đang lấy vị trí..." : "📍 Dùng vị trí hiện tại của tôi"}
             </button>
+            {locationError && <ErrorBox error={locationError} />}
 
             <label className="field-label">Địa chỉ (số nhà, tên đường)</label>
             <input
@@ -583,16 +611,29 @@ export default function AccountPage() {
               Đặt làm địa chỉ giao hàng mặc định
             </label>
 
+            {addressError && <ErrorBox error={addressError} />}
+
             <div style={{ marginTop: "16px", display: "flex", gap: "10px" }}>
-              <button type="submit" className="btn btn-violet" disabled={busy}>
+              <button type="submit" className="btn btn-primary" disabled={busy}>
                 {busy ? "Đang lưu..." : "Lưu địa chỉ"}
               </button>
-              <button type="button" className="btn btn-quiet" onClick={() => setShowAddAddress(false)}>
+              <button
+                type="button"
+                className="btn btn-quiet"
+                onClick={() => {
+                  setAddressError(null);
+                  setAddressPhoneError("");
+                  setLocationError(null);
+                  setShowAddAddress(false);
+                }}
+              >
                 Hủy
               </button>
             </div>
           </form>
         )}
+
+        {error && <ErrorBox error={error} onRetry={loadAddresses} />}
 
         {/* Address Cards List */}
         {loadingAddr ? (
