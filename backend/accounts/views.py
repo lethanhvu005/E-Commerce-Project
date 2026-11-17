@@ -10,7 +10,6 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.cache import cache
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.core.mail import EmailMessage, send_mail
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -24,6 +23,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from operations.models import AuditLog
 
+from .mailer import deliver_email, email_transport_configured, https_mail_provider_configured
 from .models import Address, User
 from .serializers import (
     AddressSerializer,
@@ -49,26 +49,29 @@ EMAIL_OTP_MAX_ATTEMPTS = 5
 
 
 def _smtp_is_configured() -> bool:
-    return bool(
-        getattr(settings, "EMAIL_HOST_USER", "").strip()
-        and getattr(settings, "EMAIL_HOST_PASSWORD", "").strip()
-    )
+    return email_transport_configured()
 
 
 def _dispatch_otp_email(*, subject: str, message: str, recipient_email: str, log_context: str) -> tuple[bool, bool]:
-    smtp_configured = _smtp_is_configured()
+    configured = email_transport_configured()
     try:
-        send_mail(
+        deliver_email(
             subject=subject,
             message=message,
-            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@nexa.vn"),
-            recipient_list=[recipient_email],
-            fail_silently=False,
+            recipient_email=recipient_email,
         )
-        return True, smtp_configured
-    except Exception:
-        logger.exception("Failed to send OTP email (%s)", log_context)
-        return False, smtp_configured
+        return True, configured
+    except Exception as exc:
+        if not https_mail_provider_configured():
+            logger.warning(
+                "Failed to send OTP email (%s): %s. "
+                "Note: Render Free blocks outbound SMTP ports 25/465/587; set BREVO_API_KEY, RESEND_API_KEY, or EMAIL_WEBHOOK_URL for HTTPS mail delivery.",
+                log_context,
+                exc,
+            )
+        else:
+            logger.exception("Failed to send OTP email (%s)", log_context)
+        return False, configured
 
 
 def _verify_cached_otp(*, cache_key: str, otp: str, expected_match: dict | None = None):
@@ -787,32 +790,23 @@ def request_email_otp(request):
         timeout=EMAIL_OTP_TTL_SECONDS,
     )
 
-    smtp_configured = bool(
-        getattr(settings, "EMAIL_HOST_USER", "").strip()
-        and getattr(settings, "EMAIL_HOST_PASSWORD", "").strip()
+    mail_sent, smtp_configured = _dispatch_otp_email(
+        subject=f"[NEXA] Mã xác thực địa chỉ email của bạn: {code}",
+        message=(
+            f"Xin chào {request.user.get_full_name() or 'bạn'},\n\n"
+            f"Mã xác thực (OTP) để liên kết địa chỉ email {email} với tài khoản NEXA của bạn là:\n\n"
+            f"{code}\n\n"
+            f"Mã có hiệu lực trong vòng 10 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai."
+        ),
+        recipient_email=email,
+        log_context=f"email_otp user_id={request.user.pk}",
     )
-    mail_sent = False
-    try:
-        send_mail(
-            subject=f"[NEXA] Mã xác thực địa chỉ email của bạn: {code}",
-            message=(
-                f"Xin chào {request.user.get_full_name() or 'bạn'},\n\n"
-                f"Mã xác thực (OTP) để liên kết địa chỉ email {email} với tài khoản NEXA của bạn là:\n\n"
-                f"{code}\n\n"
-                f"Mã có hiệu lực trong vòng 10 phút. Vui lòng không chia sẻ mã này cho bất kỳ ai."
-            ),
-            from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@nexa.vn"),
-            recipient_list=[email],
-            fail_silently=False,
+    if not settings.DEBUG and not mail_sent:
+        cache.delete(cache_key)
+        return Response(
+            {"detail": "Không thể gửi mã xác thực qua email lúc này. Vui lòng thử lại sau."},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
-        mail_sent = True
-    except Exception:
-        logger.warning("Failed to send OTP email for user_id=%s", request.user.pk)
-        if not settings.DEBUG:
-            return Response(
-                {"detail": "Không thể gửi mã xác thực qua email lúc này. Vui lòng thử lại sau."},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
 
     payload = {
         "detail": f"Đã gửi mã xác thực gồm 6 chữ số đến {email}.",
@@ -1182,24 +1176,23 @@ def support_contact(request):
 
     support_email = getattr(settings, "EMAIL_HOST_USER", "").strip() or "lethanhvu005@gmail.com"
     try:
-        email_msg = EmailMessage(
+        deliver_email(
             subject=f"[NEXA Hỗ trợ] [{data['subject']}] từ {data['name']}",
-            body=(
+            message=(
                 f"Họ và tên: {data['name']}\n"
                 f"Email khách hàng: {data['email']}\n"
                 f"Số điện thoại: {data.get('phone') or 'Không cung cấp'}\n"
                 f"Chủ đề: {data['subject']}\n\n"
                 f"Nội dung cần hỗ trợ:\n{data['message']}\n"
             ),
+            recipient_email=support_email,
+            reply_to=data["email"],
             from_email=getattr(settings, "DEFAULT_FROM_EMAIL", support_email),
-            to=[support_email],
-            reply_to=[data["email"]],
         )
-        email_msg.send(fail_silently=False)
     except Exception:
         logger.warning("Failed to dispatch support contact email from %s", data["email"])
         return Response(
-            {"detail": "Không thể gửi email trực tiếp lúc này. Vui lòng kiểm tra cấu hình SMTP hoặc thử lại sau."},
+            {"detail": "Không thể gửi email trực tiếp lúc này. Vui lòng kiểm tra cấu hình gửi thư (HTTPS API hoặc SMTP) và thử lại sau."},
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 

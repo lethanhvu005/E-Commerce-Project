@@ -742,4 +742,48 @@ class AccountAuthApiTests(APITestCase):
         self.assertEqual(new_login.status_code, status.HTTP_200_OK)
         self.assertIn("access", new_login.data)
 
+    def test_brevo_https_mail_transport_when_configured(self):
+        from unittest.mock import MagicMock, patch
+        from django.test import override_settings
+
+        mock_resp = MagicMock()
+        mock_resp.status = 201
+        mock_resp.__enter__.return_value = mock_resp
+
+        with override_settings(
+            EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend",
+            BREVO_API_KEY="test-brevo-key",
+            BREVO_SENDER_EMAIL="sender@gmail.com",
+        ), patch("accounts.mailer.urlopen", return_value=mock_resp) as mocked_urlopen:
+            res = self.client.post(
+                "/api/auth/password-reset/request/",
+                {"email": "buyer@example.test"},
+                format="json",
+            )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertTrue(mocked_urlopen.called)
+        req_arg = mocked_urlopen.call_args.args[0]
+        self.assertEqual(req_arg.full_url, "https://api.brevo.com/v3/smtp/email")
+
+    def test_smtp_blocked_port_fails_fast_without_hanging(self):
+        from unittest.mock import patch
+        from django.test import override_settings
+
+        with override_settings(
+            DEBUG=False,
+            EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend",
+            BREVO_API_KEY="",
+            RESEND_API_KEY="",
+            EMAIL_WEBHOOK_URL="",
+            EMAIL_HOST_USER="sender@gmail.com",
+            EMAIL_HOST_PASSWORD="app-password",
+        ), patch("accounts.mailer._probe_smtp_reachable", side_effect=TimeoutError("SMTP blocked")):
+            res = self.client.post(
+                "/api/auth/password-reset/request/",
+                {"email": "buyer@example.test"},
+                format="json",
+            )
+        self.assertEqual(res.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertIsNone(cache.get(f"password_reset_otp:{self.user.pk}"))
+
 

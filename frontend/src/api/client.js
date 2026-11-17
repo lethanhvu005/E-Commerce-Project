@@ -103,7 +103,7 @@ async function refreshAccessToken() {
 
 // Main fetch function with single-retry on 401
 export async function apiFetch(path, options = {}, retry = true) {
-  const { skipAuth = false, ...fetchOptions } = options;
+  const { skipAuth = false, timeoutMs: customTimeoutMs, ...fetchOptions } = options;
   const tokens = getTokens();
   const headers = new Headers(fetchOptions.headers || {});
 
@@ -116,14 +116,33 @@ export async function apiFetch(path, options = {}, retry = true) {
   }
 
   const normalizedPath = path.startsWith("http") ? path : `${API_ROOT}${path.startsWith("/") ? "" : "/"}${path}`;
+  const isLocalBackend = /^https?:\/\/(127\.0\.0\.1|localhost)\b/i.test(API_ROOT) || API_ROOT.startsWith("/");
+  const timeoutMs = Number(customTimeoutMs || 25000);
+  const controller = !fetchOptions.signal && typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timerId = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
 
   let response;
   try {
-    response = await fetch(normalizedPath, { ...fetchOptions, headers });
+    response = await fetch(normalizedPath, {
+      ...fetchOptions,
+      headers,
+      signal: fetchOptions.signal || (controller ? controller.signal : undefined),
+    });
   } catch (netErr) {
-    const error = new Error("Không thể kết nối đến máy chủ backend (127.0.0.1:8000). Vui lòng kiểm tra backend server.");
+    if (netErr?.name === "AbortError") {
+      const timeoutError = new Error("Máy chủ phản hồi quá lâu (timeout). Vui lòng thử lại sau giây lát.");
+      timeoutError.status = 504;
+      throw timeoutError;
+    }
+    const error = new Error(
+      isLocalBackend
+        ? "Không thể kết nối đến máy chủ backend (127.0.0.1:8000). Vui lòng kiểm tra backend server."
+        : "Không thể kết nối đến máy chủ API lúc này. Vui lòng thử lại sau giây lát."
+    );
     error.status = 0;
     throw error;
+  } finally {
+    if (timerId) clearTimeout(timerId);
   }
 
   // Handle 401 Unauthorized by refreshing token
