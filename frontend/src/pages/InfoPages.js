@@ -4,47 +4,38 @@ import { authService, orderService } from "../api/client";
 import { money, dateTime, orderStatusLabel } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import { Loading, ErrorBox } from "../components/Feedback";
-import { Tilt3DCard } from "../components/Motion3D";
 
 export function AboutPage() {
   return (
     <div className="container ux-page">
-      <section className="ux-hero nexa-hero-glow">
+      <section className="ux-hero">
         <div>
-          <span className="ux-kicker">NEXA / STORY / BRAND</span>
-          <h1>
-            Built for the
-            <br />
-            <em>extra mile.</em>
-          </h1>
-          <p>Gear dành cho những người luôn muốn tốt hơn từng ngày.</p>
+          <span className="ux-kicker">Về thương hiệu &amp; Tiêu chuẩn phần cứng</span>
+          <h1>Thiết bị ngoại vi hiệu năng cao chuẩn eSports</h1>
+          <p>
+            Chuyên phân phối bàn phím cơ, chuột không dây cảm biến quang học và thiết bị âm thanh kiểm âm chính hãng tại Việt Nam.
+          </p>
         </div>
-        <span className="ux-hero-orbit" aria-hidden="true">
-          N
-        </span>
       </section>
       <div className="ux-two">
-        <Tilt3DCard as="section" className="ux-card" intensity={6} scale={1.01}>
-          <h2>Thiết bị tốt bắt đầu từ trải nghiệm tốt.</h2>
+        <section className="ux-card">
+          <h2>Phòng thử nghiệm phần cứng &amp; Showroom thực tế</h2>
           <p>
-            NEXA là thương hiệu thiết bị ngoại vi chuyên nghiệp, cung cấp bàn phím cơ, chuột gaming,
-            tai nghe và phụ kiện công nghệ cao cấp. Toàn bộ trải nghiệm được xây dựng đồng bộ với hệ
-            thống dữ liệu CommerceOS và backend PostgreSQL.
+            NEXA tập trung vào trải nghiệm gõ phím, độ chính xác mắt đọc và độ bền cơ học lâu dài. Tại Showroom K249 Nguyễn Đình Chiểu (Đà Nẵng), khách hàng có thể trực tiếp thử từng loại switch (Linear, Tactile, Silent), kiểm tra form cầm chuột (Ergonomic, Symmetrical) và chất âm thực tế trước khi quyết định.
           </p>
           <p>
-            Brand direction: futuristic gaming · bold typography · thoughtful performance.
+            Mọi sản phẩm bán ra đều đi kèm mã định danh đơn hàng và chế độ bảo hành điện tử chính hãng 24 tháng, đổi mới 1-1 trong 30 ngày đầu nếu có lỗi phần cứng.
           </p>
-        </Tilt3DCard>
-        <Tilt3DCard as="section" className="ux-card" intensity={6} scale={1.01}>
-          <h2>Tiêu chuẩn kỹ thuật NEXA Lab</h2>
+        </section>
+        <section className="ux-card">
+          <h2>Quy trình kiểm định kỹ thuật 3 bước</h2>
           <p>
-            Mỗi sản phẩm trước khi đưa vào danh mục đều trải qua kiểm thử độ trễ tín hiệu, độ bền
-            switch cơ học 80 triệu lần nhấn và độ ổn định kết nối không dây 2.4GHz.
+            Trước khi xuất kho giao đến tay khách hàng, mỗi thiết bị đều được kỹ thuật viên kiểm tra độ trễ tín hiệu (Polling Rate 1000Hz – 8000Hz), độ bền hotswap socket 5-pin và dung lượng pin không dây 2.4GHz / Bluetooth 5.3.
           </p>
-          <Link className="btn btn-violet nexa-btn-3d" to="/products">
-            Khám phá bộ sưu tập ↗
+          <Link className="btn btn-primary" to="/products">
+            Xem danh mục sản phẩm ↗
           </Link>
-        </Tilt3DCard>
+        </section>
       </div>
     </div>
   );
@@ -129,20 +120,14 @@ export function ContactPage() {
 
   return (
     <div className="container ux-page">
-      <section className="ux-hero nexa-hero-glow">
+      <section className="ux-hero">
         <div>
-          <span className="ux-kicker">NEXA / SUPPORT / CONTACT</span>
-          <h1>
-            Liên hệ &amp; <em>Hỗ trợ.</em>
-          </h1>
+          <span className="ux-kicker">Trung tâm Hỗ trợ &amp; Bảo hành NEXA</span>
+          <h1>Liên hệ kỹ thuật &amp; Showroom Đà Nẵng</h1>
           <p>
-            Kết nối trực tiếp qua Gmail, Hotline hoặc ghé thăm Showroom NEXA. Đội ngũ kỹ thuật luôn
-            sẵn sàng hỗ trợ bạn.
+            Kết nối trực tiếp qua Gmail, Hotline/Zalo 0947243014 hoặc ghé thăm Showroom tại K249 Nguyễn Đình Chiểu, Quận Ngũ Hành Sơn.
           </p>
         </div>
-        <span className="ux-hero-orbit" aria-hidden="true">
-          N
-        </span>
       </section>
 
       <div className="ux-two">
@@ -394,19 +379,12 @@ export function ContactPage() {
 export function FaqPage() {
   return (
     <div className="container ux-page">
-      <section className="ux-hero nexa-hero-glow">
+      <section className="ux-hero">
         <div>
-          <span className="ux-kicker">NEXA / HELP / FAQ</span>
-          <h1>
-            Your questions.
-            <br />
-            <em>Answered.</em>
-          </h1>
-          <p>Những giải đáp thường gặp khi mua sắm tại NEXA.</p>
+          <span className="ux-kicker">Hướng dẫn mua hàng &amp; Hậu mãi</span>
+          <h1>Câu hỏi thường gặp</h1>
+          <p>Giải đáp chi tiết về quy trình áp mã giảm giá, thanh toán, thời gian giao nhận và chế độ bảo hành 24 tháng.</p>
         </div>
-        <span className="ux-hero-orbit" aria-hidden="true">
-          N
-        </span>
       </section>
       <div className="ux-faq">
         <details className="ux-faq-item" open>
@@ -473,23 +451,16 @@ export function ShippingPage() {
 
   return (
     <div className="container ux-page">
-      <section className="ux-hero nexa-hero-glow">
+      <section className="ux-hero">
         <div>
-          <span className="ux-kicker">NEXA / FULFILLMENT / DELIVERY</span>
-          <h1>
-            From our setup
-            <br />
-            <em>to yours.</em>
-          </h1>
-          <p>Luồng giao hàng minh bạch: từ xác nhận đơn đến bàn giao cho khách.</p>
+          <span className="ux-kicker">Vận chuyển &amp; Giao nhận toàn quốc</span>
+          <h1>Biểu phí &amp; Thời gian giao hàng</h1>
+          <p>Đóng gói chống sốc 3 lớp, hỗ trợ đồng kiểm khi nhận hàng và miễn phí vận chuyển theo ngưỡng đơn hàng.</p>
         </div>
-        <span className="ux-hero-orbit" aria-hidden="true">
-          N
-        </span>
       </section>
       <div className="ux-two">
         <section className="ux-card">
-          <h2>Phương thức giao hàng (từ PostgreSQL)</h2>
+          <h2>Phương thức giao hàng hiện hành</h2>
           {loading ? (
             <Loading label="Đang tải phương thức giao hàng..." />
           ) : methods.length === 0 ? (
@@ -509,11 +480,11 @@ export function ShippingPage() {
           )}
         </section>
         <section className="ux-card">
-          <h2>Theo dõi đơn hàng</h2>
+          <h2>Tra cứu hành trình đơn hàng</h2>
           <p>
-            Nhập mã đơn hàng của bạn để kiểm tra trạng thái và lịch sử xử lý đơn tức thì.
+            Nhập mã đơn hàng (UUID) của bạn để kiểm tra trạng thái xác nhận, đóng gói và lịch sử bàn giao cho đơn vị vận chuyển.
           </p>
-          <Link className="btn btn-violet nexa-btn-3d" to="/tracking">
+          <Link className="btn btn-primary" to="/tracking">
             Kiểm tra đơn hàng ↗
           </Link>
         </section>
@@ -525,32 +496,33 @@ export function ShippingPage() {
 export function PrivacyPage() {
   return (
     <div className="container ux-page">
-      <section className="ux-hero nexa-hero-glow">
+      <section className="ux-hero">
         <div>
-          <span className="ux-kicker">NEXA / LEGAL / PRIVACY</span>
-          <h1>
-            Your data.
-            <br />
-            <em>Your control.</em>
-          </h1>
-          <p>Chính sách bảo mật thông tin và an toàn tài khoản tại NEXA CommerceOS.</p>
+          <span className="ux-kicker">Pháp lý &amp; Bảo vệ dữ liệu cá nhân</span>
+          <h1>Chính sách quyền riêng tư &amp; Bảo mật thông tin</h1>
+          <p>Minh bạch về mục đích thu thập, phạm vi sử dụng và quyền của khách hàng đối với dữ liệu cá nhân tại NEXA.</p>
         </div>
-        <span className="ux-hero-orbit" aria-hidden="true">
-          N
-        </span>
       </section>
-      <section className="ux-card">
-        <h2>Cam kết quyền riêng tư</h2>
-        <p>
-          Hệ thống NEXA sử dụng cơ chế xác thực JWT chuẩn công nghiệp, mã hóa mật khẩu an toàn
-          trong cơ sở dữ liệu PostgreSQL. Mọi giao dịch đặt hàng, thông tin địa chỉ và hồ sơ người
-          dùng đều được phân quyền nghiêm ngặt.
-        </p>
-        <p>
-          Chúng tôi cam kết không cung cấp thông tin của quý khách cho bất kỳ bên thứ ba không liên
-          quan nào ngoài các đối tác vận tải phục vụ vận chuyển đơn hàng.
-        </p>
-      </section>
+      <div className="ux-two">
+        <section className="ux-card">
+          <h2>1. Dữ liệu thu thập &amp; Mục đích xử lý</h2>
+          <p>
+            NEXA chỉ thu thập các thông tin cần thiết để thực hiện hợp đồng mua bán và bảo hành sản phẩm, bao gồm: Họ tên người nhận, số điện thoại liên hệ giao hàng, địa chỉ nhận hàng và địa chỉ Email xác nhận đơn/bảo hành.
+          </p>
+          <p>
+            Dữ liệu của quý khách chỉ được chia sẻ với đơn vị vận chuyển để giao nhận hàng hóa, tuyệt đối không bán hoặc chia sẻ cho bên thứ ba phục vụ mục đích quảng cáo.
+          </p>
+        </section>
+        <section className="ux-card">
+          <h2>2. Bảo mật lưu trữ &amp; Quyền của chủ thể dữ liệu</h2>
+          <p>
+            Mật khẩu tài khoản được băm một chiều chuẩn công nghiệp, phiên đăng nhập được bảo vệ bằng JWT có thời hạn và kiểm soát truy cập theo vai trò (RBAC).
+          </p>
+          <p>
+            Theo quy định pháp luật Việt Nam hiện hành về bảo vệ dữ liệu cá nhân, quý khách có toàn quyền yêu cầu xem, cập nhật, chỉnh sửa hoặc xóa thông tin cá nhân bất kỳ lúc nào tại mục Tài khoản hoặc liên hệ trực tiếp qua email <strong>lethanhvu005@gmail.com</strong> / Hotline <strong>0947243014</strong>.
+          </p>
+        </section>
+      </div>
     </div>
   );
 }
@@ -602,17 +574,12 @@ export function TrackingPage() {
 
   return (
     <div className="container ux-page">
-      <section className="ux-hero nexa-hero-glow">
+      <section className="ux-hero">
         <div>
-          <span className="ux-kicker">NEXA / ORDERS / TRACKING</span>
-          <h1>
-            Track every <em>move.</em>
-          </h1>
-          <p>Kiểm tra thông tin và tiến độ giao hàng của đơn hàng tại NEXA.</p>
+          <span className="ux-kicker">Tra cứu vận đơn &amp; Lịch sử xử lý</span>
+          <h1>Theo dõi tiến độ giao hàng</h1>
+          <p>Nhập mã định danh đơn hàng (UUID) để xem chi tiết trạng thái xác nhận, đóng gói và vận chuyển.</p>
         </div>
-        <span className="ux-hero-orbit" aria-hidden="true">
-          N
-        </span>
       </section>
       <section className="ux-card">
         <h2>Theo dõi vận chuyển</h2>

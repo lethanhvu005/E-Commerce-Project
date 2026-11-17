@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { promotionService } from "../api/client";
-import { Tilt3DCard } from "../components/Motion3D";
 import { Empty, ErrorBox, Loading, Toast } from "../components/Feedback";
 
 export default function VouchersPage() {
@@ -57,19 +56,12 @@ export default function VouchersPage() {
     <div className="container ux-page">
       <Toast message={toastMsg} onClose={() => setToastMsg("")} />
 
-      <section className="ux-hero nexa-hero-glow">
+      <section className="ux-hero">
         <div>
-          <span className="ux-kicker">REWARDS / OFFERS</span>
-          <h1>
-            Good gear.
-            <br />
-            <em>Better deals.</em>
-          </h1>
-          <p>Khám phá ưu đãi độc quyền từ NEXA và áp dụng ngay trong giỏ hàng của bạn.</p>
+          <span className="ux-kicker">Chương trình ưu đãi &amp; Khuyến mãi</span>
+          <h1>Kho mã giảm giá NEXA</h1>
+          <p>Sao chép mã ưu đãi đang có hiệu lực và áp dụng trực tiếp tại bước thanh toán giỏ hàng.</p>
         </div>
-        <span className="ux-hero-orbit" aria-hidden="true">
-          N
-        </span>
       </section>
 
       {error && <ErrorBox error={error} onRetry={loadVouchers} />}
@@ -84,14 +76,8 @@ export default function VouchersPage() {
       ) : (
         <div className="ux-voucher-grid">
           {vouchers.map((v) => (
-            <Tilt3DCard
-              as="article"
-              className="ux-voucher"
-              key={v.id || v.code}
-              intensity={10}
-              scale={1.02}
-            >
-              <span className="ux-kicker">NEXA / REWARDS</span>
+            <article className="ux-voucher" key={v.id || v.code}>
+              <span className="ux-kicker">Mã ưu đãi chính thức</span>
               <h2>{v.name || v.code}</h2>
               <p>
                 {v.description ||
@@ -104,12 +90,12 @@ export default function VouchersPage() {
               <code>{v.code}</code>
               <button
                 type="button"
-                className="btn btn-violet nexa-btn-3d"
+                className="btn btn-primary"
                 onClick={() => handleUseVoucher(v.code)}
               >
-                Sao chép & Sử dụng →
+                Sao chép &amp; Sử dụng →
               </button>
-            </Tilt3DCard>
+            </article>
           ))}
         </div>
       )}

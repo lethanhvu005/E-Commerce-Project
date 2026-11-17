@@ -135,26 +135,75 @@ function splitTitle(title = "") {
   };
 }
 
+function TrustSpecIcon({ name }) {
+  const paths = {
+    delivery: (
+      <>
+        <path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z" />
+        <circle cx="7.5" cy="16.5" r="2" />
+        <circle cx="17.5" cy="16.5" r="2" />
+      </>
+    ),
+    warranty: (
+      <>
+        <path d="M12 3 4 7v6c0 5 3.4 7.9 8 9 4.6-1.1 8-4 8-9V7l-8-4Z" />
+        <path d="m9 12 2 2 4-4" />
+      </>
+    ),
+    lab: (
+      <>
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="M7 9h2M11 9h2M15 9h2M7 13h10" />
+      </>
+    ),
+    exchange: (
+      <>
+        <path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5" />
+        <path d="M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5" />
+      </>
+    ),
+  };
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {paths[name] || paths.warranty}
+    </svg>
+  );
+}
+
 const TRUST_PILLARS = [
   {
-    icon: "⚡",
+    code: "01",
+    icon: "delivery",
     title: "Giao nhanh nội thành 2–4h",
-    desc: "Đóng gói chống sốc 3 lớp, nhận hàng ngay trong ngày.",
+    desc: "Đóng gói chống sốc 3 lớp, miễn phí vận chuyển toàn quốc cho đơn từ 1.000.000 ₫.",
   },
   {
-    icon: "🛡️",
-    title: "Bảo hành chính hãng 24 tháng",
-    desc: "Hỗ trợ 1 đổi 1 trong 30 ngày đầu nếu có lỗi phần cứng.",
+    code: "02",
+    icon: "warranty",
+    title: "Bảo hành điện tử 24 tháng",
+    desc: "Tra cứu trực tiếp theo mã đơn & Serial tại Showroom K249 Nguyễn Đình Chiểu, Đà Nẵng.",
   },
   {
-    icon: "🎧",
-    title: "Trải nghiệm & Tư vấn thực tế",
-    desc: "Đội ngũ kỹ thuật hỗ trợ chọn switch, form chuột và âm thanh phù hợp.",
+    code: "03",
+    icon: "lab",
+    title: "Kiểm định kỹ thuật trước khi giao",
+    desc: "Test độ trễ polling rate 1000–8000Hz, độ đồng đều switch và mắt đọc quang học.",
   },
   {
-    icon: "🏷️",
-    title: "Ưu đãi thành viên & Voucher",
-    desc: "Áp mã giảm giá trực tiếp khi thanh toán, tích điểm mọi đơn hàng.",
+    code: "04",
+    icon: "exchange",
+    title: "Đổi mới 1-1 trong 30 ngày đầu",
+    desc: "Áp dụng ngay khi phát sinh lỗi phần cứng từ nhà sản xuất, thủ tục minh bạch.",
   },
 ];
 
@@ -559,18 +608,21 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* 4-Pillar Service Highlights Bar */}
+        {/* 4-Pillar Service Ledger (Static non-clickable cards — no hover lift/tilt per U04/U14) */}
         <section className="nexa-trust-strip" aria-label="Cam kết dịch vụ NEXA">
           {TRUST_PILLARS.map((pillar) => (
-            <Tilt3DCard className="nexa-trust-card" key={pillar.title} intensity={7} scale={1.015}>
-              <span className="nexa-trust-icon" aria-hidden="true">
-                {pillar.icon}
-              </span>
+            <div className="nexa-trust-card" key={pillar.title}>
+              <div className="nexa-trust-head">
+                <span className="nexa-trust-icon" aria-hidden="true">
+                  <TrustSpecIcon name={pillar.icon} />
+                </span>
+                <span className="nexa-trust-code">{pillar.code}</span>
+              </div>
               <div>
                 <strong>{pillar.title}</strong>
                 <p>{pillar.desc}</p>
               </div>
-            </Tilt3DCard>
+            </div>
           ))}
         </section>
 
@@ -782,20 +834,20 @@ export default function HomePage() {
 
         {/* Editorial Spotlight Showcase */}
         {spotlightProduct && (
-          <Tilt3DCard as="section" className="gear-editorial nexa-editorial-3d" intensity={6} scale={1.008}>
+          <section className="gear-editorial nexa-editorial-3d">
             <div className="editorial-copy">
-              <span className="gear-kicker">TIÊU ĐIỂM TRONG TUẦN</span>
-              <h2>Thiết kế tối ưu cho hiệu suất thực tế</h2>
+              <span className="gear-kicker">TIÊU ĐIỂM PHẦN CỨNG</span>
+              <h2>{spotlightProduct.name}</h2>
               <p>
                 {spotlightProduct.summary ||
-                  "Hoàn thiện tỉ mỉ từ cảm giác bấm, độ ổn định kết nối không dây cho đến độ bền lâu dài cho nhu cầu làm việc và giải trí mỗi ngày."}
+                  "Cấu trúc khung vỏ chắc chắn, tốc độ phản hồi tín hiệu chuẩn xác và độ bền linh kiện đạt chuẩn sử dụng cường độ cao mỗi ngày."}
               </p>
               <div className="editorial-links">
                 <Link to={`/products/${spotlightProduct.slug}`}>
-                  Xem chi tiết {spotlightProduct.short_name || spotlightProduct.name} <span>↗</span>
+                  Xem thông số & giá bán <span>↗</span>
                 </Link>
                 <Link to="/products">
-                  Xem toàn bộ danh mục <span>↗</span>
+                  Toàn bộ danh mục <span>↗</span>
                 </Link>
               </div>
             </div>
@@ -821,7 +873,7 @@ export default function HomePage() {
                 <b>{spotlightProduct.min_price != null ? money(spotlightProduct.min_price) : ""} ↗</b>
               </span>
             </Link>
-          </Tilt3DCard>
+          </section>
         )}
 
         {/* Newest Arrivals 3-Column Strip */}

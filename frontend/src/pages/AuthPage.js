@@ -290,26 +290,19 @@ export default function AuthPage({ mode = "login" }) {
 
   return (
     <div className="container ux-page nexa-auth-page">
-      {/* Compact Hero header matching login.html / register.html */}
+      {/* Compact Hero header */}
       <section className="ux-hero nexa-auth-hero">
         <div>
           <span className="ux-kicker">
-            {isRegister ? "TÀI KHOẢN / ĐĂNG KÝ" : "TÀI KHOẢN / ĐĂNG NHẬP"}
+            {isRegister ? "Tài khoản thành viên · Đăng ký" : "Tài khoản thành viên · Đăng nhập"}
           </span>
-          <h1>
-            {isRegister ? (
-              <>Gia nhập <em>NEXA.</em></>
-            ) : (
-              <>Chào mừng <em>trở lại.</em></>
-            )}
-          </h1>
+          <h1>{isRegister ? "Tạo tài khoản NEXA Gear" : "Đăng nhập hệ thống"}</h1>
           <p>
             {isRegister
-              ? "Một tài khoản, toàn bộ trải nghiệm công nghệ yêu thích."
-              : "Quản lý đơn hàng, wishlist và trải nghiệm NEXA theo cách của bạn."}
+              ? "Lưu địa chỉ nhận hàng mặc định, áp dụng mã giảm giá và kích hoạt bảo hành điện tử 24 tháng."
+              : "Theo dõi tiến độ đơn hàng, tra cứu lịch sử bảo hành và quản lý danh sách sản phẩm đã lưu."}
           </p>
         </div>
-        <span className="ux-hero-orbit" aria-hidden="true">N</span>
       </section>
 
       {/* Main Auth Container matching ux-auth layout */}
@@ -663,17 +656,19 @@ export default function AuthPage({ mode = "login" }) {
           )}
         </div>
 
-        {/* Right Promo Card matching ux-auth-promo */}
+        {/* Right Specification Summary Card */}
         <div className="ux-card ux-auth-promo">
-          <div className="ux-icon">✦</div>
-          <h2>MỘT TÀI KHOẢN.<br />TRỌN HỆ SINH THÁI.</h2>
+          <span className="ux-kicker" style={{ marginBottom: "8px" }}>
+            QUYỀN LỢI THÀNH VIÊN &amp; BẢO HÀNH
+          </span>
+          <h2>Quản lý đơn hàng &amp; Bảo hành điện tử 24 tháng</h2>
           <p>
-            Xem lịch sử mua sắm, lưu sản phẩm yêu thích, quản lý địa chỉ và nhận mã giảm giá trong một không gian.
+            Mọi đơn hàng đặt qua tài khoản NEXA đều được gắn mã định danh UUID và lưu trữ lịch sử bảo hành phần cứng chính hãng.
           </p>
           <ul className="ux-benefits">
-            <li>Trải nghiệm mượt mà trên mọi thiết bị</li>
-            <li>Thông báo trạng thái đơn hàng theo thời gian thực</li>
-            <li>Đổi trả và bảo hành chính hãng dễ dàng</li>
+            <li>Tra cứu trạng thái vận đơn và lịch sử bàn giao theo thời gian thực</li>
+            <li>Đổi mới 1-1 trong 30 ngày đầu nếu phát sinh lỗi switch hoặc cảm biến</li>
+            <li>Lưu sổ địa chỉ nhận hàng và áp dụng trực tiếp mã ưu đãi tại giỏ hàng</li>
           </ul>
         </div>
       </div>

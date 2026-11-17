@@ -695,12 +695,12 @@ export default function Layout() {
         <div className="container">
           <div className="footer-statement">
             <span>
-              Thiết kế tinh gọn.
+              Thiết bị ngoại vi chuẩn kỹ thuật.
               <br />
-              <em>Trải nghiệm trọn vẹn.</em>
+              Bảo hành chính hãng 24 tháng.
             </span>
             <Link to="/products">
-              Tìm món gear tiếp theo <Icon name="arrow" />
+              Xem danh mục sản phẩm <Icon name="arrow" />
             </Link>
           </div>
 
@@ -716,43 +716,52 @@ export default function Layout() {
                 </span>
               </Link>
               <p>
-                Chuyên bàn phím cơ, chuột gaming, tai nghe và phụ kiện chính hãng.
-                <br />
-                Bảo hành 24 tháng, giao nhanh toàn quốc.
+                Chuyên phân phối bàn phím cơ custom, chuột gaming cảm biến quang học, tai nghe kiểm âm và phụ kiện bàn máy chính hãng.
               </p>
+              <div className="nexa-footer-contact-meta">
+                <div>
+                  <strong>Địa chỉ Showroom &amp; Bảo hành:</strong> K249 Nguyễn Đình Chiểu, P. Khuê Mỹ, Q. Ngũ Hành Sơn, TP. Đà Nẵng
+                </div>
+                <div>
+                  <strong>Hotline / Zalo:</strong> <a href="tel:0947243014">0947243014</a> (08:00 – 21:00)
+                </div>
+                <div>
+                  <strong>Email hỗ trợ:</strong> <a href="mailto:lethanhvu005@gmail.com">lethanhvu005@gmail.com</a>
+                </div>
+              </div>
             </div>
 
             <div>
-              <h3>Khám phá</h3>
+              <h3>Danh mục sản phẩm</h3>
               <Link to="/products">Tất cả sản phẩm</Link>
-              <Link to="/products?category=ban-phim">Bàn phím</Link>
-              <Link to="/products?category=chuot">Chuột & lót bàn</Link>
-              <Link to="/wishlist">Danh sách yêu thích</Link>
-              <Link to="/vouchers">Kho Voucher</Link>
+              <Link to="/products?category=ban-phim">Bàn phím cơ</Link>
+              <Link to="/products?category=chuot">Chuột &amp; lót chuột</Link>
+              <Link to="/wishlist">Danh sách đã lưu</Link>
+              <Link to="/vouchers">Kho mã giảm giá</Link>
             </div>
 
             <div>
-              <h3>Hỗ trợ</h3>
-              <Link to="/shipping">Chính sách giao hàng</Link>
-              <Link to="/faq">Câu hỏi thường gặp</Link>
-              <Link to="/contact">Liên hệ</Link>
-              <Link to="/privacy">Quyền riêng tư</Link>
-              <Link to="/about">Về NEXA</Link>
+              <h3>Chính sách &amp; Hỗ trợ</h3>
+              <Link to="/shipping">Chính sách vận chuyển &amp; đồng kiểm</Link>
+              <Link to="/privacy">Chính sách bảo mật dữ liệu cá nhân</Link>
+              <Link to="/faq">Câu hỏi thường gặp &amp; Bảo hành</Link>
+              <Link to="/contact">Liên hệ &amp; Bản đồ Showroom</Link>
+              <Link to="/about">Về NEXA &amp; Tiêu chuẩn kỹ thuật</Link>
             </div>
 
             <div>
-              <h3>Tài khoản & Vận đơn</h3>
+              <h3>Tài khoản &amp; Đơn hàng</h3>
               <Link to="/login">Đăng nhập</Link>
-              <Link to="/register">Đăng ký</Link>
-              <Link to="/orders">Đơn hàng của tôi</Link>
-              <Link to="/tracking">Theo dõi vận chuyển</Link>
-              {user?.is_staff && <Link to="/admin">Quản trị CommerceOS ↗</Link>}
+              <Link to="/register">Đăng ký thành viên</Link>
+              <Link to="/orders">Lịch sử đơn hàng</Link>
+              <Link to="/tracking">Tra cứu mã vận đơn</Link>
+              {user?.is_staff && <Link to="/admin">Quản trị hệ thống ↗</Link>}
             </div>
           </div>
 
           <div className="gear-colophon">
-            <span>© 2026 NEXA GEAR · COMMERCEOS 3D EDITION</span>
-            <span>Dữ liệu thời gian thực từ PostgreSQL · Bảo mật JWT</span>
+            <span>© 2026 NEXA GEAR VIỆT NAM · SHOWROOM K249 NGUYỄN ĐÌNH CHIỂU, NGŨ HÀNH SƠN, ĐÀ NẴNG</span>
+            <span>HOTLINE: 0947 243 014 · EMAIL: LETHANHVU005@GMAIL.COM</span>
           </div>
         </div>
       </footer>

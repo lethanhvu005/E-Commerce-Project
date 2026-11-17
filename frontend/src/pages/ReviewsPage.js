@@ -104,17 +104,13 @@ export default function ReviewsPage() {
     <div className="container ux-page">
       <Toast message={toastMsg} onClose={() => setToastMsg("")} />
 
-      {/* Hero Header matching reviews.html */}
+      {/* Hero Header */}
       <section className="ux-hero">
         <div>
-          <span className="ux-kicker">COMMUNITY / REVIEWS</span>
-          <h1>
-            Real voices.<br />
-            <em>Real experiences.</em>
-          </h1>
-          <p>Lắng nghe trải nghiệm thực tế từ cộng đồng người dùng và game thủ cùng NEXA.</p>
+          <span className="ux-kicker">Cộng đồng người dùng &amp; Đánh giá đã xác minh</span>
+          <h1>Đánh giá thực tế từ khách hàng đã mua</h1>
+          <p>Chỉ những tài khoản đã đặt mua và nhận hàng thành công mới có thể gửi đánh giá sao cho từng sản phẩm.</p>
         </div>
-        <span className="ux-hero-orbit" aria-hidden="true">N</span>
       </section>
 
       {error && <ErrorBox error={error} />}
