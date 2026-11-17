@@ -285,6 +285,7 @@ export default function Layout() {
   };
 
   const handleLogout = async () => {
+    sessionStorage.removeItem("nexa_admin_view_storefront");
     await logout();
     navigate("/");
   };

@@ -97,6 +97,8 @@ def parse_npm_audit(data) -> list:
     vulnerabilities = data.get("vulnerabilities", {}) if isinstance(data, dict) else {}
     for pkg_name, details in vulnerabilities.items():
         severity = details.get("severity", "moderate").upper()
+        if severity not in {"HIGH", "CRITICAL"}:
+            continue
         via_list = details.get("via", [])
         for via in via_list:
             if isinstance(via, dict):

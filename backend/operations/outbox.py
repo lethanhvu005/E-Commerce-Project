@@ -1,6 +1,7 @@
 import json
 import logging
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import timedelta
 
@@ -52,9 +53,13 @@ def _default_destination() -> str:
 
 def default_outbox_handler(event: OutboxEvent) -> str:
     """Deliver an outbox event to an optional configured webhook or local no-op sink."""
-    webhook_url = getattr(settings, "OUTBOX_WEBHOOK_URL", "") or ""
+    webhook_url = (getattr(settings, "OUTBOX_WEBHOOK_URL", "") or "").strip()
     if not webhook_url:
         return "local://noop"
+
+    parsed = urllib.parse.urlparse(webhook_url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise PermanentDispatchError("invalid_webhook_scheme", "Webhook URL must use http or https scheme.")
 
     body = json.dumps(
         {
@@ -64,7 +69,7 @@ def default_outbox_handler(event: OutboxEvent) -> str:
             "payload": event.payload,
         }
     ).encode("utf-8")
-    req = urllib.request.Request(
+    req = urllib.request.Request(  # nosec B310
         webhook_url,
         data=body,
         headers={
@@ -76,7 +81,7 @@ def default_outbox_handler(event: OutboxEvent) -> str:
     )
     timeout_seconds = float(getattr(settings, "OUTBOX_WEBHOOK_TIMEOUT", 5.0))
     try:
-        with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:
+        with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:  # nosec B310
             code = getattr(resp, "status", 200)
             if code >= 500 or code == 429:
                 raise TransientDispatchError(f"http_{code}")

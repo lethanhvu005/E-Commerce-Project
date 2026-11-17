@@ -2,13 +2,13 @@ import json
 import logging
 import secrets
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.core.cache import cache
-from django.core.mail import send_mail
+from django.core.mail import EmailMessage, send_mail
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -19,6 +19,8 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from operations.models import AuditLog
 
 from .models import Address, User
 from .serializers import (
@@ -44,8 +46,11 @@ VALID_GOOGLE_ISSUERS = {"accounts.google.com", "https://accounts.google.com"}
 
 
 def _fetch_google_json(url, headers=None):
-    req = Request(url, headers=headers or {})
-    with urlopen(req, timeout=8) as resp:
+    parsed = urlparse(str(url))
+    if parsed.scheme != "https" or not parsed.netloc:
+        raise ValueError("Chỉ cho phép kết nối HTTPS tới máy chủ xác thực OAuth.")
+    req = Request(url, headers=headers or {})  # nosec B310
+    with urlopen(req, timeout=8) as resp:  # nosec B310
         return json.loads(resp.read().decode("utf-8"))
 
 
@@ -236,6 +241,10 @@ def google_login(request):
         first_name = parts[-1] if parts else ""
         last_name = " ".join(parts[:-1]) if len(parts) > 1 else ""
 
+    password = serializer.validated_data.get("password") or ""
+    otp = (serializer.validated_data.get("otp") or "").strip()
+    send_link_otp = bool(serializer.validated_data.get("send_link_otp"))
+
     now = timezone.now()
     try:
         with transaction.atomic():
@@ -246,11 +255,6 @@ def google_login(request):
                     return Response(
                         {"detail": "Tài khoản đã bị vô hiệu hóa."},
                         status=status.HTTP_401_UNAUTHORIZED,
-                    )
-                if user.is_staff or user.is_superuser:
-                    return Response(
-                        {"detail": "Tài khoản quản trị/nhân viên không được phép đăng nhập qua Google OAuth."},
-                        status=status.HTTP_403_FORBIDDEN,
                     )
                 update_fields = []
                 if user.email_verified_at is None:
@@ -264,42 +268,164 @@ def google_login(request):
                     update_fields.append("last_name")
                 if update_fields:
                     user.save(update_fields=update_fields)
+                if user.is_staff or user.is_superuser:
+                    AuditLog.objects.create(
+                        actor=user,
+                        action="account.staff_google_oauth_login",
+                        entity_type="User",
+                        entity_id=str(user.pk),
+                        changes={"email": user.email, "method": "google_oauth"},
+                    )
             else:
                 # 2. Check if an account with this email already exists
                 existing_by_email = User.objects.select_for_update().filter(email=email).first()
                 if existing_by_email is not None:
-                    if existing_by_email.is_staff or existing_by_email.is_superuser:
+                    if not existing_by_email.is_active:
                         return Response(
-                            {
-                                "detail": "Tài khoản quản trị/nhân viên không được phép tự động liên kết hoặc đăng nhập qua Google OAuth."
-                            },
-                            status=status.HTTP_403_FORBIDDEN,
+                            {"detail": "Tài khoản đã bị vô hiệu hóa."},
+                            status=status.HTTP_401_UNAUTHORIZED,
                         )
                     if existing_by_email.google_sub and existing_by_email.google_sub != google_sub:
                         return Response(
                             {"detail": "Email này đã được liên kết với một định danh Google khác."},
                             status=status.HTTP_409_CONFLICT,
                         )
-                    if existing_by_email.has_usable_password():
-                        return Response(
-                            {
-                                "detail": "Email này đã được đăng ký bằng mật khẩu. Vui lòng đăng nhập bằng mật khẩu để bảo mật tài khoản."
+
+                    needs_step_up = (
+                        existing_by_email.is_staff
+                        or existing_by_email.is_superuser
+                        or existing_by_email.has_usable_password()
+                    )
+                    if needs_step_up:
+                        cache_key = f"google_link_otp:{existing_by_email.pk}"
+                        if send_link_otp:
+                            code = f"{secrets.randbelow(1000000):06d}"
+                            cache.set(
+                                cache_key,
+                                {"google_sub": google_sub, "code": code, "attempts": 0},
+                                timeout=EMAIL_OTP_TTL_SECONDS,
+                            )
+                            try:
+                                send_mail(
+                                    subject=f"[NEXA] Mã xác minh liên kết Google OAuth: {code}",
+                                    message=(
+                                        f"Xin chào {existing_by_email.get_full_name() or email},\n\n"
+                                        f"Mã xác minh (OTP) để liên kết đăng nhập Google với tài khoản NEXA ({email}) của bạn là:\n\n"
+                                        f"{code}\n\n"
+                                        f"Mã có hiệu lực trong 10 phút. Nếu không phải bạn thực hiện, vui lòng bỏ qua email này."
+                                    ),
+                                    from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@nexa.vn"),
+                                    recipient_list=[email],
+                                    fail_silently=False,
+                                )
+                            except Exception:
+                                logger.warning("Failed to send Google link OTP for user_id=%s", existing_by_email.pk)
+                            return Response(
+                                {
+                                    "otp_sent": True,
+                                    "email": email,
+                                    "detail": f"Đã gửi mã OTP 6 chữ số đến {email} để xác minh liên kết Google.",
+                                },
+                                status=status.HTTP_200_OK,
+                            )
+
+                        if not password and not otp:
+                            if existing_by_email.is_staff or existing_by_email.is_superuser:
+                                return Response(
+                                    {
+                                        "detail": "Tài khoản quản trị/nhân viên cần xác minh lại mật khẩu hoặc mã OTP trước khi liên kết Google OAuth.",
+                                        "requires_reverification": True,
+                                        "email": email,
+                                        "is_staff_account": True,
+                                    },
+                                    status=status.HTTP_403_FORBIDDEN,
+                                )
+                            return Response(
+                                {
+                                    "detail": "Email này đã được đăng ký bằng mật khẩu. Vui lòng xác minh mật khẩu hoặc mã OTP để liên kết Google.",
+                                    "requires_reverification": True,
+                                    "email": email,
+                                    "is_staff_account": False,
+                                },
+                                status=status.HTTP_409_CONFLICT,
+                            )
+
+                        verification_method = ""
+                        if password:
+                            if not existing_by_email.check_password(password):
+                                return Response(
+                                    {
+                                        "detail": "Mật khẩu xác minh không chính xác.",
+                                        "requires_reverification": True,
+                                        "email": email,
+                                    },
+                                    status=status.HTTP_401_UNAUTHORIZED,
+                                )
+                            verification_method = "password"
+                        else:
+                            otp_record = cache.get(cache_key)
+                            if not otp_record or otp_record.get("google_sub") != google_sub:
+                                return Response(
+                                    {
+                                        "detail": "Mã OTP xác minh đã hết hạn hoặc chưa được yêu cầu. Vui lòng bấm gửi mã OTP.",
+                                        "requires_reverification": True,
+                                        "email": email,
+                                    },
+                                    status=status.HTTP_400_BAD_REQUEST,
+                                )
+                            attempts = int(otp_record.get("attempts", 0))
+                            if attempts >= EMAIL_OTP_MAX_ATTEMPTS:
+                                cache.delete(cache_key)
+                                return Response(
+                                    {
+                                        "detail": "Bạn đã nhập sai quá số lần cho phép. Vui lòng gửi lại mã OTP mới.",
+                                        "requires_reverification": True,
+                                        "email": email,
+                                    },
+                                    status=status.HTTP_400_BAD_REQUEST,
+                                )
+                            if not secrets.compare_digest(str(otp_record.get("code", "")), otp):
+                                otp_record["attempts"] = attempts + 1
+                                cache.set(cache_key, otp_record, timeout=EMAIL_OTP_TTL_SECONDS)
+                                return Response(
+                                    {
+                                        "detail": "Mã OTP xác minh không chính xác.",
+                                        "requires_reverification": True,
+                                        "email": email,
+                                    },
+                                    status=status.HTTP_400_BAD_REQUEST,
+                                )
+                            cache.delete(cache_key)
+                            verification_method = "email_otp"
+
+                        existing_by_email.google_sub = google_sub
+                        update_fields = ["google_sub"]
+                        if existing_by_email.email_verified_at is None:
+                            existing_by_email.email_verified_at = now
+                            update_fields.append("email_verified_at")
+                        existing_by_email.save(update_fields=update_fields)
+                        AuditLog.objects.create(
+                            actor=existing_by_email,
+                            action="account.google_oauth_linked",
+                            entity_type="User",
+                            entity_id=str(existing_by_email.pk),
+                            changes={
+                                "email": email,
+                                "is_staff": existing_by_email.is_staff,
+                                "is_superuser": existing_by_email.is_superuser,
+                                "method": verification_method,
                             },
-                            status=status.HTTP_409_CONFLICT,
                         )
-                    if not existing_by_email.is_active:
-                        return Response(
-                            {"detail": "Tài khoản đã bị vô hiệu hóa."},
-                            status=status.HTTP_401_UNAUTHORIZED,
-                        )
-                    # Existing passwordless OAuth account without google_sub bound yet
-                    existing_by_email.google_sub = google_sub
-                    update_fields = ["google_sub"]
-                    if existing_by_email.email_verified_at is None:
-                        existing_by_email.email_verified_at = now
-                        update_fields.append("email_verified_at")
-                    existing_by_email.save(update_fields=update_fields)
-                    user = existing_by_email
+                        user = existing_by_email
+                    else:
+                        # Existing passwordless non-staff OAuth account without google_sub bound yet
+                        existing_by_email.google_sub = google_sub
+                        update_fields = ["google_sub"]
+                        if existing_by_email.email_verified_at is None:
+                            existing_by_email.email_verified_at = now
+                            update_fields.append("email_verified_at")
+                        existing_by_email.save(update_fields=update_fields)
+                        user = existing_by_email
                 else:
                     user = User.objects.create_user(
                         email=email,
@@ -310,7 +436,7 @@ def google_login(request):
                         email_verified_at=now,
                     )
     except IntegrityError:
-        user = User.objects.filter(google_sub=google_sub, is_active=True, is_staff=False, is_superuser=False).first()
+        user = User.objects.filter(google_sub=google_sub, is_active=True).first()
         if user is None:
             return Response(
                 {"detail": "Không thể hoàn tất đăng nhập Google do xung đột dữ liệu tài khoản. Vui lòng thử lại."},
@@ -661,25 +787,30 @@ def support_contact(request):
 
     support_email = getattr(settings, "EMAIL_HOST_USER", "").strip() or "lethanhvu005@gmail.com"
     try:
-        send_mail(
+        email_msg = EmailMessage(
             subject=f"[NEXA Hỗ trợ] [{data['subject']}] từ {data['name']}",
-            message=(
+            body=(
                 f"Họ và tên: {data['name']}\n"
-                f"Email: {data['email']}\n"
+                f"Email khách hàng: {data['email']}\n"
                 f"Số điện thoại: {data.get('phone') or 'Không cung cấp'}\n"
                 f"Chủ đề: {data['subject']}\n\n"
-                f"Nội dung:\n{data['message']}\n"
+                f"Nội dung cần hỗ trợ:\n{data['message']}\n"
             ),
             from_email=getattr(settings, "DEFAULT_FROM_EMAIL", support_email),
-            recipient_list=[support_email],
-            fail_silently=True,
+            to=[support_email],
+            reply_to=[data["email"]],
         )
+        email_msg.send(fail_silently=False)
     except Exception:
         logger.warning("Failed to dispatch support contact email from %s", data["email"])
+        return Response(
+            {"detail": "Không thể gửi email trực tiếp lúc này. Vui lòng kiểm tra cấu hình SMTP hoặc thử lại sau."},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
 
     return Response(
         {
-            "detail": "Yêu cầu hỗ trợ của bạn đã được gửi thành công! Chúng tôi sẽ phản hồi sớm nhất.",
+            "detail": f"Đã gửi email trực tiếp thành công tới {support_email}! Chúng tôi sẽ phản hồi bạn sớm nhất.",
             "support_email": support_email,
         },
         status=status.HTTP_201_CREATED,

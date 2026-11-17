@@ -135,6 +135,9 @@ class RefreshSerializer(serializers.Serializer):
 class GoogleLoginSerializer(serializers.Serializer):
     credential = serializers.CharField(required=False, allow_blank=True, trim_whitespace=True)
     access_token = serializers.CharField(required=False, allow_blank=True, trim_whitespace=True)
+    password = serializers.CharField(required=False, allow_blank=True, write_only=True, trim_whitespace=False)
+    otp = serializers.CharField(required=False, allow_blank=True, trim_whitespace=True)
+    send_link_otp = serializers.BooleanField(required=False, default=False)
 
     def validate(self, attrs):
         if not attrs.get("credential") and not attrs.get("access_token"):

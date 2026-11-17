@@ -138,6 +138,17 @@ export default function AdminLayout() {
             <span>Xem trang web</span>
             <AdminIcon name="external" size={13} className="admin-ext-arrow" />
           </button>
+
+          <button
+            type="button"
+            className="admin-link admin-link-logout"
+            onClick={handleAdminLogout}
+          >
+            <span className="ico" aria-hidden="true">
+              <AdminIcon name="logout" size={17} />
+            </span>
+            <span>Đăng xuất</span>
+          </button>
         </nav>
 
         <div className="sidebar-bottom">
@@ -219,6 +230,16 @@ export default function AdminLayout() {
               {avatarChar}
             </span>
             <b className="desktop-only">{displayName}</b>
+
+            <button
+              type="button"
+              className="admin-logout-top-btn"
+              onClick={handleAdminLogout}
+              title="Đăng xuất khỏi trang quản trị"
+            >
+              <AdminIcon name="logout" size={15} />
+              <span>Đăng xuất</span>
+            </button>
           </div>
         </header>
 

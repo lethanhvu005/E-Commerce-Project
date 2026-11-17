@@ -80,6 +80,7 @@ export default function AuthPage({ mode = "login" }) {
   const googleClientId = (process.env.REACT_APP_GOOGLE_CLIENT_ID || "").trim();
   const [facebookAppId, setFacebookAppId] = useState("");
   const [emailVerificationStep, setEmailVerificationStep] = useState(null);
+  const [googleLinkStep, setGoogleLinkStep] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -122,6 +123,63 @@ export default function AuthPage({ mode = "login" }) {
     setError(null);
     try {
       const profile = await loginWithGoogle({ access_token: accessToken });
+      redirectAfterAuth(profile);
+    } catch (err) {
+      if (err?.payload?.requires_reverification) {
+        setGoogleLinkStep({
+          accessToken,
+          email: err.payload.email || "",
+          isStaff: Boolean(err.payload.is_staff_account),
+          mode: "password", // "password" | "otp"
+          password: "",
+          otp: "",
+          infoMessage: "",
+        });
+        setError(null);
+      } else {
+        setError(err);
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSendGoogleLinkOtp = async () => {
+    if (!googleLinkStep) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await authService.loginWithGoogle({
+        access_token: googleLinkStep.accessToken,
+        send_link_otp: true,
+      });
+      setGoogleLinkStep((prev) => ({
+        ...prev,
+        mode: "otp",
+        otp: "",
+        infoMessage: res?.detail || `Đã gửi mã OTP 6 chữ số đến ${prev.email}.`,
+      }));
+    } catch (err) {
+      setError(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleConfirmGoogleLink = async (e) => {
+    e.preventDefault();
+    if (!googleLinkStep) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const payload = { access_token: googleLinkStep.accessToken };
+      if (googleLinkStep.mode === "otp") {
+        payload.otp = googleLinkStep.otp.trim();
+      } else {
+        payload.password = googleLinkStep.password;
+      }
+      const profile = await loginWithGoogle(payload);
+      setGoogleLinkStep(null);
       redirectAfterAuth(profile);
     } catch (err) {
       setError(err);
@@ -258,7 +316,101 @@ export default function AuthPage({ mode = "login" }) {
       <div className="ux-auth">
         {/* Left Form Card */}
         <div className="ux-card">
-          {emailVerificationStep ? (
+          {googleLinkStep ? (
+            <div>
+              <h2>Xác minh liên kết Google</h2>
+              <p style={{ color: "var(--muted)", fontSize: "14px", marginBottom: "16px", lineHeight: 1.5 }}>
+                Tài khoản <strong>{googleLinkStep.email}</strong>{" "}
+                {googleLinkStep.isStaff ? "(Quản trị / Nhân viên)" : "đã tồn tại"} cần xác minh chủ sở hữu
+                lần đầu để liên kết đăng nhập Google (theo chuẩn bảo mật S11).
+              </p>
+
+              <form onSubmit={handleConfirmGoogleLink}>
+                {googleLinkStep.mode === "otp" ? (
+                  <>
+                    {googleLinkStep.infoMessage && (
+                      <p style={{ color: "var(--accent)", fontSize: "13px", marginBottom: "12px", fontWeight: 600 }}>
+                        {googleLinkStep.infoMessage}
+                      </p>
+                    )}
+                    <label htmlFor="google-link-otp">Mã OTP xác minh (6 chữ số từ Gmail)</label>
+                    <input
+                      id="google-link-otp"
+                      className="field"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      required
+                      value={googleLinkStep.otp}
+                      onChange={(e) =>
+                        setGoogleLinkStep((prev) => ({
+                          ...prev,
+                          otp: e.target.value.replace(/\D/g, "").slice(0, 6),
+                        }))
+                      }
+                      placeholder="Nhập 6 chữ số (VD: 123456)"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <label htmlFor="google-link-password">Mật khẩu hiện tại của tài khoản NEXA</label>
+                    <input
+                      id="google-link-password"
+                      className="field"
+                      type="password"
+                      required
+                      autoComplete="current-password"
+                      value={googleLinkStep.password}
+                      onChange={(e) =>
+                        setGoogleLinkStep((prev) => ({
+                          ...prev,
+                          password: e.target.value,
+                        }))
+                      }
+                      placeholder="Nhập mật khẩu hiện tại..."
+                    />
+                  </>
+                )}
+
+                {error && <ErrorBox error={error} variant="inline" />}
+
+                <button
+                  type="submit"
+                  className="btn btn-violet full nexa-auth-submit"
+                  disabled={
+                    submitting ||
+                    (googleLinkStep.mode === "otp"
+                      ? googleLinkStep.otp.trim().length !== 6
+                      : !googleLinkStep.password)
+                  }
+                >
+                  {submitting ? "Đang xác minh..." : "Xác minh & Liên kết Google ↗"}
+                </button>
+
+                <div style={{ display: "flex", gap: "10px", marginTop: "12px", justifyContent: "space-between", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    className="btn btn-quiet"
+                    disabled={submitting}
+                    onClick={handleSendGoogleLinkOtp}
+                  >
+                    {googleLinkStep.mode === "otp" ? "Gửi lại mã OTP qua Gmail" : "Xác minh bằng mã OTP qua Gmail"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-quiet"
+                    disabled={submitting}
+                    onClick={() => {
+                      setError(null);
+                      setGoogleLinkStep(null);
+                    }}
+                  >
+                    Quay lại
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : emailVerificationStep ? (
             <div>
               <h2>
                 {emailVerificationStep.stage === "request"

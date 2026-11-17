@@ -318,6 +318,39 @@ class AccountAuthApiTests(APITestCase):
             with patch("accounts.views.verify_google_oauth_payload", return_value=staff_payload):
                 res_staff = self.client.post("/api/auth/google/", {"access_token": "tok"}, format="json")
             self.assertEqual(res_staff.status_code, status.HTTP_403_FORBIDDEN)
+            self.assertTrue(res_staff.data.get("requires_reverification"))
+
+            # 1b. Staff account can link Google OAuth after step-up password verification & logs AuditLog (S11)
+            from operations.models import AuditLog
+
+            with patch("accounts.views.verify_google_oauth_payload", return_value=staff_payload):
+                res_staff_linked = self.client.post(
+                    "/api/auth/google/",
+                    {"access_token": "tok", "password": "Staff!Password123"},
+                    format="json",
+                )
+            self.assertEqual(res_staff_linked.status_code, status.HTTP_200_OK)
+            staff.refresh_from_db()
+            self.assertEqual(staff.google_sub, "google-sub-staff-001")
+            self.assertTrue(
+                AuditLog.objects.filter(
+                    actor=staff,
+                    action="account.google_oauth_linked",
+                    entity_id=str(staff.pk),
+                ).exists()
+            )
+
+            # 1c. Subsequent Google login for already-linked staff succeeds directly & logs AuditLog
+            with patch("accounts.views.verify_google_oauth_payload", return_value=staff_payload):
+                res_staff_next = self.client.post("/api/auth/google/", {"access_token": "tok"}, format="json")
+            self.assertEqual(res_staff_next.status_code, status.HTTP_200_OK)
+            self.assertTrue(
+                AuditLog.objects.filter(
+                    actor=staff,
+                    action="account.staff_google_oauth_login",
+                    entity_id=str(staff.pk),
+                ).exists()
+            )
 
             # 2. Block existing password account auto-linking
             pwd_payload = {

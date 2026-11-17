@@ -53,21 +53,22 @@ export function AboutPage() {
 export function ContactPage() {
   const { user } = useAuth();
   const supportEmail = (process.env.REACT_APP_SUPPORT_EMAIL || "lethanhvu005@gmail.com").trim();
-  const supportPhone = (process.env.REACT_APP_SUPPORT_PHONE || "0901 234 567").trim();
+  const supportPhone = (process.env.REACT_APP_SUPPORT_PHONE || "0947243014").trim();
   const supportPhoneRaw = supportPhone.replace(/\s+/g, "");
   const supportAddress = (
     process.env.REACT_APP_SUPPORT_ADDRESS ||
-    "128 Nguyễn Cơ Thạch, Khu đô thị Sala, Phường An Lợi Đông, TP. Thủ Đức, TP. Hồ Chí Minh"
+    "K249 Nguyễn Đình Chiểu, Phường Khuê Mỹ, Quận Ngũ Hành Sơn, Thành phố Đà Nẵng"
   ).trim();
   const googleMapsApiKey = (process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "").trim();
+  const hasValidMapsApiKey = /^AIza[0-9A-Za-z_-]{35}$/.test(googleMapsApiKey);
 
-  const mapEmbedUrl = googleMapsApiKey
+  const mapEmbedUrl = hasValidMapsApiKey
     ? `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(googleMapsApiKey)}&q=${encodeURIComponent(
         supportAddress
-      )}&zoom=16`
+      )}&zoom=17&language=vi`
     : `https://maps.google.com/maps?q=${encodeURIComponent(
         supportAddress
-      )}&t=&z=16&ie=UTF8&iwloc=&output=embed`;
+      )}&hl=vi&z=17&ie=UTF8&iwloc=B&output=embed`;
 
   const mapDirectionsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
     supportAddress
@@ -214,7 +215,7 @@ export function ContactPage() {
                       type="tel"
                       value={formState.phone}
                       onChange={(e) => setFormState({ ...formState, phone: e.target.value })}
-                      placeholder="0901 234 567"
+                      placeholder="0947243014"
                       maxLength={20}
                     />
                   </label>
@@ -257,22 +258,14 @@ export function ContactPage() {
                   className="btn btn-violet nexa-btn-3d"
                   disabled={submitting}
                 >
-                  {submitting ? "Đang gửi..." : "Gửi yêu cầu hỗ trợ ↗"}
+                  {submitting ? "Đang gửi email..." : "Gửi email trực tiếp ↗"}
                 </button>
-                <a
-                  className="btn btn-quiet"
-                  href={`mailto:${supportEmail}?subject=${encodeURIComponent(
-                    `[${formState.subject}] từ ${formState.name || "Khách hàng"}`
-                  )}`}
-                >
-                  Mở ứng dụng Gmail ✉
-                </a>
               </div>
             </form>
           )}
           <p className="ux-note" style={{ marginTop: "14px" }}>
-            Yêu cầu của bạn được gửi trực tiếp qua hệ thống máy chủ NEXA tới hộp thư{" "}
-            <strong>{supportEmail}</strong>.
+            Email sẽ được gửi trực tiếp qua máy chủ SMTP tới hộp thư{" "}
+            <strong>{supportEmail}</strong> (không cần mở ứng dụng mail trên máy).
           </p>
         </section>
 
