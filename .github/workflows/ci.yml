@@ -49,7 +49,10 @@ jobs:
           python manage.py migrate --noinput
       - name: Run Django test suite
         working-directory: backend
-        run: python manage.py test
+        # PostgreSQL is an ephemeral service container in CI. Some concurrency
+        # tests briefly leave worker connections alive after the assertions
+        # finish, so let the container teardown remove the test database.
+        run: python manage.py test --keepdb
 
   frontend-build-and-test:
     name: React Frontend Build & Tests
