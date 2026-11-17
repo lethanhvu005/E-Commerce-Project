@@ -7,7 +7,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from accounts.models import User
 from common.test_factories import catalog, order
 from orders.models import OrderItem
-from .models import ModerationStatus, ProductQuestion, Review
+from .models import ModerationStatus, ProductQuestion, Review, ReviewReply
 
 
 class CommunityModelTests(TestCase):
@@ -35,10 +35,22 @@ class CommunityModelTests(TestCase):
 
 class CommunityApiTests(APITestCase):
     def setUp(self):
-        self.product, _ = catalog()
+        self.product, self.variant = catalog()
         self.product.status = "active"
         self.product.save(update_fields=["status"])
         self.user = User.objects.create_user("reviewer@example.test", "Buyer!Password123")
+        self.purchase = order(self.user)
+        self.purchase.status = "delivered"
+        self.purchase.save(update_fields=["status"])
+        self.order_item = OrderItem.objects.create(
+            order=self.purchase,
+            variant=self.variant,
+            product_name_snapshot=self.product.name,
+            sku_snapshot=self.variant.sku,
+            quantity=1,
+            unit_price=100,
+            line_total=100,
+        )
         token = RefreshToken.for_user(self.user)
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.access_token}")
 
@@ -50,6 +62,8 @@ class CommunityApiTests(APITestCase):
         )
         self.assertEqual(created.status_code, status.HTTP_201_CREATED)
         self.assertEqual(created.data["status"], ModerationStatus.PENDING)
+        self.assertEqual(created.data["order_item"], self.order_item.id)
+        self.assertTrue(created.data["is_verified_buyer"])
         public = self.client.get(f"/api/products/{self.product.slug}/reviews/")
         self.assertEqual(public.data["count"], 0)
 
@@ -57,6 +71,49 @@ class CommunityApiTests(APITestCase):
         review.status = ModerationStatus.PUBLISHED
         review.save(update_fields=["status"])
         self.assertEqual(self.client.get(f"/api/products/{self.product.slug}/reviews/").data["count"], 1)
+
+    def test_review_requires_a_delivered_purchase_owned_by_request_user(self):
+        other_user = User.objects.create_user("visitor@example.test", "Visitor!Password123")
+        token = RefreshToken.for_user(other_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.access_token}")
+
+        response = self.client.post(
+            f"/api/products/{self.product.slug}/reviews/",
+            {
+                "stars": 5,
+                "body": "Tôi chưa mua nhưng thử gửi đánh giá.",
+                "order_item": self.order_item.id,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data["code"], "purchase_required")
+        self.assertFalse(Review.objects.filter(user=other_user, product=self.product).exists())
+
+    def test_authenticated_non_buyer_can_reply_to_verified_published_review(self):
+        review = Review.objects.create(
+            product=self.product,
+            user=self.user,
+            order_item=self.order_item,
+            stars=5,
+            body="Sản phẩm phù hợp với nhu cầu sử dụng của tôi.",
+            status=ModerationStatus.PUBLISHED,
+        )
+        visitor = User.objects.create_user("reply@example.test", "Reply!Password123")
+        token = RefreshToken.for_user(visitor)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.access_token}")
+
+        response = self.client.post(
+            f"/api/reviews/{review.id}/replies/",
+            {"body": "Bạn dùng sản phẩm được bao lâu rồi?"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["status"], ModerationStatus.PENDING)
+        reply = ReviewReply.objects.get(review=review, user=visitor)
+        self.assertEqual(reply.body, "Bạn dùng sản phẩm được bao lâu rồi?")
 
     def test_question_is_pending(self):
         response = self.client.post(

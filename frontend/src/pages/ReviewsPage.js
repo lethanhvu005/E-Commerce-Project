@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { catalogService, communityService } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { Empty, ErrorBox, Loading, Toast } from "../components/Feedback";
+import { ReviewCard, ReviewEligibilityNotice, StarRatingInput } from "../components/ReviewComponents";
 
 export default function ReviewsPage() {
   const { user } = useAuth();
@@ -10,8 +11,10 @@ export default function ReviewsPage() {
   const [products, setProducts] = useState([]);
   const [selectedSlug, setSelectedSlug] = useState("");
   const [reviews, setReviews] = useState([]);
+  const [eligibility, setEligibility] = useState(null);
   const [form, setForm] = useState({ stars: 5, body: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [replyingReviewId, setReplyingReviewId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [toastMsg, setToastMsg] = useState("");
@@ -38,9 +41,11 @@ export default function ReviewsPage() {
   useEffect(() => {
     if (!selectedSlug) return;
     setLoading(true);
+    setEligibility(null);
     communityService.getProductReviews(selectedSlug)
       .then((data) => {
         setReviews(data.results || data || []);
+        setEligibility(data.eligibility || null);
       })
       .catch((err) => {
         setError(err);
@@ -70,10 +75,25 @@ export default function ReviewsPage() {
       // Refetch reviews
       const fresh = await communityService.getProductReviews(selectedSlug);
       setReviews(fresh.results || fresh || []);
+      setEligibility(fresh.eligibility || null);
     } catch (err) {
       setToastMsg(err.message || "Không thể gửi đánh giá.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleReplyToReview = async (reviewId, body) => {
+    setReplyingReviewId(reviewId);
+    try {
+      await communityService.createReviewReply(reviewId, { body });
+      setToastMsg("Phản hồi của bạn đã được gửi và đang chờ kiểm duyệt.");
+      return true;
+    } catch (err) {
+      setToastMsg(err.message || "Không thể gửi phản hồi.");
+      return false;
+    } finally {
+      setReplyingReviewId(null);
     }
   };
 
@@ -131,35 +151,15 @@ export default function ReviewsPage() {
               />
             ) : (
               <div className="ux-review-stack">
-                {reviews.map((r) => {
-                  const authorName = r.author?.first_name || r.author?.email || r.author || "Khách hàng NEXA";
-                  const initial = (authorName[0] || "K").toUpperCase();
-                  return (
-                    <article className="ux-review nexa-review-card" key={r.id}>
-                      <div className="ux-review-head">
-                        <div className="nexa-qa-author-wrap">
-                          <span className="nexa-qa-avatar">{initial}</span>
-                          <div>
-                            <strong className="nexa-qa-author-name">{authorName}</strong>
-                            <div className="nexa-review-stars-row">
-                              <span className="nexa-stars-gold">
-                                {"★".repeat(r.stars)}
-                                {"☆".repeat(5 - r.stars)}
-                              </span>
-                              {r.is_verified_buyer && (
-                                <span className="ux-verified">✓ Đã mua hàng</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <small className="nexa-qa-date">
-                          {new Date(r.created_at).toLocaleDateString("vi-VN")}
-                        </small>
-                      </div>
-                      <p className="nexa-review-body">{r.body}</p>
-                    </article>
-                  );
-                })}
+                {reviews.map((review) => (
+                  <ReviewCard
+                    review={review}
+                    key={review.id}
+                    isAuthenticated={Boolean(user)}
+                    onReply={handleReplyToReview}
+                    replying={replyingReviewId === review.id}
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -169,60 +169,54 @@ export default function ReviewsPage() {
         <div>
           <div className="ux-card">
             <h3>Chia sẻ trải nghiệm của bạn</h3>
-            {!user ? (
-              <p style={{ color: "var(--muted)" }}>
-                Vui lòng <Link to="/login" style={{ color: "var(--action)", fontWeight: 700 }}>Đăng nhập</Link> để viết nhận xét về sản phẩm bạn đã trải nghiệm.
+            {!user && (
+              <p className="review-login-prompt">
+                Vui lòng <Link to="/login">đăng nhập</Link> để hệ thống kiểm tra đơn hàng đã giao.
               </p>
-            ) : (
-              <form onSubmit={handleSubmitReview}>
-                <label htmlFor="rev-prd">Sản phẩm đánh giá</label>
-                <select
-                  id="rev-prd"
-                  className="field"
-                  value={selectedSlug}
-                  onChange={(e) => setSelectedSlug(e.target.value)}
-                >
-                  {products.map((p) => (
-                    <option key={p.id} value={p.slug}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+            )}
+            <ReviewEligibilityNotice
+              eligibility={eligibility}
+              productName={products.find((p) => p.slug === selectedSlug)?.name}
+            />
+            {user && eligibility?.can_review && (
+              <form className="review-compose" onSubmit={handleSubmitReview}>
+                <div className="review-selected-product">
+                  <span>Sản phẩm đã mua</span>
+                  <strong>{products.find((p) => p.slug === selectedSlug)?.name}</strong>
+                  {eligibility.order_number && <small>Đơn hàng #{eligibility.order_number}</small>}
+                </div>
 
-                <label htmlFor="rev-stars-input">Mức độ hài lòng</label>
-                <select
-                  id="rev-stars-input"
-                  className="field"
-                  value={form.stars}
-                  onChange={(e) => setForm({ ...form, stars: e.target.value })}
-                >
-                  <option value="5">★★★★★ (5 sao - Xuất sắc)</option>
-                  <option value="4">★★★★☆ (4 sao - Tốt)</option>
-                  <option value="3">★★★☆☆ (3 sao - Trung bình)</option>
-                  <option value="2">★★☆☆☆ (2 sao - Chưa hài lòng)</option>
-                  <option value="1">★☆☆☆☆ (1 sao - Rất tệ)</option>
-                </select>
+                <label>Mức độ hài lòng</label>
+                <StarRatingInput
+                  value={Number(form.stars)}
+                  onChange={(stars) => setForm({ ...form, stars })}
+                  disabled={submitting}
+                />
 
-                <label htmlFor="rev-text">Nội dung đánh giá</label>
+                <div className="review-field-heading">
+                  <label htmlFor="rev-text">Nhận xét của bạn</label>
+                  <span>{form.body.length}/500</span>
+                </div>
                 <textarea
                   id="rev-text"
                   className="field"
-                  rows="4"
+                  rows="5"
                   required
                   minLength={10}
                   maxLength={500}
-                  placeholder="Mô tả cảm giác gõ, thời lượng pin, độ chính xác của cảm biến..."
+                  placeholder="Chia sẻ ưu điểm, điểm cần cải thiện và trải nghiệm sử dụng thực tế..."
                   value={form.body}
                   onChange={(e) => setForm({ ...form, body: e.target.value })}
                 />
 
+                <p className="review-form-hint">Đánh giá sẽ được kiểm duyệt trước khi hiển thị công khai.</p>
+
                 <button
                   type="submit"
-                  className="btn btn-violet full"
-                  disabled={submitting}
-                  style={{ width: "100%", marginTop: "16px", padding: "12px" }}
+                  className="btn btn-primary review-submit"
+                  disabled={submitting || form.body.trim().length < 10}
                 >
-                  {submitting ? "Đang gửi..." : "Gửi đánh giá ↗"}
+                  {submitting ? "Đang gửi đánh giá..." : "Gửi đánh giá"}
                 </button>
               </form>
             )}

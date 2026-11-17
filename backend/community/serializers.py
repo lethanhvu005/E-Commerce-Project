@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
-from .models import ProductAnswer, ProductQuestion, Review
+from .models import ProductAnswer, ProductQuestion, Review, ReviewReply
 
 
 def _validate_trimmed_body(value, min_length, label):
@@ -11,17 +11,37 @@ def _validate_trimmed_body(value, min_length, label):
     return trimmed
 
 
+class ReviewReplySerializer(serializers.ModelSerializer):
+    author = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ReviewReply
+        fields = ["id", "body", "author", "status", "created_at"]
+        read_only_fields = ["id", "author", "status", "created_at"]
+
+    def get_author(self, obj):
+        return obj.user.get_full_name().strip() or "Thành viên NEXA"
+
+    def validate_body(self, value):
+        return _validate_trimmed_body(value, 2, "Nội dung trả lời")
+
+
 class ReviewSerializer(serializers.ModelSerializer):
     author = serializers.SerializerMethodField()
     is_verified_buyer = serializers.BooleanField(read_only=True)
+    replies = serializers.SerializerMethodField()
 
     class Meta:
         model = Review
-        fields = ["id", "stars", "body", "order_item", "author", "is_verified_buyer", "status", "created_at", "updated_at"]
-        read_only_fields = ["id", "order_item", "author", "is_verified_buyer", "status", "created_at", "updated_at"]
+        fields = ["id", "stars", "body", "order_item", "author", "is_verified_buyer", "status", "created_at", "updated_at", "replies"]
+        read_only_fields = ["id", "order_item", "author", "is_verified_buyer", "status", "created_at", "updated_at", "replies"]
 
     def get_author(self, obj):
         return obj.user.get_full_name().strip() or "Khách hàng NEXA"
+
+    def get_replies(self, obj):
+        replies = [reply for reply in obj.replies.all() if reply.status == "published"]
+        return ReviewReplySerializer(replies, many=True).data
 
     def validate_stars(self, value):
         if value < 1 or value > 5:

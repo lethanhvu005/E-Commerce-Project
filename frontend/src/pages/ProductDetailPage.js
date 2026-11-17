@@ -6,6 +6,7 @@ import { useAuth } from "../auth/AuthContext";
 import ProductCard from "../components/ProductCard";
 import { Interactive3DStage } from "../components/Motion3D";
 import { Empty, ErrorBox, Loading, Toast } from "../components/Feedback";
+import { ReviewCard, ReviewEligibilityNotice, StarRatingInput } from "../components/ReviewComponents";
 
 export default function ProductDetailPage() {
   const { slug } = useParams();
@@ -31,10 +32,12 @@ export default function ProductDetailPage() {
 
   // Community States
   const [reviews, setReviews] = useState([]);
+  const [reviewEligibility, setReviewEligibility] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [reviewForm, setReviewForm] = useState({ stars: 5, body: "" });
   const [questionBody, setQuestionBody] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [replyingReviewId, setReplyingReviewId] = useState(null);
   const [submittingQuestion, setSubmittingQuestion] = useState(false);
 
   // Status & Feedback
@@ -59,6 +62,7 @@ export default function ProductDetailPage() {
         detail.variants?.find((v) => v.available > 0) || detail.variants?.[0];
       setVariantId(initialVariant?.id ? String(initialVariant.id) : "");
       setReviews(reviewData.results || reviewData || []);
+      setReviewEligibility(reviewData.eligibility || null);
       setQuestions(questionData.results || questionData || []);
 
       if (detail.category?.slug) {
@@ -194,6 +198,7 @@ export default function ProductDetailPage() {
       setToastMsg("Đánh giá của bạn đã được gửi và đang chờ kiểm duyệt!");
       const freshReviews = await communityService.getProductReviews(slug);
       setReviews(freshReviews.results || freshReviews || []);
+      setReviewEligibility(freshReviews.eligibility || null);
     } catch (err) {
       setToastMsg(err.message || "Không thể gửi đánh giá.");
     } finally {
@@ -222,6 +227,20 @@ export default function ProductDetailPage() {
       setToastMsg(err.message || "Không thể gửi câu hỏi.");
     } finally {
       setSubmittingQuestion(false);
+    }
+  };
+
+  const handleReplyToReview = async (reviewId, body) => {
+    setReplyingReviewId(reviewId);
+    try {
+      await communityService.createReviewReply(reviewId, { body });
+      setToastMsg("Phản hồi của bạn đã được gửi và đang chờ kiểm duyệt.");
+      return true;
+    } catch (err) {
+      setToastMsg(err.message || "Không thể gửi phản hồi.");
+      return false;
+    } finally {
+      setReplyingReviewId(null);
     }
   };
 
@@ -734,35 +753,15 @@ export default function ProductDetailPage() {
                 </p>
               ) : (
                 <div className="ux-review-stack">
-                  {reviews.map((rev) => {
-                    const authorName = rev.author?.first_name || rev.author?.email || rev.author || "Khách hàng NEXA";
-                    const initial = (authorName[0] || "K").toUpperCase();
-                    return (
-                      <article className="ux-review nexa-review-card" key={rev.id}>
-                        <div className="ux-review-head">
-                          <div className="nexa-qa-author-wrap">
-                            <span className="nexa-qa-avatar">{initial}</span>
-                            <div>
-                              <b className="nexa-qa-author-name">{authorName}</b>
-                              <div className="nexa-review-stars-row">
-                                <span className="nexa-stars-gold">
-                                  {"★".repeat(rev.stars)}
-                                  {"☆".repeat(5 - rev.stars)}
-                                </span>
-                                {rev.is_verified_buyer && (
-                                  <span className="ux-verified">✓ Đã mua hàng</span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <small className="nexa-qa-date">
-                            {new Date(rev.created_at).toLocaleDateString("vi-VN")}
-                          </small>
-                        </div>
-                        <p className="nexa-review-body">{rev.body}</p>
-                      </article>
-                    );
-                  })}
+                  {reviews.map((rev) => (
+                    <ReviewCard
+                      review={rev}
+                      key={rev.id}
+                      isAuthenticated={Boolean(user)}
+                      onReply={handleReplyToReview}
+                      replying={replyingReviewId === rev.id}
+                    />
+                  ))}
                 </div>
               )}
 
@@ -837,51 +836,44 @@ export default function ProductDetailPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
             <div className="ux-card">
               <h3>Gửi đánh giá của bạn</h3>
-              {!user ? (
-                <p style={{ color: "var(--muted)" }}>
-                  Vui lòng{" "}
-                  <Link to="/login" style={{ color: "var(--accent)", fontWeight: 700 }}>
-                    Đăng nhập
-                  </Link>{" "}
-                  để gửi đánh giá sản phẩm.
+              {!user && (
+                <p className="review-login-prompt">
+                  Vui lòng <Link to="/login">đăng nhập</Link> để hệ thống kiểm tra đơn hàng đã giao.
                 </p>
-              ) : (
-                <form onSubmit={handleSubmitReview}>
-                  <label htmlFor="rev-stars">Mức độ hài lòng</label>
-                  <select
-                    id="rev-stars"
-                    className="field"
-                    value={reviewForm.stars}
-                    onChange={(e) => setReviewForm({ ...reviewForm, stars: e.target.value })}
-                  >
-                    <option value="5">★★★★★ (5 sao - Tuyệt vời)</option>
-                    <option value="4">★★★★☆ (4 sao - Rất tốt)</option>
-                    <option value="3">★★★☆☆ (3 sao - Hài lòng)</option>
-                    <option value="2">★★☆☆☆ (2 sao - Tạm ổn)</option>
-                    <option value="1">★☆☆☆☆ (1 sao - Chưa tốt)</option>
-                  </select>
+              )}
+              <ReviewEligibilityNotice eligibility={reviewEligibility} productName={product?.name} />
+              {user && reviewEligibility?.can_review && (
+                <form className="review-compose" onSubmit={handleSubmitReview}>
+                  <label>Mức độ hài lòng</label>
+                  <StarRatingInput
+                    value={Number(reviewForm.stars)}
+                    onChange={(stars) => setReviewForm({ ...reviewForm, stars })}
+                    disabled={submittingReview}
+                  />
 
-                  <label htmlFor="rev-body" style={{ display: "block", marginTop: "12px" }}>
-                    Nội dung nhận xét (tối thiểu 10 ký tự)
-                  </label>
+                  <div className="review-field-heading">
+                    <label htmlFor="rev-body">Nhận xét của bạn</label>
+                    <span>{reviewForm.body.length}/500</span>
+                  </div>
                   <textarea
                     id="rev-body"
                     className="field"
-                    rows="4"
+                    rows="5"
                     required
                     minLength={10}
                     maxLength={500}
-                    placeholder="Chia sẻ trải nghiệm thực tế về cảm giác gõ, độ nhạy, thiết kế..."
+                    placeholder="Hãy chia sẻ điều bạn thích, điểm cần cải thiện và trải nghiệm sử dụng thực tế..."
                     value={reviewForm.body}
                     onChange={(e) => setReviewForm({ ...reviewForm, body: e.target.value })}
                   />
 
+                  <p className="review-form-hint">Đánh giá sẽ được kiểm duyệt trước khi hiển thị công khai.</p>
+
                   <button
-                    className="btn btn-violet nexa-btn-3d"
-                    disabled={submittingReview}
-                    style={{ marginTop: "12px" }}
+                    className="btn btn-primary review-submit"
+                    disabled={submittingReview || reviewForm.body.trim().length < 10}
                   >
-                    {submittingReview ? "Đang gửi..." : "Gửi đánh giá ↗"}
+                    {submittingReview ? "Đang gửi đánh giá..." : "Gửi đánh giá"}
                   </button>
                 </form>
               )}

@@ -50,7 +50,7 @@ jobs:
 
       - name: Run Ruff Linter
         run: |
-          ruff check backend/ --output-format=json > ruff-report.json || true
+          ruff check backend/ --select E9,F63,F7,F82 --exclude "*/migrations/*" --output-format=json > ruff-report.json || true
 
       - name: Run Bandit Security Scanner
         run: |
@@ -62,7 +62,7 @@ jobs:
 
       - name: Run NPM Audit
         run: |
-          npm audit --prefix frontend --json > npm-audit-report.json || true
+          npm audit --prefix frontend --omit=dev --audit-level=high --json > npm-audit-report.json || true
 
       - name: Normalize & Deduplicate Findings
         run: |

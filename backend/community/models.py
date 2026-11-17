@@ -50,6 +50,22 @@ class Review(TimestampedModel):
             raise ValidationError({'order_item': 'Choose an item from your delivered order for this product.'})
 
 
+class ReviewReply(models.Model):
+    review = models.ForeignKey(Review, on_delete=models.PROTECT, related_name="replies")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="review_replies")
+    body = models.CharField(max_length=1000)
+    status = models.CharField(max_length=12, choices=ModerationStatus.choices, default=ModerationStatus.PENDING)
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        db_table = "review_replies"
+        indexes = [models.Index(fields=["review", "created_at", "id"], name="review_replies_thread_idx")]
+        constraints = [
+            models.CheckConstraint(condition=Q(status__in=ModerationStatus.values), name="review_replies_status_valid"),
+            trimmed_length_constraint("body", 2, "review_replies_body_length"),
+        ]
+
+
 class ProductQuestion(models.Model):
     product = models.ForeignKey('catalog.Product', on_delete=models.PROTECT, related_name='questions')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='product_questions')

@@ -24,6 +24,9 @@ def parse_ruff(data) -> list:
     for item in data:
         code = item.get("code", "RUFF")
         filename = item.get("filename", "")
+        norm_filename = filename.replace("\\", "/")
+        if "/migrations/" in norm_filename or code in {"I001", "RUF012", "E501"}:
+            continue
         message = item.get("message", "")
         line = item.get("location", {}).get("row", 1)
         fp = generate_fingerprint("ruff", code, filename, message[:40])

@@ -9,8 +9,8 @@ from rest_framework.throttling import UserRateThrottle
 
 from catalog.models import Product
 from orders.models import OrderItem, OrderStatus
-from .models import ModerationStatus, ProductAnswer, ProductQuestion, Review
-from .serializers import AnswerSerializer, QuestionSerializer, ReviewSerializer, ReviewUpdateSerializer
+from .models import ModerationStatus, ProductAnswer, ProductQuestion, Review, ReviewReply
+from .serializers import AnswerSerializer, QuestionSerializer, ReviewReplySerializer, ReviewSerializer, ReviewUpdateSerializer
 
 
 def require_user(request):
@@ -74,7 +74,7 @@ def product_reviews(request, slug):
             order_item__order__status=OrderStatus.DELIVERED,
             order_item__variant__product=product,
             order_item__order__user_id=F("user_id"),
-        ).select_related("user", "order_item__order", "order_item__variant")
+        ).select_related("user", "order_item__order", "order_item__variant").prefetch_related("replies__user")
         summary = queryset.aggregate(rating=Avg("stars"), count=Count("id"))
         eligibility, _ = review_eligibility(request.user, product)
         return Response({
@@ -120,6 +120,28 @@ def review_detail(request, review_id):
     serializer.is_valid(raise_exception=True)
     serializer.save(status=ModerationStatus.PENDING)
     return Response(ReviewSerializer(review).data)
+
+
+@api_view(["GET", "POST"])
+@permission_classes([AllowAny])
+def review_replies(request, review_id):
+    review = get_object_or_404(
+        Review.objects.select_related("order_item__order", "order_item__variant__product"),
+        id=review_id,
+        status=ModerationStatus.PUBLISHED,
+        order_item__order__status=OrderStatus.DELIVERED,
+    )
+    if request.method == "GET":
+        replies = review.replies.filter(status=ModerationStatus.PUBLISHED).select_related("user").order_by("created_at", "id")
+        return Response({"results": ReviewReplySerializer(replies, many=True).data})
+
+    auth_error = require_user(request)
+    if auth_error:
+        return auth_error
+    serializer = ReviewReplySerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    reply = serializer.save(review=review, user=request.user, status=ModerationStatus.PENDING)
+    return Response(ReviewReplySerializer(reply).data, status=status.HTTP_201_CREATED)
 
 
 @api_view(["GET", "POST"])

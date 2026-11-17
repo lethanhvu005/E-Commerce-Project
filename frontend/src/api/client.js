@@ -230,10 +230,14 @@ export const promotionService = {
 };
 
 export const communityService = {
-  getProductReviews: (slug) => api.publicGet(`/products/${slug}/reviews/`),
+  // The endpoint remains public, but an access token (when available) lets the
+  // server return purchase-based review eligibility for the current customer.
+  getProductReviews: (slug) => api.get(`/products/${slug}/reviews/`),
   createProductReview: (slug, data) => api.post(`/products/${slug}/reviews/`, data),
   updateReview: (reviewId, data) => api.patch(`/reviews/${reviewId}/`, data),
   deleteReview: (reviewId) => api.delete(`/reviews/${reviewId}/`),
+  getReviewReplies: (reviewId) => api.get(`/reviews/${reviewId}/replies/`),
+  createReviewReply: (reviewId, data) => api.post(`/reviews/${reviewId}/replies/`, data),
   getProductQuestions: (slug) => api.publicGet(`/products/${slug}/questions/`),
   createProductQuestion: (slug, data) => api.post(`/products/${slug}/questions/`, data),
   getQuestionAnswers: (questionId) => api.publicGet(`/questions/${questionId}/answers/`),
