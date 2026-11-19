@@ -1,8 +1,0 @@
-/* Ảnh/SVG tách khỏi HTML, thay thế đúng kích thước minh họa cũ. */
-.nexa-product-img, .nexa-extracted-art { display: block; width: 100%; height: 100%; object-fit: contain; }
-.nexa-asset-hero { display:block; width:100%; max-height:100%; object-fit:contain; }
-.hero-art .nexa-asset-hero { width:100%; height:auto; }
-.product-photo img, .detail-art img, .cart-image img, .mini-img img, .cat-art img, .promo-art img, .thumb img { display:block; width:100%; height:100%; object-fit:contain; }
-.product-photo img { transition: transform 300ms ease; }
-.product-card:hover .product-photo img { transform: scale(1.055); }
-@media (prefers-reduced-motion: reduce) { .product-photo img { transition: none; } }
