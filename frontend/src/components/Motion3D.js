@@ -1,7 +1,14 @@
 import { createElement, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
-import { fallbackProductImage, money, productImage } from "../api/format";
+import {
+  cleanProductTitle,
+  displayBrandName,
+  displayProductFeature,
+  fallbackProductImage,
+  money,
+  productImage,
+} from "../api/format";
 
 /**
  * High-performance 3D Perspective Tilt Container.
@@ -217,9 +224,15 @@ export function QuickViewModal({ product, isOpen, onClose, onAdd, onFav, isFavor
 
           <div className="nexa-qv-info">
             <span className="gear-kicker">
-              {product.brand?.name || "NEXA"} <i>/</i> {product.category?.name || "GAMING GEAR"}
+              {displayBrandName(product) ? (
+                <>
+                  {displayBrandName(product)} <i>/</i> {product.category?.name || "GAMING GEAR"}
+                </>
+              ) : (
+                product.category?.name || "GAMING GEAR"
+              )}
             </span>
-            <h2 className="nexa-qv-title">{product.name}</h2>
+            <h2 className="nexa-qv-title">{cleanProductTitle(product)}</h2>
 
             <div className="nexa-qv-badges">
               {product.badge && <span className="nexa-pill nexa-pill-accent">{product.badge}</span>}
@@ -239,7 +252,7 @@ export function QuickViewModal({ product, isOpen, onClose, onAdd, onFav, isFavor
             </div>
 
             <p className="nexa-qv-summary">
-              {product.summary || product.description || "Thiết bị ngoại vi hiệu năng cao chuẩn eSports từ NEXA."}
+              {displayProductFeature(product)}
             </p>
 
             <div className="nexa-qv-actions">

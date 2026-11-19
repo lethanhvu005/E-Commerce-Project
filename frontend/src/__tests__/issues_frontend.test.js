@@ -614,8 +614,9 @@ describe("#25 HomePage & ProductCard", () => {
 
     expect(apiClient.catalogService.getProducts).toHaveBeenCalledWith({
       page: 1,
-      page_size: 12,
+      page_size: 15,
       ordering: "-created_at",
+      in_stock: "true",
     });
 
     const sourceEl = container.querySelector("picture source");
@@ -628,8 +629,9 @@ describe("#25 HomePage & ProductCard", () => {
       expect(apiClient.catalogService.getProducts).toHaveBeenCalledWith({
         category: "ban-phim",
         page: 1,
-        page_size: 12,
+        page_size: 15,
         ordering: "-created_at",
+        in_stock: "true",
       })
     );
 
@@ -638,8 +640,9 @@ describe("#25 HomePage & ProductCard", () => {
       expect(apiClient.catalogService.getProducts).toHaveBeenCalledWith({
         category: "ban-phim",
         page: 2,
-        page_size: 12,
+        page_size: 15,
         ordering: "-created_at",
+        in_stock: "true",
       })
     );
   });

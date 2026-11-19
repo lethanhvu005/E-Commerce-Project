@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext } from "react-router-dom";
 import { cartService, catalogService, wishlistService } from "../api/client";
-import { assetUrl, categoryImage, money, productImage } from "../api/format";
+import {
+  assetUrl,
+  categoryImage,
+  cleanProductTitle,
+  displayBrandName,
+  displayProductFeature,
+  money,
+  productImage,
+} from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import ProductCard from "../components/ProductCard";
 import { QuickViewModal, Tilt3DCard } from "../components/Motion3D";
@@ -210,7 +218,7 @@ export default function HomePage() {
   const outlet = useOutletContext() || {};
   const { wishlistIds = new Set(), refreshWishlist, refreshCartCount } = outlet;
 
-  const HOME_PAGE_SIZE = 12;
+  const HOME_PAGE_SIZE = 15;
   const [data, setData] = useState({
     banners: null,
     categories: null,
@@ -279,6 +287,7 @@ export default function HomePage() {
       page: pageNumber,
       page_size: HOME_PAGE_SIZE,
       ordering: "-created_at",
+      in_stock: "true",
     };
     if (categorySlug) {
       params.category = categorySlug;
@@ -287,7 +296,10 @@ export default function HomePage() {
       .getProducts(params)
       .then((res) => {
         if (reqId !== productReqRef.current) return;
-        const items = res?.results || (Array.isArray(res) ? res : []);
+        const rawItems = res?.results || (Array.isArray(res) ? res : []);
+        const items = rawItems.filter(
+          (item) => item?.available_stock === undefined || Number(item.available_stock) > 0
+        );
         const count = typeof res?.count === "number" ? res.count : items.length;
         setProductsState({ items, count });
         if (!categorySlug) {
@@ -732,12 +744,12 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* Featured Products Grid (4 rows x 5 products = 20 products) */}
+        {/* New Products Grid (3 rows x 5 products = 15 products, in-stock only) */}
         <section className="home-section" id="featured">
           <div className="gear-section-head">
             <div>
-              <span className="gear-kicker">SẢN PHẨM NỔI BẬT</span>
-              <h2>Thiết bị được ưa chuộng</h2>
+              <span className="gear-kicker">SẢN PHẨM MỚI</span>
+              <h2>Sản phẩm mới sẵn hàng</h2>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
               {totalProductPages > 1 && (
@@ -831,11 +843,8 @@ export default function HomePage() {
           <section className="gear-editorial nexa-editorial-3d">
             <div className="editorial-copy">
               <span className="gear-kicker">TIÊU ĐIỂM PHẦN CỨNG</span>
-              <h2>{spotlightProduct.name}</h2>
-              <p>
-                {spotlightProduct.summary ||
-                  "Cấu trúc khung vỏ chắc chắn, tốc độ phản hồi tín hiệu chuẩn xác và độ bền linh kiện đạt chuẩn sử dụng cường độ cao mỗi ngày."}
-              </p>
+              <h2>{cleanProductTitle(spotlightProduct)}</h2>
+              <p>{displayProductFeature(spotlightProduct)}</p>
               <div className="editorial-links">
                 <Link to={`/products/${spotlightProduct.slug}`}>
                   Xem thông số & giá bán <span>↗</span>
@@ -848,7 +857,9 @@ export default function HomePage() {
 
             <Link className="editorial-product" to={`/products/${spotlightProduct.slug}`}>
               <span className="gear-kicker">
-                {spotlightProduct.brand?.name || "NEXA"} / {spotlightProduct.category?.name || "GAMING GEAR"}
+                {displayBrandName(spotlightProduct)
+                  ? `${displayBrandName(spotlightProduct)} / ${spotlightProduct.category?.name || "GAMING GEAR"}`
+                  : spotlightProduct.category?.name || "GAMING GEAR"}
               </span>
               {productImage(spotlightProduct) && !failedImages[`spot-${spotlightProduct.id}`] ? (
                 <img
@@ -863,7 +874,7 @@ export default function HomePage() {
                 </span>
               )}
               <span>
-                <strong>{spotlightProduct.name}</strong>
+                <strong>{cleanProductTitle(spotlightProduct)}</strong>
                 <b>{spotlightProduct.min_price != null ? money(spotlightProduct.min_price) : ""} ↗</b>
               </span>
             </Link>
@@ -882,6 +893,7 @@ export default function HomePage() {
             <div className="gear-new-list">
               {newestThree.map((item) => {
                 const thumb = productImage(item);
+                const itemBrand = displayBrandName(item);
                 return (
                   <Link className="gear-new-item" to={`/products/${item.slug}`} key={item.id}>
                     {thumb && !failedImages[`new-${item.id}`] ? (
@@ -897,9 +909,9 @@ export default function HomePage() {
                     )}
                     <div>
                       <small>
-                        {item.brand?.name || "NEXA"} · {item.category?.name}
+                        {itemBrand ? `${itemBrand} · ${item.category?.name}` : item.category?.name}
                       </small>
-                      <h3>{item.short_name || item.name}</h3>
+                      <h3>{cleanProductTitle(item)}</h3>
                       <strong>{item.min_price != null ? money(item.min_price) : "Liên hệ"}</strong>
                     </div>
                     <span aria-hidden="true">↗</span>

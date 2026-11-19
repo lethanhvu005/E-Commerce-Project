@@ -153,15 +153,18 @@ export function orderStatusLabel(status) {
 const KNOWN_GEAR_BRANDS = [
   "Attack Shark",
   "BigBig Won",
+  "Bigbigwon",
   "SteelSeries",
   "ThundeRobot",
   "PlayStation",
   "DualSense",
+  "DualShock",
   "ViewSonic",
   "Machenike",
   "Ziyoulang",
   "Keychron",
   "Logitech",
+  "Magicsee",
   "Flydigi",
   "GameSir",
   "EasySMX",
@@ -173,6 +176,7 @@ const KNOWN_GEAR_BRANDS = [
   "Zeuslap",
   "Xinmeng",
   "Onikuma",
+  "Glowjoy",
   "Corsair",
   "Samsung",
   "Edifier",
@@ -186,8 +190,15 @@ const KNOWN_GEAR_BRANDS = [
   "Baseus",
   "Langtu",
   "Leaven",
+  "Lenovo",
   "Xiaomi",
+  "OBSBOT",
+  "Elough",
   "Fifine",
+  "EMEET",
+  "Sorex",
+  "Mojhon",
+  "Hosan",
   "Razer",
   "Rapoo",
   "DareU",
@@ -215,6 +226,8 @@ const KNOWN_GEAR_BRANDS = [
   "AOC",
   "HKC",
   "PXN",
+  "TNW",
+  "RSP",
   "LG",
 ];
 
@@ -244,37 +257,131 @@ const GENERIC_SUMMARY_KEYWORDS = new Set([
   "webcam máy tính",
   "webcam học online",
   "microphone",
+  "microphone gaming",
   "mic thu âm",
   "micro thu âm",
   "gaming gear",
 ]);
 
 const CATEGORY_DEFAULT_FEATURES = {
-  controller: "Kết nối đa nền tảng · Phản hồi nhạy",
-  "tay-cam": "Kết nối đa nền tảng · Phản hồi nhạy",
-  keyboard: "Switch cơ học · Độ trễ thấp",
-  "ban-phim": "Switch cơ học · Độ trễ thấp",
-  mouse: "Cảm biến quang học chính xác cao",
-  chuot: "Cảm biến quang học chính xác cao",
-  headset: "Âm thanh chi tiết · Mic đàm thoại rõ",
-  "tai-nghe": "Âm thanh chi tiết · Mic đàm thoại rõ",
-  monitor: "Tần số quét cao · Hiển thị sắc nét",
-  "man-hinh": "Tần số quét cao · Hiển thị sắc nét",
-  "mouse-pad": "Bề mặt dệt mịn · Đế cao su chống trượt",
-  "lot-chuot": "Bề mặt dệt mịn · Đế cao su chống trượt",
-  pad: "Bề mặt dệt mịn · Đế cao su chống trượt",
-  webcam: "Ghi hình sắc nét · Tự động cân bằng sáng",
-  microphone: "Thu âm định hướng · Lọc tạp âm",
-  chair: "Thiết kế công thái học · Đệm đàn hồi cao",
+  controller: "Kết nối USB / Không dây",
+  "tay-cam": "Kết nối USB / Không dây",
+  keyboard: "Switch cơ học · Keycap PBT",
+  "ban-phim": "Switch cơ học · Keycap PBT",
+  mouse: "Cảm biến quang học · DPI tùy chỉnh",
+  chuot: "Cảm biến quang học · DPI tùy chỉnh",
+  headset: "Driver âm thanh · Micro đàm thoại",
+  "tai-nghe": "Driver âm thanh · Micro đàm thoại",
+  monitor: "Tấm nền IPS · Tần số quét cao",
+  "man-hinh": "Tấm nền IPS · Tần số quét cao",
+  "mouse-pad": "Bề mặt chống nước · Đế cao su",
+  "lot-chuot": "Bề mặt chống nước · Đế cao su",
+  pad: "Bề mặt chống nước · Đế cao su",
+  webcam: "Kết nối USB · Tích hợp Micro",
+  microphone: "Micro Condenser · Lọc tạp âm",
+  chair: "Khung thép · Đệm đàn hồi",
 };
+
+const FLUFF_PATTERNS = [
+  /\b(?:rẻ nhất tiktok\s*shop|vô địch tầm giá|giá học sinh|kèm quà tặng|lỗi 1 đổi 1|lỗi 1 dổi 1|sản phẩm bán chạy|giao hàng nội địa|hỗ trợ cài game|cổng xịn)\b/giu,
+  /\b9\/10\s*game\s*thủ\s*tin\s*dùng\b/giu,
+  /\b(?:cao cấp cho tuyển thủ|đạt chuẩn thi đấu|chuẩn\s*esports?|nâng tầm game\s*aaa|chuyên game)\b/giu,
+  /nhạy bén,?\s*không độ trễ[^,;.|]*/giu,
+  /dễ dàng cài đặt[^,;.|]*/giu,
+  /nâng(?:\s+cao)?\s+trải\s+nghiệm[^,;.|]*/giu,
+  /chính hãng\s+[\p{L}\p{N}_-]*\s*mới ra mắt/giu,
+  /\bmới ra mắt\b/giu,
+  /\bhàng chính hãng\b/giu,
+  /\b(?:bảo hành|bh)\s*\d+\s*(?:tháng|t|năm)?\b/giu,
+  /\bhoàn hảo cho[^,;.|]*/giu,
+  /\bthích hợp cho\s+youtube[^,;.|]*/giu,
+  /\bcho\s+youtube\s*(?:và\s*)?skype\b/giu,
+  /\bphụ kiện game pro\b/giu,
+  /\bsiêu nét,?\s*lấy nét thần tốc\b/giu,
+  /\bdune fox valorant a102\b/giu,
+  /\bpressing time\b/giu,
+];
+
+function stripBracketTagsAndFluff(rawText) {
+  let text = String(rawText || "");
+  // Unwrap 【Model】 if it looks like a brand/model code, else remove promo brackets
+  text = text.replace(/【([^】]+)】/gu, (_, inner) => {
+    if (/giao hàng|bảo hành|bh\s*\d|rẻ nhất|bán chạy|chính hãng|quà tặng|hot|sale/iu.test(inner)) {
+      return " ";
+    }
+    return ` ${inner} `;
+  });
+  // Remove leading or trailing square-bracket tags like [BH 12 tháng], [Gamelab], [CỔNG XỊN]
+  text = text.replace(/\[[^\]]+\]/gu, " ");
+  text = text.replace(/\((?:HOT|NEW|MỚI|BÁN CHẠY)\)/giu, " ");
+
+  for (const pattern of FLUFF_PATTERNS) {
+    text = text.replace(pattern, " ");
+  }
+
+  return text
+    .replace(/_/g, " - ")
+    .replace(/\s+/g, " ")
+    .replace(/^[\s,;|•\-–—]+|[\s,;|•\-–—.]+$/gu, "")
+    .trim();
+}
 
 export function cleanProductTitle(product) {
   const raw = String(product?.name || product?.short_name || "Sản phẩm");
-  const stripped = raw
-    .replace(/^(?:\s*\[[^\]]+\]\s*)+/u, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  return stripped || raw.trim() || "Sản phẩm";
+  const cleaned = stripBracketTagsAndFluff(raw);
+  if (!cleaned) return raw.trim() || "Sản phẩm";
+
+  // Split into clauses by major delimiters
+  const clauses = cleaned
+    .split(/\s*(?:\||•|;|,|\s-\s|\s–\s|\s—\s)\s*/u)
+    .map((c) => c.replace(/^[\s,;|•\-–—]+|[\s,;|•\-–—.]+$/gu, "").trim())
+    .filter((c) => c.length >= 2);
+
+  if (clauses.length === 0) return cleaned;
+
+  let primary = clauses[0];
+
+  // If first clause is just a version code like "V2" or very short brand/model prefix, merge with second clause
+  if (
+    clauses.length > 1 &&
+    (primary.length <= 16 ||
+      /^(?:v\d+|bản\s+\p{L}+|a\d+[a-z0-9\s]*)$/iu.test(clauses[1]))
+  ) {
+    const candidate = /^(?:v\d+)$/iu.test(primary)
+      ? `${clauses[1]} (${primary.toUpperCase()})`
+      : `${primary} - ${clauses[1]}`;
+    if (candidate.length <= 62) {
+      primary = candidate;
+    }
+  }
+
+  // Remove verbose trailing clauses inside a run-on primary segment once we already have a clear core title
+  const runOnCutoffs = [
+    /\s+(?:với nút bấm|với loa tích hợp|với micro|được trang bị|tích hợp tính năng|tích hợp đèn|dành cho máy tính|cho máy tính để bàn|cho điện thoại di động|tương thích với|tương thích\s+ps4|chất liệu\s+abs)\b.*$/iu,
+    /\s+(?:cho\s+pc\s*,?\s*laptop|dùng cho\s+pc)\b.*$/iu,
+  ];
+  for (const cutoff of runOnCutoffs) {
+    const shortened = primary.replace(cutoff, "").trim();
+    if (shortened.length >= 18) {
+      primary = shortened;
+    }
+  }
+
+  // Remove long internal vendor SKU hashes like 68F2GACBVN while keeping (27 inch)
+  primary = primary.replace(/\b[0-9A-Z]{9,14}\b/g, "").replace(/\s+/g, " ").trim();
+
+  // Cap at ~58 chars on a word boundary if still overly long
+  if (primary.length > 60) {
+    const words = primary.split(" ");
+    let acc = "";
+    for (const w of words) {
+      if ((acc + " " + w).trim().length > 58) break;
+      acc = (acc + " " + w).trim();
+    }
+    if (acc.length >= 20) primary = acc;
+  }
+
+  return primary.replace(/^[\s,;|•\-–—]+|[\s,;|•\-–—.]+$/gu, "").trim() || "Sản phẩm";
 }
 
 export function displayBrandName(product) {
@@ -282,13 +389,13 @@ export function displayBrandName(product) {
   if (rawBrand && !/^(khác|other|unknown|n\/a)$/i.test(rawBrand)) {
     return rawBrand;
   }
-  const title = cleanProductTitle(product);
-  const lowerTitle = title.toLowerCase();
+  const rawTitle = String(product?.name || product?.short_name || "");
+  const lowerTitle = rawTitle.toLowerCase();
   for (const candidate of KNOWN_GEAR_BRANDS) {
     const escaped = candidate.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const regex = new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}(?=$|[^\\p{L}\\p{N}])`, "iu");
     if (regex.test(lowerTitle)) {
-      return candidate;
+      return candidate === "Bigbigwon" ? "BigBig Won" : candidate === "Edra" ? "E-Dra" : candidate;
     }
   }
   return "";
@@ -306,24 +413,273 @@ export function displayProductFeature(product) {
     (rawSummary.length <= 24 && rawSummary === rawSummary.toLowerCase());
 
   if (!isGenericSummary) {
-    return rawSummary;
+    const cleanedSummary = stripBracketTagsAndFluff(rawSummary);
+    if (cleanedSummary.length >= 6) return cleanedSummary;
   }
 
-  // Extract meaningful hardware spec clauses from product title when summary is just a search keyword
-  const title = cleanProductTitle(product);
-  const clauses = title
-    .split(/\s*(?:,|;|–|—|\||\/|\s-\s)\s*/u)
+  const rawTitle = stripBracketTagsAndFluff(product?.name || product?.short_name || "");
+  const shortTitle = cleanProductTitle(product);
+  const clauses = rawTitle
+    .split(/\s*(?:,|;|–|—|\||•|\s-\s)\s*/u)
     .map((part) => part.trim())
-    .filter((part) => part.length >= 6);
+    .filter((part) => part.length >= 5 && part.toLowerCase() !== shortTitle.toLowerCase());
 
-  if (clauses.length > 1) {
-    const picked = clauses.slice(1, 3).join(" · ");
-    if (picked.length >= 8) {
+  if (clauses.length > 0) {
+    const picked = clauses
+      .filter((c) => !shortTitle.toLowerCase().includes(c.toLowerCase()))
+      .slice(0, 2)
+      .join(" · ");
+    if (picked.length >= 6) {
       return picked.charAt(0).toUpperCase() + picked.slice(1);
     }
   }
 
-  return CATEGORY_DEFAULT_FEATURES[catKey] || "Thiết bị gaming chính hãng hiệu năng cao";
+  return CATEGORY_DEFAULT_FEATURES[catKey] || catName || "Phụ kiện máy tính";
 }
+
+const INTERNAL_SPEC_KEYS = new Set([
+  "source",
+  "source_url",
+  "source_product_id",
+  "shop",
+  "keyword",
+  "units_sold_at_import",
+  "inventory_from_source",
+]);
+
+export function extractProductHighlights(product) {
+  if (Array.isArray(product?.features) && product.features.length > 0) {
+    return product.features
+      .map((f) => stripBracketTagsAndFluff(f?.content || ""))
+      .filter((text) => text.length >= 4);
+  }
+
+  const rawTitle = stripBracketTagsAndFluff(product?.name || product?.short_name || "");
+  const shortTitle = cleanProductTitle(product).toLowerCase();
+  const parts = rawTitle
+    .split(/\s*(?:,|;|\||•|\s-\s|\s–\s)\s*/u)
+    .map((p) => p.trim())
+    .filter((p) => p.length >= 5 && p.toLowerCase() !== shortTitle);
+
+  const unique = [];
+  const seen = new Set();
+  for (const part of parts) {
+    const key = part.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(part.charAt(0).toUpperCase() + part.slice(1));
+    }
+    if (unique.length >= 5) break;
+  }
+  return unique;
+}
+
+export function extractProductSpecs(product, selectedVariant = null) {
+  if (!product) return [];
+
+  const rawName = String(product?.name || product?.short_name || "");
+  const cleanedFull = stripBracketTagsAndFluff(rawName);
+  const brand = displayBrandName(product) || "Chính hãng";
+  const categoryName = product?.category?.name || "Thiết bị ngoại vi";
+  const catCode = String(product?.category?.code || product?.category?.slug || "").toLowerCase();
+  const publicSku =
+    selectedVariant?.sku && !String(selectedVariant.sku).startsWith("TT-")
+      ? selectedVariant.sku
+      : "";
+
+  const rows = [];
+  const addedKeys = new Set();
+  const addRow = (label, value) => {
+    const cleanVal = String(value || "").replace(/\s+/g, " ").trim();
+    const normKey = label.toUpperCase();
+    if (!cleanVal || addedKeys.has(normKey)) return;
+    addedKeys.add(normKey);
+    rows.push([normKey, cleanVal]);
+  };
+
+  addRow("THƯƠNG HIỆU", brand);
+  addRow("DANH MỤC", categoryName);
+
+  // Extract Model code if detectable
+  const modelMatch =
+    rawName.match(
+      /\b(Apex\s*\d+(?:\s*Pro)?|Vader\s*\d+(?:\s*Pro)?|Dune\s*Fox|Direwolf\s*\d+|A102L?\s*(?:HE|Ultra)?|T3\s*Lite|Nova\s*2\s*Lite|X5\s*Lite|X05\s*Pro|G5\s*Pro(?:\s*v2)?|TGZ-850M|RSP\s*G4|T28|T46|DualShock\s*4|P4|LOQ\s*27-10|VG27[A-Z0-9]+|A27Qi|EGM24[A-Z0-9]+|C960(?:\s*Ultra)?|C950|C60E|Tiny\s*2(?:\s*Lite)?|TNW\s*K18|SP3|SC-1|Q20|NC900|X75|S98|Q1\s*Pro|K2|K70|G502|M75|TC100)\b/iu
+    ) || null;
+  if (modelMatch) {
+    addRow("MODEL", modelMatch[1].replace(/\s+/g, " ").trim());
+  }
+
+  if (publicSku) {
+    addRow("MÃ SKU", publicSku);
+  }
+
+  // Variant / Edition
+  const variantParts = [
+    selectedVariant?.color,
+    selectedVariant?.switch_type,
+    selectedVariant?.layout,
+  ].filter(Boolean);
+  if (variantParts.length > 0) {
+    addRow("PHIÊN BẢN", variantParts.join(" · "));
+  } else {
+    const editionMatch = rawName.match(/\b(bản\s+(?:tiêu chuẩn|pro|v2|limited|mới|ultra)|v2)\b/iu);
+    if (editionMatch) {
+      const ed = editionMatch[1].trim();
+      addRow("PHIÊN BẢN", ed.charAt(0).toUpperCase() + ed.slice(1));
+    }
+  }
+
+  // Connection
+  const connTokens = [];
+  if (/3\s*mode|tri-?mode|đa\s*mode|ba\s*chế\s*độ/iu.test(rawName)) connTokens.push("3 chế độ (USB-C / 2.4GHz / Bluetooth)");
+  else {
+    if (/bluetooth/iu.test(rawName)) connTokens.push("Bluetooth");
+    if (/2\.4\s*g|wireless|usb\s*receiver|không\s*dây/iu.test(rawName)) connTokens.push("Không dây (Wireless)");
+    if (/type\s*-?\s*c|usb\s*-?\s*c/iu.test(rawName)) connTokens.push("USB Type-C");
+    else if (/có\s*dây|cắm\s*dây|cổng\s*usb|dây\s*usb|cáp\s*kết\s*nối|usb\s*2\.0/iu.test(rawName)) connTokens.push("USB có dây");
+  }
+  const cableMatch = rawName.match(/(\d+[.,]\d+\s*m)\b/iu);
+  if (cableMatch) connTokens.push(`Cáp dài ${cableMatch[1].replace(",", ".")}`);
+  if (/3\.5\s*mm/iu.test(rawName)) connTokens.push("Cổng âm thanh 3.5mm");
+
+  if (selectedVariant?.connection) {
+    addRow("KẾT NỐI", selectedVariant.connection);
+  } else if (connTokens.length > 0) {
+    addRow("KẾT NỐI", connTokens.join(" · "));
+  } else if (!/lot-chuot|mouse-pad|pad|chair/i.test(catCode)) {
+    addRow("KẾT NỐI", /webcam|microphone/i.test(catCode) ? "USB Plug & Play" : /monitor|man-hinh/i.test(catCode) ? "HDMI / DisplayPort" : "USB / Không dây");
+  }
+
+  // Compatibility / Platforms
+  const platforms = [];
+  if (/\bpc\b|máy tính để bàn/iu.test(rawName)) platforms.push("PC");
+  if (/\blaptop\b|máy tính xách tay/iu.test(rawName)) platforms.push("Laptop");
+  if (/\bmac\b|macos/iu.test(rawName)) platforms.push("macOS");
+  if (/nintendo\s*switch|\bswitch\b/iu.test(rawName) && /controller|tay-cam/i.test(catCode)) platforms.push("Nintendo Switch");
+  if (/\bps4\b|\bps3\b|playstation/iu.test(rawName)) platforms.push("PlayStation (PS3/PS4)");
+  if (/\bandroid\b/iu.test(rawName)) platforms.push("Android");
+  if (/\bios\b|iphone|ipad/iu.test(rawName)) platforms.push("iOS");
+  if (/\bđiện thoại\b|\bsmartphone\b|\bmobile\b/iu.test(rawName) && !platforms.includes("Android") && !platforms.includes("iOS")) {
+    platforms.push("Điện thoại di động");
+  }
+  if (/đa nền tảng/iu.test(rawName) && platforms.length === 0) {
+    platforms.push("PC, Laptop, Android, iOS, Switch");
+  }
+  if (platforms.length > 0) {
+    addRow("TƯƠNG THÍCH", platforms.join(", "));
+  } else if (!/lot-chuot|mouse-pad|pad|chair/i.test(catCode)) {
+    addRow("TƯƠNG THÍCH", "PC, Laptop (Windows / macOS)");
+  }
+
+  // Sensor / Core Technology
+  const techTokens = [];
+  if (/hall\s*effect|hall\s*joystick|cảm ứng hội trường|\bhe\b/iu.test(rawName)) techTokens.push("Joystick Hall Effect chống trôi");
+  if (/\btmr\b/iu.test(rawName)) techTokens.push("Cần điều khiển từ tính TMR");
+  if (/vcm|x-haptics/iu.test(rawName)) techTokens.push("Trigger rung phản hồi lực VCM");
+  if (/trigger\s*lock/iu.test(rawName)) techTokens.push("Khóa hành trình Trigger Lock");
+  if (/gyro|sáu trục|6 trục|chuyển động/iu.test(rawName)) techTokens.push("Cảm biến con quay hồi chuyển (Gyro)");
+  if (/fast\s*ips/iu.test(rawName)) techTokens.push("Tấm nền Fast IPS");
+  else if (/\bips\b/iu.test(rawName)) techTokens.push("Tấm nền IPS");
+  else if (/\bva\b/iu.test(rawName)) techTokens.push("Tấm nền VA");
+  else if (/\boled\b/iu.test(rawName)) techTokens.push("Tấm nền OLED");
+  if (/cmos/iu.test(rawName)) {
+    const sensorSize = rawName.match(/1\/\d+(?:\.\d+)?\s*"/u);
+    techTokens.push(sensorSize ? `Cảm biến CMOS ${sensorSize[0]}` : "Cảm biến quang học CMOS");
+  }
+  if (/condenser|ngưng tụ/iu.test(rawName)) techTokens.push("Micro thu âm Condenser");
+  if (/ai\s*tracking|\bptz\b/iu.test(rawName)) techTokens.push("PTZ & AI Tracking tự động lấy nét");
+  if (/hot-?swap/iu.test(rawName)) techTokens.push("Hot-swap thay switch nhanh");
+  if (techTokens.length > 0) {
+    addRow("CÔNG NGHỆ", techTokens.join(" · "));
+  }
+
+  // Resolution / Refresh Rate / Polling Rate
+  const rateTokens = [];
+  const pollingMatch = rawName.match(/(\d{3,4}\s*hz)/iu);
+  if (pollingMatch) {
+    const hz = pollingMatch[1].toUpperCase().replace(/\s+/g, "");
+    rateTokens.push(/monitor|man-hinh/i.test(catCode) ? `Tần số quét ${hz}` : `Polling Rate ${hz}`);
+  }
+  const respMatch = rawName.match(/(\d+(?:[.,]\d+)?\s*ms)\b/iu);
+  if (respMatch) rateTokens.push(`Phản hồi ${respMatch[1]}`);
+  if (/\b4k\b/iu.test(rawName)) rateTokens.push("Độ phân giải 4K Ultra HD");
+  else if (/\b2k\b|\bqhd\b/iu.test(rawName)) rateTokens.push("Độ phân giải 2K QHD");
+  else if (/1080p|\bfhd\b|full\s*hd/iu.test(rawName)) rateTokens.push("Độ phân giải Full HD 1080P");
+  const fpsMatch = rawName.match(/(\d{2,3}\s*fps)\b/iu);
+  if (fpsMatch) rateTokens.push(fpsMatch[1].toUpperCase());
+  if (/hdr10/iu.test(rawName)) rateTokens.push("Chuẩn màu HDR10");
+  if (/g-?sync|freesync/iu.test(rawName)) rateTokens.push("Đồng bộ khung hình Adaptive-Sync");
+  if (rateTokens.length > 0) {
+    addRow("HIỆU NĂNG / HIỂN THỊ", rateTokens.join(" · "));
+  }
+
+  // Physical Dimensions / Materials / Features
+  const featTokens = [];
+  const macroMatch = rawName.match(/(\d+\s*(?:nút|phím)?\s*macro)/iu);
+  if (macroMatch) featTokens.push(`${macroMatch[1]} lập trình được`);
+  else if (/\bmacro\b/iu.test(rawName)) featTokens.push("Hỗ trợ phím Macro");
+  if (/rung\s*kép|rung\s*hd|có\s*rung|cảm ứng rung|motor/iu.test(rawName)) featTokens.push("Motor rung phản hồi");
+  if (/màn hình\s*(?:thông minh|cảm ứng)/iu.test(rawName)) featTokens.push("Màn hình hiển thị tích hợp");
+  if (/mic(?:ro)?\s*(?:khử ồn|giảm ồn|giảm tiếng ồn|thu âm|đàm thoại)|có\s*míc|có\s*mic|2\s*mic/iu.test(rawName)) {
+    featTokens.push("Micro thu âm & lọc ồn tích hợp");
+  }
+  if (/nắp\s*(?:che\s*)?riêng tư/iu.test(rawName)) featTokens.push("Nắp che ống kính bảo mật");
+  if (/đèn\s*(?:trợ sáng|led)|\brgb\b|\bled\b/iu.test(rawName)) featTokens.push("Hệ thống đèn LED / Trợ sáng");
+  if (/chống\s*nước/iu.test(rawName)) featTokens.push("Bề mặt kháng nước");
+  if (/chống\s*trượt/iu.test(rawName)) featTokens.push("Đế / Tay cầm chống trượt");
+  if (featTokens.length > 0) {
+    addRow("TÍNH NĂNG", featTokens.join(" · "));
+  }
+
+  // Dimensions & Material
+  const dimTokens = [];
+  const inchMatch = rawName.match(/(\d{2}(?:[.,]\d+)?\s*inch)/iu);
+  if (inchMatch) dimTokens.push(`Kích thước ${inchMatch[1]}`);
+  const cmMatch = rawName.match(/(\d+\s*x\s*\d+\s*cm)/iu);
+  if (cmMatch) dimTokens.push(`Kích thước ${cmMatch[1].replace(/\s+/g, "")}`);
+  const mmMatch = rawName.match(/(?:dày|độ giãn max)\s*(\d+(?:[.,]\d+)?\s*mm)/iu);
+  if (mmMatch) dimTokens.push(mmMatch[0]);
+  if (/da\s*pu|da\s*trơn/iu.test(rawName)) dimTokens.push("Chất liệu Da PU");
+  else if (/kính\s*cường\s*lực/iu.test(rawName)) dimTokens.push("Kính cường lực CNC");
+  else if (/\babs\b/iu.test(rawName)) dimTokens.push("Nhựa kỹ thuật ABS");
+  else if (/nhôm/iu.test(rawName)) dimTokens.push("Hợp kim nhôm");
+  if (dimTokens.length > 0) {
+    addRow("KÍCH THƯỚC & VẬT LIỆU", dimTokens.join(" · "));
+  }
+
+  // Custom specifications stored in DB (excluding internal import keys)
+  if (product.specifications && typeof product.specifications === "object") {
+    for (const [k, v] of Object.entries(product.specifications)) {
+      if (!INTERNAL_SPEC_KEYS.has(k.toLowerCase()) && v !== "" && v != null) {
+        addRow(k.toUpperCase(), String(v));
+      }
+    }
+  }
+
+  // Warranty (from product.warranty_months or parsed from rawName)
+  const parsedWarranty = rawName.match(/\b(?:bảo hành|bh)\s*(\d+)\s*(tháng|t|năm)\b/iu);
+  if (product.warranty_months > 0) {
+    addRow("BẢO HÀNH", `${product.warranty_months} tháng chính hãng`);
+  } else if (parsedWarranty) {
+    const unit = /năm/iu.test(parsedWarranty[2]) ? "năm" : "tháng";
+    addRow("BẢO HÀNH", `${parsedWarranty[1]} ${unit}`);
+  } else {
+    addRow("BẢO HÀNH", "12 tháng theo chính sách cửa hàng");
+  }
+
+  // Distributor / Shop if present in specifications
+  const shopName = product?.specifications?.shop;
+  if (shopName && String(shopName).trim()) {
+    addRow("ĐƠN VỊ CUNG CẤP", String(shopName).trim());
+  }
+
+  // Ensure even short titles have at least 6 informative rows
+  if (rows.length < 6 && cleanedFull) {
+    addRow("MÔ TẢ KỸ THUẬT", displayProductFeature(product));
+  }
+
+  return rows;
+}
+
 
 

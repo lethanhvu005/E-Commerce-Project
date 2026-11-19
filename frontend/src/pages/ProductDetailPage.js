@@ -6,6 +6,8 @@ import {
   cleanProductTitle,
   displayBrandName,
   displayProductFeature,
+  extractProductHighlights,
+  extractProductSpecs,
   fallbackProductImage,
   money,
   productImage,
@@ -15,16 +17,6 @@ import ProductCard from "../components/ProductCard";
 import { Interactive3DStage } from "../components/Motion3D";
 import { Empty, ErrorBox, Loading, Toast } from "../components/Feedback";
 import { ReviewCard, ReviewEligibilityNotice, StarRatingInput } from "../components/ReviewComponents";
-
-const INTERNAL_SPEC_KEYS = new Set([
-  "source",
-  "source_url",
-  "source_product_id",
-  "shop",
-  "keyword",
-  "units_sold_at_import",
-  "inventory_from_source",
-]);
 
 export default function ProductDetailPage() {
   const { slug } = useParams();
@@ -269,7 +261,7 @@ export default function ProductDetailPage() {
   if (loading && !product) {
     return (
       <div className="container" style={{ padding: "60px 0" }}>
-        <Loading label="Đang tải không gian sản phẩm 3D..." />
+        <Loading label="Đang tải thông tin sản phẩm..." />
       </div>
     );
   }
@@ -301,16 +293,15 @@ export default function ProductDetailPage() {
     price && comparePrice && Number(comparePrice) > Number(price)
       ? Math.round(((Number(comparePrice) - Number(price)) / Number(comparePrice)) * 100)
       : null;
-  const specEntries =
-    product.specifications && typeof product.specifications === "object"
-      ? Object.entries(product.specifications).filter(
-          ([key, value]) => !INTERNAL_SPEC_KEYS.has(key.toLowerCase()) && value !== "" && value != null
-        )
-      : [];
+  const specEntries = extractProductSpecs(product, selectedVariant);
+  const highlightList = extractProductHighlights(product);
   const displayTitle = cleanProductTitle(product);
   const brandName = displayBrandName(product);
   const catName = product.category?.name || "Gaming Gear";
   const storySubtitle = displayProductFeature(product);
+  const rawDescription = String(product.description || "").trim();
+  const hasDetailedDescription =
+    rawDescription.length > 0 && !/^sản phẩm từ\s+/iu.test(rawDescription);
   const publicSku = selectedVariant?.sku?.startsWith("TT-") ? "" : selectedVariant?.sku;
 
   return (
@@ -665,22 +656,22 @@ export default function ProductDetailPage() {
           </div>
         </section>
 
-        {/* Story, Features & Specifications Section */}
+        {/* Features & Specifications Section */}
         <section className="pd-story" aria-label="Chi tiết và thông số kỹ thuật">
           <div>
-            <span className="pd-label">CÂU CHUYỆN THIẾT KẾ & TÍNH NĂNG</span>
+            <span className="pd-label">THÔNG TIN & ĐẶC ĐIỂM SẢN PHẨM</span>
             <h2>
               {displayTitle}
               <span>{storySubtitle}</span>
             </h2>
-            <p>{product.description || storySubtitle}</p>
+            {hasDetailedDescription && <p>{rawDescription}</p>}
 
-            {product.features && product.features.length > 0 && (
+            {highlightList.length > 0 && (
               <ul className="nexa-feature-list">
-                {product.features.map((feat) => (
-                  <li key={feat.id}>
+                {highlightList.map((featText, idx) => (
+                  <li key={idx}>
                     <span className="nexa-feat-check">✦</span>
-                    <span>{feat.content}</span>
+                    <span>{featText}</span>
                   </li>
                 ))}
               </ul>
@@ -692,29 +683,9 @@ export default function ProductDetailPage() {
               THÔNG SỐ KỸ THUẬT CHI TIẾT
             </span>
             <dl className="pd-specs">
-              <div>
-                <dt>THƯƠNG HIỆU</dt>
-                <dd>{brandName || "Chính hãng"}</dd>
-              </div>
-              <div>
-                <dt>DANH MỤC</dt>
-                <dd>{catName}</dd>
-              </div>
-              {publicSku && (
-                <div>
-                  <dt>MÃ SKU</dt>
-                  <dd>{publicSku}</dd>
-                </div>
-              )}
-              {product.warranty_months > 0 && (
-                <div>
-                  <dt>BẢO HÀNH</dt>
-                  <dd>{product.warranty_months} tháng chính hãng</dd>
-                </div>
-              )}
               {specEntries.map(([key, val]) => (
                 <div key={key}>
-                  <dt>{key.toUpperCase()}</dt>
+                  <dt>{key}</dt>
                   <dd>{String(val)}</dd>
                 </div>
               ))}
@@ -727,7 +698,7 @@ export default function ProductDetailPage() {
           <section className="pd-related" aria-label="Sản phẩm cùng danh mục">
             <div className="gear-section-head">
               <div>
-                <span className="gear-kicker">GỢI Ý CÙNG HỆ SINH THÁI</span>
+                <span className="gear-kicker">SẢN PHẨM CÙNG DANH MỤC</span>
                 <h2>Sản phẩm tương tự</h2>
               </div>
               <Link to={`/products?category=${product.category?.slug || ""}`}>
