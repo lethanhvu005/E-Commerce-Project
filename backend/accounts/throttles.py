@@ -1,4 +1,4 @@
-from rest_framework.throttling import AnonRateThrottle
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
 
 class LoginRateThrottle(AnonRateThrottle):
@@ -11,3 +11,9 @@ class PasswordResetRateThrottle(AnonRateThrottle):
 
 class RegisterRateThrottle(AnonRateThrottle):
     scope = 'register'
+
+
+class OtpRateThrottle(UserRateThrottle):
+    """Limit OTP email requests per authenticated account."""
+
+    scope = 'otp'

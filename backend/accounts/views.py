@@ -41,15 +41,11 @@ from .serializers import (
     SupportContactSerializer,
     UserSerializer,
 )
-from .throttles import LoginRateThrottle, PasswordResetRateThrottle, RegisterRateThrottle
+from .throttles import LoginRateThrottle, OtpRateThrottle, PasswordResetRateThrottle, RegisterRateThrottle
 
 logger = logging.getLogger(__name__)
 EMAIL_OTP_TTL_SECONDS = 600
 EMAIL_OTP_MAX_ATTEMPTS = 5
-
-
-def _smtp_is_configured() -> bool:
-    return email_transport_configured()
 
 
 def _dispatch_otp_email(*, subject: str, message: str, recipient_email: str, log_context: str) -> tuple[bool, bool]:
@@ -771,6 +767,7 @@ def me(request):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+@throttle_classes([OtpRateThrottle])
 def request_email_otp(request):
     serializer = EmailOtpRequestSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -886,6 +883,7 @@ def verify_email_otp(request):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+@throttle_classes([OtpRateThrottle])
 def request_email_change_otp(request):
     current_email = (request.user.email or "").strip().lower()
     if not current_email:

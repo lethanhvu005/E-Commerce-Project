@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { adminService } from "../api/client";
 import { dateTime, productImage } from "../api/format";
@@ -30,6 +30,7 @@ export default function AdminInventoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [toastMsg, setToastMsg] = useState("");
+  const loadRequestRef = useRef(0);
 
   const [adjustModal, setAdjustModal] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState(null);
@@ -64,16 +65,24 @@ export default function AdminInventoryPage() {
   }, [urlQuery]);
 
   const loadAdminData = useCallback(async () => {
+    const requestId = loadRequestRef.current + 1;
+    loadRequestRef.current = requestId;
     setLoading(true);
     setError(null);
-    setMovementsError(null);
-    setAuditError(null);
+    if (activeTab === "movements") setMovementsError(null);
+    if (activeTab === "audit") setAuditError(null);
     try {
       const [balOutcome, movOutcome, audOutcome] = await Promise.allSettled([
         adminService.getInventoryBalances({ page, ...(urlQuery ? { q: urlQuery } : {}) }),
-        adminService.getInventoryMovements({ ...(urlQuery ? { q: urlQuery } : {}) }),
-        adminService.getAuditLogs({ ...(urlQuery ? { q: urlQuery } : {}) }),
+        activeTab === "movements"
+          ? adminService.getInventoryMovements({ ...(urlQuery ? { q: urlQuery } : {}) })
+          : Promise.resolve(null),
+        activeTab === "audit"
+          ? adminService.getAuditLogs({ ...(urlQuery ? { q: urlQuery } : {}) })
+          : Promise.resolve(null),
       ]);
+
+      if (requestId !== loadRequestRef.current) return;
 
       if (balOutcome.status === "fulfilled") {
         const balRes = balOutcome.value;
@@ -86,27 +95,27 @@ export default function AdminInventoryPage() {
         setError(balOutcome.reason);
       }
 
-      if (movOutcome.status === "fulfilled") {
+      if (movOutcome.status === "fulfilled" && movOutcome.value !== null) {
         const movRes = movOutcome.value;
         setMovements(movRes.results || movRes || []);
-      } else {
+      } else if (movOutcome.status === "rejected") {
         setMovements([]);
         setMovementsError(movOutcome.reason);
       }
 
-      if (audOutcome.status === "fulfilled") {
+      if (audOutcome.status === "fulfilled" && audOutcome.value !== null) {
         const audRes = audOutcome.value;
         setAuditLogs(audRes.results || audRes || []);
-      } else {
+      } else if (audOutcome.status === "rejected") {
         setAuditLogs([]);
         setAuditError(audOutcome.reason);
       }
     } catch (err) {
-      setError(err);
+      if (requestId === loadRequestRef.current) setError(err);
     } finally {
-      setLoading(false);
+      if (requestId === loadRequestRef.current) setLoading(false);
     }
-  }, [page, urlQuery]);
+  }, [activeTab, page, urlQuery]);
 
   useEffect(() => {
     if (!user) {

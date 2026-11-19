@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import authenticate
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
@@ -513,6 +514,38 @@ class AccountAuthApiTests(APITestCase):
         self.assertEqual(fb_user.email, "newuser.fb@gmail.com")
         self.assertIsNotNone(fb_user.email_verified_at)
         self.assertIsNone(cache.get(f"email_otp:{fb_user.pk}"))
+
+    def test_email_otp_requests_are_rate_limited_per_user(self):
+        from django.test import override_settings
+
+        facebook_user = User.objects.create_user(
+            email=None,
+            password=None,
+            facebook_sub="facebook-otp-throttle-001",
+        )
+        self.authenticate(facebook_user)
+
+        rates = {
+            "anon": "60/minute",
+            "login": "5/minute",
+            "password_reset": "10/minute",
+            "register": "3/hour",
+            "otp": "1/minute",
+        }
+        with override_settings(REST_FRAMEWORK={**settings.REST_FRAMEWORK, "DEFAULT_THROTTLE_RATES": rates}):
+            first = self.client.post(
+                "/api/accounts/me/email-otp/request/",
+                {"email": "first.otp@gmail.com"},
+                format="json",
+            )
+            second = self.client.post(
+                "/api/accounts/me/email-otp/request/",
+                {"email": "second.otp@gmail.com"},
+                format="json",
+            )
+
+        self.assertEqual(first.status_code, status.HTTP_200_OK)
+        self.assertEqual(second.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
 
     def test_phone_and_email_must_have_valid_format(self):
         self.authenticate()

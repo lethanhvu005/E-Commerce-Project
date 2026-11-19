@@ -75,7 +75,15 @@ class ProductListSerializer(serializers.ModelSerializer):
         return ProductImageSerializer(image).data if image else None
 
     def _active_variants(self, product):
-        return [v for v in product.variants.all() if v.is_active]
+        # The list serializer calls this helper for price, default variant and
+        # stock. Cache per product so a page does not scan the same variants
+        # three times.
+        cache = getattr(self, "_active_variants_cache", None)
+        if cache is None:
+            cache = self._active_variants_cache = {}
+        if product.pk not in cache:
+            cache[product.pk] = [variant for variant in product.variants.all() if variant.is_active]
+        return cache[product.pk]
 
     def get_compare_at_price(self, product):
         variants = self._active_variants(product)

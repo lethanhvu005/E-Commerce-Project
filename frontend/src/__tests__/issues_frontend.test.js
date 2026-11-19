@@ -4,6 +4,7 @@ import * as apiClient from "../api/client";
 import ProductCard from "../components/ProductCard";
 import AdminLayout from "../components/admin/AdminLayout";
 import AdminDashboardPage from "../pages/AdminDashboardPage";
+import AdminInventoryPage from "../pages/AdminInventoryPage";
 import { AdminAnalyticsPage, AdminUnavailablePage } from "../pages/AdminUnavailablePages";
 import CartPage from "../pages/CartPage";
 import HomePage from "../pages/HomePage";
@@ -727,5 +728,32 @@ describe("#27 AdminLayout URL navigation & sidebar label", () => {
     fireEvent.change(searchInput, { target: { value: "NX-99" } });
     fireEvent.submit(searchInput.closest("form"));
     expect(screen.getByTestId("loc-probe").textContent).toBe("/admin/orders?status=pending&q=NX-99");
+  });
+});
+
+describe("AdminInventoryPage request scoping", () => {
+  test("loads only the dataset required by the active tab", async () => {
+    apiClient.adminService.getInventoryBalances.mockResolvedValue({
+      count: 0,
+      next: null,
+      results: [],
+      summary: { total_on_hand: 0, total_reserved: 0, total_available: 0, total_skus: 0 },
+    });
+    apiClient.adminService.getInventoryMovements.mockResolvedValue({ results: [] });
+    apiClient.adminService.getAuditLogs.mockResolvedValue({ results: [] });
+
+    render(
+      <MemoryRouter initialEntries={["/admin/inventory"]}>
+        <AdminInventoryPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(apiClient.adminService.getInventoryBalances).toHaveBeenCalledTimes(1));
+    expect(apiClient.adminService.getInventoryMovements).not.toHaveBeenCalled();
+    expect(apiClient.adminService.getAuditLogs).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: /Lịch sử biến động kho/i }));
+    await waitFor(() => expect(apiClient.adminService.getInventoryMovements).toHaveBeenCalledTimes(1));
+    expect(apiClient.adminService.getAuditLogs).not.toHaveBeenCalled();
   });
 });

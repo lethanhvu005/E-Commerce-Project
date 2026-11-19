@@ -116,7 +116,16 @@ def product_detail(request, slug):
 @authentication_classes([])
 @permission_classes([AllowAny])
 def product_variants(request, slug):
-    product = get_object_or_404(active_products(), slug=slug)
+    # This endpoint only needs the product identity and its active variants;
+    # avoid the image, review and aggregate work used by the product listing.
+    product = get_object_or_404(
+        Product.objects.filter(
+            status=Product.Status.ACTIVE,
+            category__is_active=True,
+            brand__is_active=True,
+        ),
+        slug=slug,
+    )
     variants = product.variants.filter(is_active=True).select_related("inventory").order_by("price", "id")
     return Response({"results": ProductVariantSerializer(variants, many=True).data})
 
