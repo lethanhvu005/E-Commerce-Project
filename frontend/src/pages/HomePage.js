@@ -650,7 +650,9 @@ export default function HomePage() {
             <Loading label="Đang tải danh mục..." />
           ) : data.categories?.length ? (
             <div className="gear-categories">
-              {data.categories.map((category, index) => {
+              {data.categories
+                .filter((category) => category.code !== "accessory")
+                .map((category, index) => {
                 const image = categoryImage(category);
                 return (
                   <Tilt3DCard
