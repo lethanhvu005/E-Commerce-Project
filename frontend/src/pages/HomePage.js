@@ -12,7 +12,7 @@ import {
 } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import ProductCard from "../components/ProductCard";
-import { QuickViewModal, Tilt3DCard } from "../components/Motion3D";
+import { QuickViewModal, Tilt3DCard, useGsapGridStagger } from "../components/Motion3D";
 import { Empty, ErrorBox, Loading, Toast } from "../components/Feedback";
 
 function ArrowIcon() {
@@ -345,6 +345,11 @@ export default function HomePage() {
   }, [productsState.count]);
 
   const visibleProducts = productsState.items;
+  const productGridRef = useRef(null);
+  useGsapGridStagger(
+    productGridRef,
+    `${activeCategory}-${productPage}-${visibleProducts?.length || 0}`
+  );
 
   const spotlightProduct = useMemo(() => {
     const source = highlights || productsState.items;
@@ -813,7 +818,7 @@ export default function HomePage() {
           {(productsLoading || !visibleProducts) && !error ? (
             <Loading label="Đang tải sản phẩm..." />
           ) : visibleProducts?.length ? (
-            <div className="gear-product-grid home-grid-5 nexa-stagger-grid">
+            <div ref={productGridRef} className="gear-product-grid home-grid-5 nexa-stagger-grid">
               {visibleProducts.map((product) => (
                 <ProductCard
                   key={product.id}

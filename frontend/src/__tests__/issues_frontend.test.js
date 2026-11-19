@@ -39,6 +39,9 @@ jest.mock("../components/Motion3D", () => ({
       </Component>
     ),
   QuickViewModal: () => null,
+  useLenisSmoothScroll: () => {},
+  useGsapGridStagger: () => {},
+  useGsapStudioAnimation: () => {},
 }));
 
 jest.mock("../api/client", () => {

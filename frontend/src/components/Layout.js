@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-do
 import { useAuth } from "../auth/AuthContext";
 import { cartService, catalogService, wishlistService } from "../api/client";
 import { categoryImage } from "../api/format";
+import { useLenisSmoothScroll } from "./Motion3D";
 
 function NexaLogoMark() {
   const uid = useId();
@@ -163,6 +164,8 @@ export default function Layout() {
   const [categories, setCategories] = useState([]);
   const [showBackTop, setShowBackTop] = useState(false);
   const megaRef = useRef(null);
+
+  useLenisSmoothScroll(location.pathname);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);

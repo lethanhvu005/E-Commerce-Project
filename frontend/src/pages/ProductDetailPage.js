@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { cartService, catalogService, communityService, wishlistService } from "../api/client";
 import {
@@ -15,7 +15,7 @@ import {
 } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import ProductCard from "../components/ProductCard";
-import { Interactive3DStage } from "../components/Motion3D";
+import { Interactive3DStage, useGsapStudioAnimation } from "../components/Motion3D";
 import { Empty, ErrorBox, Loading, Toast } from "../components/Feedback";
 import { ReviewCard, ReviewEligibilityNotice, StarRatingInput } from "../components/ReviewComponents";
 
@@ -25,6 +25,7 @@ export default function ProductDetailPage() {
   const navigate = useNavigate();
   const outlet = useOutletContext() || {};
   const { wishlistIds = new Set(), refreshWishlist, refreshCartCount } = outlet;
+  const pdRootRef = useRef(null);
 
   // Data States
   const [product, setProduct] = useState(null);
@@ -34,6 +35,8 @@ export default function ProductDetailPage() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [activeView, setActiveView] = useState("full"); // "full" | "angle" | "close" | "spin3d"
   const [activeTone, setActiveTone] = useState("original"); // "original" | "ice" | "rose"
+
+  useGsapStudioAnimation(pdRootRef, product?.slug || slug, activeView);
 
   // Interactive 3D Manual Rotation State
   const [rotY, setRotY] = useState(-14);
@@ -307,6 +310,7 @@ export default function ProductDetailPage() {
       <Toast message={toastMsg} onClose={() => setToastMsg("")} />
 
       <div
+        ref={pdRootRef}
         className="pd-experience container"
         data-product-id={product.id}
         data-stock={availableStock}
