@@ -449,6 +449,47 @@ html[data-theme="dark"] .mini-product .mini-img {
   cursor: pointer;
 }
 
+.admin-form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.admin-editor-modal {
+  display: flex;
+  flex-direction: column;
+  max-height: 88vh;
+  overflow: hidden !important;
+  padding: 0 !important;
+}
+
+.admin-modal-head {
+  padding: 20px 24px 12px;
+  border-bottom: 1px solid #e4ebf5;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .admin-modal-head {
+  border-bottom-color: #243654;
+}
+
+.admin-modal-head h2 {
+  margin: 0;
+}
+
+.admin-modal-body {
+  padding: 14px 24px 18px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+
+.admin-editor-modal .modal-actions {
+  padding: 14px 24px 18px;
+  margin-top: 0;
+  border-top: 1px solid #e4ebf5;
+  flex-shrink: 0;
+}
+
 .admin-summary-pills {
   display: flex;
   flex-wrap: wrap;
@@ -565,7 +606,7 @@ html[data-theme="dark"] .mini-product .mini-img {
   .admin-form-grid-2,
   .admin-form-grid-3,
   .admin-detail-kpis {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
 
   .admin-detail-summary {

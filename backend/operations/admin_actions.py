@@ -249,15 +249,16 @@ def admin_voucher_detail(request, voucher_id):
     denied = require_permissions(request, [perm])
     if denied:
         return denied
-    voucher = get_object_or_404(Voucher, pk=voucher_id)
     if request.method == "GET":
+        voucher = get_object_or_404(Voucher, pk=voucher_id)
         return Response(serialize_voucher(voucher))
-    cleaned, errors = validate_voucher_payload(request.data, instance=voucher)
-    if errors:
-        return Response(errors, status=status.HTTP_400_BAD_REQUEST)
-    before = {k: str(getattr(voucher, k)) for k in cleaned}
     try:
         with transaction.atomic():
+            voucher = get_object_or_404(Voucher.objects.select_for_update(), pk=voucher_id)
+            cleaned, errors = validate_voucher_payload(request.data, instance=voucher)
+            if errors:
+                return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+            before = {k: str(getattr(voucher, k)) for k in cleaned}
             for k, v in cleaned.items():
                 setattr(voucher, k, v)
             voucher.save(update_fields=list(cleaned.keys()) or None)
@@ -326,6 +327,15 @@ def admin_moderate(request, kind, object_id):
         old_status = obj.status
         if old_status == new_status:
             return Response({"id": obj.id, "status": obj.status, "changed": False})
+        if kind == "reviews" and new_status == ModerationStatus.PUBLISHED and not obj.is_verified_buyer:
+            return Response(
+                {
+                    "status": [
+                        "Đánh giá này không gắn với đơn hàng đã giao thành công của người dùng nên không đủ điều kiện công khai."
+                    ]
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         obj.status = new_status
         fields = ["status"]
         if hasattr(obj, "updated_at"):
@@ -344,8 +354,13 @@ def admin_answer_question(request, question_id):
     body = (request.data.get("body") or "").strip()
     if len(body) < 5 or len(body) > 2000:
         return Response({"body": ["Nội dung trả lời phải từ 5 đến 2000 ký tự."]}, status=status.HTTP_400_BAD_REQUEST)
-    question = get_object_or_404(ProductQuestion, pk=question_id)
     with transaction.atomic():
+        question = get_object_or_404(ProductQuestion.objects.select_for_update(), pk=question_id)
+        if question.status != ModerationStatus.PUBLISHED:
+            return Response(
+                {"detail": "Chỉ được gửi phản hồi công khai cho câu hỏi đã được duyệt (published)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         answer = ProductAnswer.objects.create(
             question=question, user=request.user, body=body, status=ModerationStatus.PUBLISHED
         )
@@ -405,6 +420,8 @@ def admin_customer_detail(request, user_id):
     refunded_total = Payment.objects.filter(order__user=user, status=Payment.Status.REFUNDED).aggregate(
         v=Coalesce(Sum("amount"), Value(0), output_field=DecimalField(max_digits=14, decimal_places=0))
     )["v"]
+    total_orders_count = Order.objects.filter(user=user).count()
+    valid_orders_count = Order.objects.filter(user=user).exclude(status__in=["cancelled", "expired"]).count()
     return Response(
         {
             "id": user.id,
@@ -415,7 +432,9 @@ def admin_customer_detail(request, user_id):
             "is_staff": user.is_staff,
             "date_joined": user.date_joined,
             "last_login": user.last_login,
-            "orders_count": Order.objects.filter(user=user).count(),
+            "orders_count": valid_orders_count,
+            "valid_orders_count": valid_orders_count,
+            "total_orders_count": total_orders_count,
             "customer_paid_total": paid_total,
             "refunded_total": refunded_total,
             "addresses_count": user.addresses.count(),
@@ -465,6 +484,15 @@ def admin_customer_status(request, user_id):
         if not make_active and not reason:
             return Response({"reason": ["Vui lòng nhập lý do khóa tài khoản."]}, status=status.HTTP_400_BAD_REQUEST)
         old = user.is_active
+        if old == make_active:
+            return Response(
+                {
+                    "id": user.id,
+                    "is_active": user.is_active,
+                    "changed": False,
+                    "revoked_refresh_tokens": 0,
+                }
+            )
         user.is_active = make_active
         user.save(update_fields=["is_active"])
         revoked = 0 if make_active else _revoke_refresh_tokens(user)
@@ -475,4 +503,4 @@ def admin_customer_status(request, user_id):
             user.id,
             {"from": old, "to": make_active, "reason": reason, "revoked_refresh_tokens": revoked},
         )
-    return Response({"id": user.id, "is_active": user.is_active, "revoked_refresh_tokens": revoked})
+    return Response({"id": user.id, "is_active": user.is_active, "changed": True, "revoked_refresh_tokens": revoked})

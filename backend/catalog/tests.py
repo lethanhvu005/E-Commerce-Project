@@ -113,9 +113,9 @@ class AdminCatalogApiTests(APITestCase):
         self.assertEqual(created.status_code, status.HTTP_201_CREATED)
         product_id = created.data["id"]
 
-        updated = self.client.patch(f"/api/admin/products/{product_id}/", {"status": "active"}, format="json")
-        self.assertEqual(updated.status_code, status.HTTP_200_OK)
-        self.assertEqual(updated.data["status"], "active")
+        # Publishing without any active variant is rejected (ADM-22)
+        blocked_publish = self.client.patch(f"/api/admin/products/{product_id}/", {"status": "active"}, format="json")
+        self.assertEqual(blocked_publish.status_code, status.HTTP_400_BAD_REQUEST)
 
         variant = self.client.post(
             f"/api/admin/products/{product_id}/variants/",
@@ -124,6 +124,10 @@ class AdminCatalogApiTests(APITestCase):
         )
         self.assertEqual(variant.status_code, status.HTTP_201_CREATED)
         self.assertEqual(variant.data["sku"], "MOUSE-01")
+
+        updated = self.client.patch(f"/api/admin/products/{product_id}/", {"status": "active"}, format="json")
+        self.assertEqual(updated.status_code, status.HTTP_200_OK)
+        self.assertEqual(updated.data["status"], "active")
 
         image = self.client.post(
             f"/api/admin/products/{product_id}/images/",

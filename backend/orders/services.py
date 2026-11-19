@@ -262,6 +262,14 @@ def cancel_order(order, user, reason, *, allow_confirmed=False):
         if not allow_confirmed and order.status in {OrderStatus.CONFIRMED, OrderStatus.PACKING}:
             raise ValidationError({"status": ["Đơn hàng đã được xác nhận nên không thể hủy."]})
         raise ValidationError({"status": ["Đơn hàng không còn có thể hủy."]})
+    if order.payments.select_for_update().filter(status=Payment.Status.SUCCEEDED).exists():
+        raise ValidationError(
+            {
+                "payment": [
+                    "Đơn hàng đã thu tiền thành công không thể hủy trực tiếp khi chưa xử lý hoàn tiền."
+                ]
+            }
+        )
     old_status = order.status
     now = timezone.now()
     for reservation in order.reservations.select_for_update().filter(status=InventoryReservation.Status.ACTIVE):
@@ -332,7 +340,7 @@ def _consume_order_reservations(order, actor, now, reason):
 
 
 @transaction.atomic
-def transition_order_status(order, to_status, actor, reason="", confirm_cod_payment=False):
+def transition_order_status(order, to_status, actor, reason=""):
     order = Order.objects.select_for_update().get(pk=order.pk)
     old_status = order.status
     allowed = VALID_ADMIN_TRANSITIONS.get(old_status, set())
@@ -355,6 +363,22 @@ def transition_order_status(order, to_status, actor, reason="", confirm_cod_paym
         )
         return canceled
 
+    # Prepayment guard (ADM-43, ADM-44): online orders must be gateway-verified before fulfillment.
+    if to_status in {OrderStatus.CONFIRMED, OrderStatus.PACKING, OrderStatus.SHIPPED, OrderStatus.DELIVERED}:
+        latest_payment = order.payments.select_for_update().order_by("-created_at", "-id").first()
+        if (
+            latest_payment is not None
+            and latest_payment.provider != Payment.Provider.COD
+            and latest_payment.status != Payment.Status.SUCCEEDED
+        ):
+            raise ValidationError(
+                {
+                    "payment": [
+                        f"Đơn hàng thanh toán online ({latest_payment.provider.upper()}) chưa được cổng thanh toán xác nhận thành công, không thể chuyển sang '{to_status}'."
+                    ]
+                }
+            )
+
     if to_status == OrderStatus.CONFIRMED:
         if hasattr(order, "voucher_redemption") and order.voucher_redemption.status == VoucherRedemption.Status.RESERVED:
             order.voucher_redemption.status = VoucherRedemption.Status.USED
@@ -365,12 +389,6 @@ def transition_order_status(order, to_status, actor, reason="", confirm_cod_paym
 
     if to_status in {OrderStatus.SHIPPED, OrderStatus.DELIVERED}:
         _consume_order_reservations(order, actor, now, default_reason)
-
-    if to_status == OrderStatus.DELIVERED or confirm_cod_payment:
-        order.payments.filter(status=Payment.Status.PENDING).update(
-            status=Payment.Status.SUCCEEDED,
-            paid_at=now,
-        )
 
     order.status = to_status
     order.save(update_fields=["status", "updated_at"])
@@ -399,9 +417,21 @@ def transition_order_status(order, to_status, actor, reason="", confirm_cod_paym
 @transaction.atomic
 def confirm_order_payment(order, actor, provider_reference=""):
     order = Order.objects.select_for_update().get(pk=order.pk)
+    if order.status in {OrderStatus.CANCELLED, OrderStatus.EXPIRED}:
+        raise ValidationError(
+            {"order": ["Không thể xác nhận thu tiền cho đơn hàng đã hủy hoặc hết hạn."]}
+        )
     payment = order.payments.select_for_update().order_by("-created_at", "-id").first()
     if not payment:
         raise ValidationError({"payment": ["Đơn hàng chưa có bản ghi thanh toán."]})
+    if payment.provider != Payment.Provider.COD:
+        raise ValidationError(
+            {
+                "payment": [
+                    f"Chỉ được xác nhận thu tiền thủ công cho đơn hàng COD; giao dịch {payment.provider.upper()} phải do cổng thanh toán xác thực."
+                ]
+            }
+        )
     if payment.status == Payment.Status.SUCCEEDED:
         return payment
     if payment.status != Payment.Status.PENDING:

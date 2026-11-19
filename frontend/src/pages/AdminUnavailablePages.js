@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { adminService } from "../api/client";
 import { dateTime, money, orderStatusLabel, productImage } from "../api/format";
@@ -748,9 +748,22 @@ function AdminEntityModule({ type, user, searchParams, setSearchParams }) {
                         <td><strong>{money(row.grand_total)}</strong></td>
                         <td><span className={`pill ${pillColor}`}>{orderStatusLabel(row.status)}</span></td>
                         <td>
-                          <span className={`pill ${isPaid ? "green" : row.payment_status === "pending" ? "yellow" : "red"}`}>
-                            {isPaid ? "Đã thu tiền" : row.payment_status === "pending" ? "Chờ thu COD" : row.payment_status || "—"}
-                          </span>
+                          {(() => {
+                            const isCod = !row.payment_provider || row.payment_provider === "cod";
+                            const providerTag = String(row.payment_provider || "online").toUpperCase();
+                            const payLabel = isPaid
+                              ? "Đã thu tiền"
+                              : row.payment_status === "pending"
+                              ? isCod
+                                ? "Chờ thu COD"
+                                : `Chờ ${providerTag}`
+                              : row.payment_status || "—";
+                            return (
+                              <span className={`pill ${isPaid ? "green" : row.payment_status === "pending" ? "yellow" : "red"}`}>
+                                {payLabel}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td>
                           <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
@@ -759,8 +772,12 @@ function AdminEntityModule({ type, user, searchParams, setSearchParams }) {
                                 className="select"
                                 defaultValue=""
                                 onChange={(e) => {
-                                  handleOrderStatusTransition(row, e.target.value);
+                                  const nextVal = e.target.value;
                                   e.target.value = "";
+                                  if (nextVal === "cancelled" && !window.confirm(`Xác nhận hủy đơn hàng ${row.order_number}?`)) {
+                                    return;
+                                  }
+                                  handleOrderStatusTransition(row, nextVal);
                                 }}
                               >
                                 <option value="" disabled>Chuyển trạng thái...</option>
@@ -773,16 +790,20 @@ function AdminEntityModule({ type, user, searchParams, setSearchParams }) {
                                 {nextActions.length ? "Chỉ xem" : "Hoàn tất"}
                               </span>
                             )}
-                            {canConfirmPay && row.payment_status === "pending" && row.status !== "cancelled" && row.status !== "expired" && (
-                              <button
-                                type="button"
-                                className="admin-select"
-                                style={{ cursor: "pointer", fontWeight: 700, fontSize: "11px" }}
-                                onClick={() => handleConfirmPayment(row)}
-                              >
-                                ✓ Thu COD
-                              </button>
-                            )}
+                            {canConfirmPay &&
+                              (!row.payment_provider || row.payment_provider === "cod") &&
+                              row.payment_status === "pending" &&
+                              row.status !== "cancelled" &&
+                              row.status !== "expired" && (
+                                <button
+                                  type="button"
+                                  className="admin-select"
+                                  style={{ cursor: "pointer", fontWeight: 700, fontSize: "11px" }}
+                                  onClick={() => handleConfirmPayment(row)}
+                                >
+                                  ✓ Thu COD
+                                </button>
+                              )}
                           </div>
                         </td>
                       </tr>
@@ -857,6 +878,25 @@ function AdminEntityModule({ type, user, searchParams, setSearchParams }) {
                   }
 
                   if (type === "promotions") {
+                    const nowMs = Date.now();
+                    const startsMs = row.starts_at ? new Date(row.starts_at).getTime() : null;
+                    const endsMs = row.ends_at ? new Date(row.ends_at).getTime() : null;
+                    const isExhausted = row.usage_limit != null && Number(row.used_count || 0) >= Number(row.usage_limit);
+                    let statusText = "Đang chạy";
+                    let statusPill = "green";
+                    if (!row.is_active) {
+                      statusText = "Tắt";
+                      statusPill = "red";
+                    } else if (endsMs && endsMs < nowMs) {
+                      statusText = "Hết hạn";
+                      statusPill = "red";
+                    } else if (isExhausted) {
+                      statusText = "Hết lượt";
+                      statusPill = "yellow";
+                    } else if (startsMs && startsMs > nowMs) {
+                      statusText = "Chưa đến hạn";
+                      statusPill = "blue";
+                    }
                     return (
                       <tr key={row.id || row.code}>
                         <td><strong>{row.code}</strong></td>
@@ -869,8 +909,8 @@ function AdminEntityModule({ type, user, searchParams, setSearchParams }) {
                           </small>
                         </td>
                         <td>
-                          <span className={`pill ${row.is_active ? "green" : "red"}`}>
-                            {row.is_active ? "Đang chạy" : "Tắt"}
+                          <span className={`pill ${statusPill}`}>
+                            {statusText}
                           </span>
                         </td>
                         <td>
@@ -1084,9 +1124,8 @@ function AdminEntityModule({ type, user, searchParams, setSearchParams }) {
 }
 
 function isoDateDaysAgo(daysAgo) {
-  const now = new Date();
-  now.setDate(now.getDate() - daysAgo);
-  return now.toISOString().slice(0, 10);
+  const vnNow = new Date(Date.now() + 7 * 60 * 60 * 1000 - daysAgo * 86400 * 1000);
+  return vnNow.toISOString().slice(0, 10);
 }
 
 export function AdminAnalyticsPage() {
@@ -1099,6 +1138,7 @@ export function AdminAnalyticsPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorObj, setErrorObj] = useState(null);
+  const reqIdRef = useRef(0);
 
   useEffect(() => {
     setStartInput(urlStart);
@@ -1106,9 +1146,11 @@ export function AdminAnalyticsPage() {
   }, [urlStart, urlEnd]);
 
   const loadAnalytics = useCallback(async () => {
+    const reqId = ++reqIdRef.current;
     setLoading(true);
     setErrorObj(null);
     if (urlStart && urlEnd && urlStart > urlEnd) {
+      setData(null);
       setLoading(false);
       setErrorObj(new Error("Ngày bắt đầu không được lớn hơn ngày kết thúc."));
       return;
@@ -1118,11 +1160,14 @@ export function AdminAnalyticsPage() {
         ...(urlStart ? { start_date: urlStart } : {}),
         ...(urlEnd ? { end_date: urlEnd } : {}),
       });
+      if (reqId !== reqIdRef.current) return;
       setData(res);
     } catch (err) {
+      if (reqId !== reqIdRef.current) return;
+      setData(null);
       setErrorObj(err);
     } finally {
-      setLoading(false);
+      if (reqId === reqIdRef.current) setLoading(false);
     }
   }, [urlStart, urlEnd]);
 

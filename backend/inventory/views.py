@@ -51,29 +51,52 @@ def inventory(request):
     if denied:
         return denied
     if request.method == "GET":
-        balances = (
+        base_qs = (
             InventoryBalance.objects.select_related("variant__product__category")
             .prefetch_related("variant__product__images")
             .order_by("variant__sku")
         )
-        agg = InventoryBalance.objects.aggregate(
-            total_on_hand=Coalesce(Sum("on_hand"), Value(0), output_field=IntegerField()),
-            total_reserved=Coalesce(Sum("reserved"), Value(0), output_field=IntegerField()),
-            total_skus=Count("variant_id"),
-            low_stock_count=Count(
-                "variant_id",
-                filter=Q(on_hand__lte=F("reserved") + F("low_stock_threshold")),
-            ),
-            out_of_stock_count=Count(
-                "variant_id",
-                filter=Q(on_hand__lte=F("reserved")),
-            ),
-        )
-        agg["total_available"] = max(0, agg["total_on_hand"] - agg["total_reserved"])
+        balances = base_qs
+        q = (request.query_params.get("q") or "").strip()
+        if q:
+            balances = balances.filter(
+                Q(variant__sku__icontains=q)
+                | Q(variant__product__name__icontains=q)
+                | Q(variant__product__short_name__icontains=q)
+                | Q(variant__product__category__name__icontains=q)
+            )
+        stock_status = (request.query_params.get("status") or "").strip().lower()
+        if stock_status == "out":
+            balances = balances.filter(on_hand__lte=F("reserved"))
+        elif stock_status == "low":
+            balances = balances.filter(on_hand__gt=F("reserved"), on_hand__lte=F("reserved") + F("low_stock_threshold"))
+        elif stock_status == "ok":
+            balances = balances.filter(on_hand__gt=F("reserved") + F("low_stock_threshold"))
+
+        def _summarize(qs):
+            summary = qs.aggregate(
+                total_on_hand=Coalesce(Sum("on_hand"), Value(0), output_field=IntegerField()),
+                total_reserved=Coalesce(Sum("reserved"), Value(0), output_field=IntegerField()),
+                total_skus=Count("variant_id"),
+                low_stock_count=Count(
+                    "variant_id",
+                    filter=Q(on_hand__lte=F("reserved") + F("low_stock_threshold")),
+                ),
+                out_of_stock_count=Count(
+                    "variant_id",
+                    filter=Q(on_hand__lte=F("reserved")),
+                ),
+            )
+            summary["total_available"] = max(0, summary["total_on_hand"] - summary["total_reserved"])
+            return summary
+
+        agg = _summarize(InventoryBalance.objects.all())
+        filtered_agg = _summarize(balances) if (q or stock_status) else agg
         paginator = AdminInventoryPagination()
         page = paginator.paginate_queryset(balances, request)
         response = paginator.get_paginated_response(InventoryBalanceSerializer(page, many=True).data)
         response.data["summary"] = agg
+        response.data["filtered_summary"] = filtered_agg
         return response
     serializer = InventoryAdjustmentSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)

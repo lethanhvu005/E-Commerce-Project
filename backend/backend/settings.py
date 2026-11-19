@@ -260,6 +260,7 @@ REST_FRAMEWORK = {
         'password_reset': os.getenv('DRF_PASSWORD_RESET_THROTTLE_RATE', '10/minute'),
         'register': os.getenv('DRF_REGISTER_THROTTLE_RATE', '3/hour'),
         'otp': os.getenv('DRF_OTP_THROTTLE_RATE', '5/10minute'),
+        'support_contact': os.getenv('DRF_SUPPORT_CONTACT_THROTTLE_RATE', '5/hour'),
     },
 }
 

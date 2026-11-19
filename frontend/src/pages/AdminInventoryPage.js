@@ -348,20 +348,24 @@ export default function AdminInventoryPage() {
                           </td>
                           <td>{dateTime(b.updated_at)}</td>
                           <td>
-                            <button
-                              type="button"
-                              className="admin-select"
-                              style={{ cursor: "pointer", fontWeight: 700 }}
-                              onClick={() => {
-                                setSelectedVariant(b);
-                                setDelta(0);
-                                setReason("");
-                                setAdjustmentKey(crypto.randomUUID());
-                                setAdjustModal(true);
-                              }}
-                            >
-                              ± Điều chỉnh
-                            </button>
+                            {user?.is_superuser || (user?.permissions || []).includes("inventory.change_inventorybalance") ? (
+                              <button
+                                type="button"
+                                className="admin-select"
+                                style={{ cursor: "pointer", fontWeight: 700 }}
+                                onClick={() => {
+                                  setSelectedVariant(b);
+                                  setDelta(0);
+                                  setReason("");
+                                  setAdjustmentKey(crypto.randomUUID());
+                                  setAdjustModal(true);
+                                }}
+                              >
+                                ± Điều chỉnh
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: "12px", color: "var(--muted)" }}>Chỉ xem</span>
+                            )}
                           </td>
                         </tr>
                       );

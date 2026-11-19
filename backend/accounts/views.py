@@ -41,7 +41,7 @@ from .serializers import (
     SupportContactSerializer,
     UserSerializer,
 )
-from .throttles import LoginRateThrottle, OtpRateThrottle, PasswordResetRateThrottle, RegisterRateThrottle
+from .throttles import LoginRateThrottle, OtpRateThrottle, PasswordResetRateThrottle, RegisterRateThrottle, SupportContactRateThrottle
 
 logger = logging.getLogger(__name__)
 EMAIL_OTP_TTL_SECONDS = 600
@@ -1167,6 +1167,7 @@ def address_detail(request, address_id):
 @api_view(["POST"])
 @authentication_classes([])
 @permission_classes([AllowAny])
+@throttle_classes([SupportContactRateThrottle])
 def support_contact(request):
     serializer = SupportContactSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)

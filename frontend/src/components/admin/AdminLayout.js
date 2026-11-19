@@ -5,16 +5,16 @@ import { AdminIcon } from "./AdminIcons";
 import "../../admin-react.css";
 
 const items = [
-  ["dashboard", "dashboard", "Tổng quan"],
-  ["products", "products", "Sản phẩm"],
-  ["orders", "orders", "Đơn hàng"],
-  ["inventory", "inventory", "Tồn kho"],
-  ["analytics", "analytics", "Báo cáo"],
-  ["customers", "customers", "Khách hàng"],
-  ["promotions", "promotions", "Ưu đãi"],
-  ["reviews", "reviews", "Đánh giá"],
-  ["support", "support", "Hỗ trợ"],
-  ["settings", "settings", "Nhật ký & Sự kiện"],
+  ["dashboard", "dashboard", "Tổng quan", ["orders.view_order", "catalog.view_product", "inventory.view_inventorybalance", "accounts.view_user"]],
+  ["products", "products", "Sản phẩm", ["catalog.view_product"]],
+  ["orders", "orders", "Đơn hàng", ["orders.view_order"]],
+  ["inventory", "inventory", "Tồn kho", ["inventory.view_inventorybalance"]],
+  ["analytics", "analytics", "Báo cáo", ["orders.view_order", "payments.view_payment"]],
+  ["customers", "customers", "Khách hàng", ["accounts.view_user"]],
+  ["promotions", "promotions", "Ưu đãi", ["promotions.view_voucher"]],
+  ["reviews", "reviews", "Đánh giá", ["community.view_review"]],
+  ["support", "support", "Hỗ trợ", ["community.view_productquestion"]],
+  ["settings", "settings", "Nhật ký & Sự kiện", ["operations.view_auditlog"]],
 ];
 
 const SEARCHABLE_ADMIN_PATHS = new Set([
@@ -111,19 +111,26 @@ export default function AdminLayout() {
         </div>
 
         <nav className="admin-menu" aria-label="Điều hướng quản trị">
-          {items.map(([path, iconName, label]) => (
-            <NavLink
-              key={path}
-              to={`/admin/${path}`}
-              className={({ isActive }) => `admin-link${isActive ? " active" : ""}`}
-              onClick={() => setOpen(false)}
-            >
-              <span className="ico" aria-hidden="true">
-                <AdminIcon name={iconName} size={17} />
-              </span>
-              <span>{label}</span>
-            </NavLink>
-          ))}
+          {items
+            .filter(([, , , requiredPerms]) => {
+              if (!requiredPerms || user?.is_superuser) return true;
+              const perms = user?.permissions;
+              if (!Array.isArray(perms) || perms.length === 0) return true;
+              return requiredPerms.every((p) => perms.includes(p));
+            })
+            .map(([path, iconName, label]) => (
+              <NavLink
+                key={path}
+                to={`/admin/${path}`}
+                className={({ isActive }) => `admin-link${isActive ? " active" : ""}`}
+                onClick={() => setOpen(false)}
+              >
+                <span className="ico" aria-hidden="true">
+                  <AdminIcon name={iconName} size={17} />
+                </span>
+                <span>{label}</span>
+              </NavLink>
+            ))}
 
           <div className="admin-menu-divider" />
 

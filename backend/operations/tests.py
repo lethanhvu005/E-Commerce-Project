@@ -166,7 +166,7 @@ class AdminDashboardApiTests(APITestCase):
         )
         self.assertEqual(res_confirm.status_code, status.HTTP_200_OK)
 
-        # Transition confirmed -> packing -> shipped -> delivered (consumes reservation, deducts on_hand, marks COD payment succeeded)
+        # Transition confirmed -> packing -> shipped -> delivered (consumes reservation, deducts on_hand; does NOT auto-settle payment)
         for next_st in ["packing", "shipped", "delivered"]:
             res_st = self.client.post(
                 f"/api/admin/orders/{order.public_id}/status/",
@@ -185,8 +185,151 @@ class AdminDashboardApiTests(APITestCase):
         order.refresh_from_db()
         self.assertEqual(order.status, OrderStatus.DELIVERED)
         payment = Payment.objects.get(order=order)
+        self.assertEqual(payment.status, Payment.Status.PENDING)
+
+        # Explicit COD settlement via /confirm-payment/ (idempotent on second call)
+        confirm_res = self.client.post(f"/api/admin/orders/{order.public_id}/confirm-payment/", {}, format="json")
+        self.assertEqual(confirm_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(confirm_res.data["payment_status"], Payment.Status.SUCCEEDED)
+        confirm_replay = self.client.post(f"/api/admin/orders/{order.public_id}/confirm-payment/", {}, format="json")
+        self.assertEqual(confirm_replay.status_code, status.HTTP_200_OK)
+        self.assertEqual(AuditLog.objects.filter(entity_id=order.order_number, action="payment.confirmed").count(), 1)
+
+        payment.refresh_from_db()
         self.assertEqual(payment.status, Payment.Status.SUCCEEDED)
         self.assertIsNotNone(payment.paid_at)
         self.assertTrue(AuditLog.objects.filter(entity_id=order.order_number, action="order.status_transition").exists())
+
+    def test_audit_p0_finance_order_inventory_moderation_customer_invariants(self):
+        import uuid
+        from accounts.models import Address
+        from carts.models import Cart, CartItem
+        from common.test_factories import catalog
+        from community.models import ModerationStatus, ProductQuestion, Review
+        from orders.models import OrderStatus, ShippingMethod
+        from orders.services import create_order
+
+        admin_user = User.objects.create_superuser("p0-admin@example.test", "Admin!Password123")
+        customer = User.objects.create_user("p0-buyer@example.test", "Customer!Password123")
+        address = Address.objects.create(
+            user=customer,
+            recipient_name="Buyer",
+            phone="0901234567",
+            address_line="123 Le Loi",
+            ward="Ben Nghe",
+            province="TP.HCM",
+            is_default=True,
+        )
+        shipping, _ = ShippingMethod.objects.get_or_create(
+            code="standard",
+            defaults={"name": "Giao chuẩn", "base_fee": 0, "min_days": 1, "max_days": 2, "is_active": True},
+        )
+        product, variant = catalog()
+        product.status = "active"
+        product.save(update_fields=["status"])
+        InventoryBalance.objects.create(variant=variant, on_hand=20, reserved=0, low_stock_threshold=5)
+
+        cart = Cart.objects.create(user=customer)
+        CartItem.objects.create(cart=cart, variant=variant, quantity=1)
+        vnpay_order, _ = create_order(
+            customer,
+            {
+                "address_id": address.id,
+                "shipping_method_id": shipping.id,
+                "checkout_key": uuid.uuid4(),
+                "payment_provider": Payment.Provider.VNPAY,
+            },
+        )
+        self.authenticate(admin_user)
+
+        # PAY-02 / ADM-07 / ADM-51: confirm_cod_payment flag rejected on status endpoint
+        bad_flag = self.client.post(
+            f"/api/admin/orders/{vnpay_order.public_id}/status/",
+            {"status": "confirmed", "confirm_cod_payment": "false"},
+            format="json",
+        )
+        self.assertEqual(bad_flag.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # ORD-01 / ADM-43 / ADM-44: pending VNPay order cannot be confirmed before gateway settlement
+        prepay_block = self.client.post(
+            f"/api/admin/orders/{vnpay_order.public_id}/status/",
+            {"status": "confirmed"},
+            format="json",
+        )
+        self.assertEqual(prepay_block.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # PAY-03 / ADM-06: manual confirm-payment blocked for VNPay provider
+        manual_vnpay = self.client.post(
+            f"/api/admin/orders/{vnpay_order.public_id}/confirm-payment/",
+            {},
+            format="json",
+        )
+        self.assertEqual(manual_vnpay.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # PAY-04 / ADM-42: once VNPay payment is SUCCEEDED, direct cancel is blocked
+        from django.utils import timezone
+
+        vnpay_payment = vnpay_order.payments.first()
+        vnpay_payment.status = Payment.Status.SUCCEEDED
+        vnpay_payment.paid_at = timezone.now()
+        vnpay_payment.save(update_fields=["status", "paid_at"])
+        ok_confirm = self.client.post(
+            f"/api/admin/orders/{vnpay_order.public_id}/status/",
+            {"status": "confirmed"},
+            format="json",
+        )
+        self.assertEqual(ok_confirm.status_code, status.HTTP_200_OK)
+        cancel_paid = self.client.post(
+            f"/api/admin/orders/{vnpay_order.public_id}/status/",
+            {"status": "cancelled", "reason": "Test cancel paid"},
+            format="json",
+        )
+        self.assertEqual(cancel_paid.status_code, status.HTTP_400_BAD_REQUEST)
+        vnpay_order.refresh_from_db()
+        self.assertEqual(vnpay_order.status, OrderStatus.CONFIRMED)
+
+        # INV-01 / ADM-13: backend ORM search filters inventory by q
+        inv_match = self.client.get(f"/api/admin/inventory/?q={variant.sku}")
+        self.assertEqual(inv_match.status_code, status.HTTP_200_OK)
+        self.assertEqual(inv_match.data["count"], 1)
+        inv_miss = self.client.get("/api/admin/inventory/?q=NONEXISTENT_SKU_99999")
+        self.assertEqual(inv_miss.status_code, status.HTTP_200_OK)
+        self.assertEqual(inv_miss.data["count"], 0)
+        self.assertEqual(inv_miss.data["filtered_summary"]["total_skus"], 0)
+
+        # MOD-02 / ADM-47: unverified legacy review cannot be published
+        legacy_rev = Review.objects.create(product=product, user=customer, stars=5, body="Đánh giá legacy không có đơn hàng.")
+        pub_legacy = self.client.post(
+            f"/api/admin/moderation/reviews/{legacy_rev.id}/",
+            {"status": "published"},
+            format="json",
+        )
+        self.assertEqual(pub_legacy.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # MOD-03 / ADM-52: cannot post published staff answer on rejected/pending question
+        pending_q = ProductQuestion.objects.create(product=product, user=customer, body="Câu hỏi chưa duyệt?", status=ModerationStatus.REJECTED)
+        ans_rejected = self.client.post(
+            f"/api/admin/questions/{pending_q.id}/reply/",
+            {"body": "Phản hồi cho câu hỏi đã bị từ chối."},
+            format="json",
+        )
+        self.assertEqual(ans_rejected.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # CUS-01 / ADM-55: locking an already-locked customer is a no-op with changed=False and no duplicate audit
+        lock1 = self.client.post(
+            f"/api/admin/customers/{customer.id}/status/",
+            {"is_active": False, "reason": "Vi phạm"},
+            format="json",
+        )
+        self.assertEqual(lock1.status_code, status.HTTP_200_OK)
+        self.assertTrue(lock1.data["changed"])
+        lock2 = self.client.post(
+            f"/api/admin/customers/{customer.id}/status/",
+            {"is_active": False, "reason": "Lặp lại"},
+            format="json",
+        )
+        self.assertEqual(lock2.status_code, status.HTTP_200_OK)
+        self.assertFalse(lock2.data["changed"])
+        self.assertEqual(AuditLog.objects.filter(action="customer.locked", entity_id=str(customer.id)).count(), 1)
 
 

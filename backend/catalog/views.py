@@ -213,6 +213,13 @@ def admin_product_detail(request, product_id):
         return Response(AdminProductSerializer(product).data)
     serializer = AdminProductSerializer(product, data=request.data, partial=True)
     serializer.is_valid(raise_exception=True)
+    next_status = serializer.validated_data.get("status", product.status)
+    if next_status == Product.Status.ACTIVE and product.status != Product.Status.ACTIVE:
+        if not product.variants.filter(is_active=True).exists():
+            return Response(
+                {"status": ["Sản phẩm cần có ít nhất 1 biến thể (SKU) đang hoạt động trước khi chuyển sang Đang bán."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
     with transaction.atomic():
         changed_fields = sorted(serializer.validated_data.keys())
         product = serializer.save()
@@ -232,8 +239,9 @@ def admin_product_variants(request, product_id):
         return Response({"results": AdminProductVariantSerializer(product.variants.order_by("id"), many=True).data})
     serializer = AdminProductVariantSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    variant = serializer.save(product=product)
-    AuditLog.objects.create(actor=request.user, action="catalog.variant.create", entity_type="ProductVariant", entity_id=str(variant.id), changes={"product_id": product.id})
+    with transaction.atomic():
+        variant = serializer.save(product=product)
+        AuditLog.objects.create(actor=request.user, action="catalog.variant.create", entity_type="ProductVariant", entity_id=str(variant.id), changes={"product_id": product.id})
     return Response(AdminProductVariantSerializer(variant).data, status=status.HTTP_201_CREATED)
 
 
@@ -249,8 +257,9 @@ def admin_product_variant_detail(request, product_id, variant_id):
         return Response(AdminProductVariantSerializer(variant).data)
     serializer = AdminProductVariantSerializer(variant, data=request.data, partial=True)
     serializer.is_valid(raise_exception=True)
-    variant = serializer.save()
-    AuditLog.objects.create(actor=request.user, action="catalog.variant.update", entity_type="ProductVariant", entity_id=str(variant.id), changes={"fields": sorted(serializer.validated_data.keys())})
+    with transaction.atomic():
+        variant = serializer.save()
+        AuditLog.objects.create(actor=request.user, action="catalog.variant.update", entity_type="ProductVariant", entity_id=str(variant.id), changes={"fields": sorted(serializer.validated_data.keys())})
     return Response(AdminProductVariantSerializer(variant).data)
 
 
@@ -288,8 +297,9 @@ def admin_product_image_detail(request, product_id, image_id):
     if request.method == "GET":
         return Response(AdminProductImageSerializer(image).data)
     if request.method == "DELETE":
-        image.delete()
-        AuditLog.objects.create(actor=request.user, action="catalog.image.delete", entity_type="ProductImage", entity_id=str(image_id), changes={"product_id": product_id})
+        with transaction.atomic():
+            image.delete()
+            AuditLog.objects.create(actor=request.user, action="catalog.image.delete", entity_type="ProductImage", entity_id=str(image_id), changes={"product_id": product_id})
         return Response(status=status.HTTP_204_NO_CONTENT)
     serializer = AdminProductImageSerializer(image, data=request.data, partial=True)
     serializer.is_valid(raise_exception=True)

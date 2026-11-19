@@ -108,7 +108,7 @@ export function VoucherModal({ voucher, onClose, onSaved }) {
     min_subtotal: voucher?.min_subtotal ?? "0",
     usage_limit: voucher?.usage_limit ?? "",
     per_user_limit: voucher?.per_user_limit ?? "1",
-    starts_at: toInputDate(voucher?.starts_at) || new Date().toISOString().slice(0, 10),
+    starts_at: toInputDate(voucher?.starts_at) || new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10),
     ends_at: toInputDate(voucher?.ends_at) || "",
     is_active: voucher?.is_active ?? true,
   }));

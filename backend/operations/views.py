@@ -220,9 +220,11 @@ def admin_orders(request):
     denied = require_permissions(request, ["orders.view_order"])
     if denied:
         return denied
+    from django.db.models import Prefetch
+
     queryset = (
         Order.objects.select_related("user", "shipping_method", "voucher")
-        .prefetch_related("payments")
+        .prefetch_related(Prefetch("payments", queryset=Payment.objects.order_by("-created_at", "-id")))
         .annotate(items_count=Coalesce(Sum("items__quantity"), Value(0)))
         .order_by("-created_at", "-id")
     )
@@ -256,6 +258,7 @@ def admin_orders(request):
                 "status": o.status,
                 "shipping_method": o.shipping_method_snapshot,
                 "voucher_code": o.voucher_code_snapshot,
+                "payment_id": latest_payment.id if latest_payment else None,
                 "payment_status": latest_payment.status if latest_payment else None,
                 "payment_provider": latest_payment.provider if latest_payment else None,
             }
@@ -269,16 +272,23 @@ def admin_order_status(request, public_id):
     denied = require_permissions(request, ["orders.change_order"])
     if denied:
         return denied
+    if "confirm_cod_payment" in request.data:
+        return Response(
+            {
+                "confirm_cod_payment": [
+                    "Không hỗ trợ xác nhận thanh toán tại API đổi trạng thái đơn hàng. Vui lòng dùng API xác nhận thanh toán chuyên biệt."
+                ]
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
     order = get_object_or_404(Order, public_id=public_id)
     next_status = (request.data.get("status") or "").strip()
     reason = (request.data.get("reason") or "").strip()
-    confirm_cod = bool(request.data.get("confirm_cod_payment", False))
     updated = transition_order_status(
         order,
         to_status=next_status,
         actor=request.user,
         reason=reason,
-        confirm_cod_payment=confirm_cod,
     )
     latest_payment = updated.payments.order_by("-created_at", "-id").first()
     return Response(
@@ -286,7 +296,9 @@ def admin_order_status(request, public_id):
             "public_id": str(updated.public_id),
             "order_number": updated.order_number,
             "status": updated.status,
+            "payment_id": latest_payment.id if latest_payment else None,
             "payment_status": latest_payment.status if latest_payment else None,
+            "payment_provider": latest_payment.provider if latest_payment else None,
         }
     )
 

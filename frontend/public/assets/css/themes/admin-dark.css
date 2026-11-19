@@ -4,6 +4,13 @@
 html[data-theme=dark] .admin-app {
   background: #0b1121;
   color: #eaf1ff;
+  color-scheme: dark;
+  --admin-modal-bg: #131e32;
+  --admin-surface: #1c283b;
+  --admin-input-bg: #0f192b;
+  --admin-text: #eef4ff;
+  --admin-muted: #99aecb;
+  --admin-border: #2c3f5e;
 }
 
 html[data-theme=dark] .admin-main {
@@ -84,4 +91,46 @@ html[data-theme=dark] .admin-tab {
 
 html[data-theme=dark] .admin-top-right .ux-theme-toggle {
   color: #adbcda;
+}
+
+/* Synchronize all Admin modals, inputs, labels, and sticky footers in Dark Mode (ADM-01, ADM-02, ADM-03, ADM-18) */
+html[data-theme=dark] .admin-app .modal,
+html[data-theme=dark] .modal.admin-editor-modal,
+html[data-theme=dark] .modal {
+  background: var(--admin-modal-bg, #131e32) !important;
+  border: 1px solid var(--admin-border, #2c3f5e) !important;
+  color: var(--admin-text, #eef4ff) !important;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.58) !important;
+  color-scheme: dark;
+}
+
+html[data-theme=dark] .modal h2,
+html[data-theme=dark] .modal h3,
+html[data-theme=dark] .modal strong {
+  color: #f3f7ff !important;
+}
+
+html[data-theme=dark] .modal .field-label,
+html[data-theme=dark] .modal label {
+  color: #c7d6ee !important;
+}
+
+html[data-theme=dark] .modal .field,
+html[data-theme=dark] .modal .select,
+html[data-theme=dark] .modal textarea,
+html[data-theme=dark] .modal input {
+  background: var(--admin-input-bg, #0f192b) !important;
+  border-color: var(--admin-border, #2c3f5e) !important;
+  color: #eef4ff !important;
+}
+
+html[data-theme=dark] .modal .modal-actions {
+  border-top-color: #243654 !important;
+  background: var(--admin-modal-bg, #131e32) !important;
+}
+
+html[data-theme=dark] .modal .btn-quiet {
+  background: #1b2a44 !important;
+  border-color: #32496e !important;
+  color: #e4eeff !important;
 }

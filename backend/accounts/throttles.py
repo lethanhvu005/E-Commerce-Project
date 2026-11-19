@@ -43,3 +43,9 @@ class OtpRateThrottle(WindowedRateMixin, UserRateThrottle):
     """Limit OTP email requests per authenticated account."""
 
     scope = 'otp'
+
+
+class SupportContactRateThrottle(WindowedRateMixin, AnonRateThrottle):
+    """Limit public support contact email submissions per client IP."""
+
+    scope = 'support_contact'
