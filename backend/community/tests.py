@@ -131,6 +131,20 @@ class CommunityApiTests(APITestCase):
         self.assertEqual(response.data["status"], ModerationStatus.PENDING)
         self.assertEqual(ProductQuestion.objects.get().user, self.user)
 
+    def test_pending_question_visible_only_to_its_author(self):
+        url = f"/api/products/{self.product.slug}/questions/"
+        self.client.post(url, {"body": "Sản phẩm có bảo hành không?"}, format="json")
+
+        own = self.client.get(url)
+        self.assertEqual(len(own.data["results"]), 1)
+        self.assertEqual(own.data["results"][0]["status"], ModerationStatus.PENDING)
+
+        other = User.objects.create_user("other-q@example.test", "Other!Password123")
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {RefreshToken.for_user(other).access_token}")
+        self.assertEqual(len(self.client.get(url).data["results"]), 0)
+        self.client.credentials()
+        self.assertEqual(len(self.client.get(url).data["results"]), 0)
+
     def test_short_inputs_and_invalid_patch_stars_return_400_instead_of_500(self):
         short_review = self.client.post(
             f"/api/products/{self.product.slug}/reviews/",

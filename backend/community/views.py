@@ -1,5 +1,5 @@
 from django.db import IntegrityError
-from django.db.models import Avg, Count, F
+from django.db.models import Avg, Count, F, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
@@ -149,8 +149,13 @@ def review_replies(request, review_id):
 def product_questions(request, slug):
     product = get_object_or_404(Product, slug=slug, status=Product.Status.ACTIVE)
     if request.method == "GET":
+        visible = Q(status=ModerationStatus.PUBLISHED)
+        if request.user and request.user.is_authenticated:
+            # Authors can see their own pending questions immediately; others stay hidden until moderated.
+            visible |= Q(user=request.user, status=ModerationStatus.PENDING)
         questions = (
-            ProductQuestion.objects.filter(product=product, status=ModerationStatus.PUBLISHED)
+            ProductQuestion.objects.filter(product=product)
+            .filter(visible)
             .select_related("user")
             .prefetch_related("answers__user")
             .order_by("-created_at")

@@ -235,7 +235,7 @@ export default function ProductDetailPage() {
         body: questionBody.trim(),
       });
       setQuestionBody("");
-      setToastMsg("Câu hỏi của bạn đã được gửi!");
+      setToastMsg("Câu hỏi đã được gửi và đang chờ kiểm duyệt trước khi công khai.");
       const freshQ = await communityService.getProductQuestions(slug);
       setQuestions(freshQ.results || freshQ || []);
     } catch (err) {
@@ -770,7 +770,11 @@ export default function ProductDetailPage() {
                               <span className="nexa-qa-avatar question">{qInitial}</span>
                               <div>
                                 <strong className="nexa-qa-author-name">{qAuthor}</strong>
-                                <span className="nexa-qa-role-tag">Khách hàng quan tâm</span>
+                                <span className="nexa-qa-role-tag">
+                                  {q.status === "pending"
+                                    ? "Chờ kiểm duyệt · chỉ mình bạn thấy"
+                                    : "Khách hàng quan tâm"}
+                                </span>
                               </div>
                             </div>
                             <small className="nexa-qa-date">
