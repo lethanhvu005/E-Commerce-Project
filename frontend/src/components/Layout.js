@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { cartService, catalogService, wishlistService } from "../api/client";
@@ -601,7 +602,7 @@ export default function Layout() {
         </div>
 
         {/* Mobile Full Screen Menu */}
-        {menuOpen && (
+        {menuOpen && createPortal(
           <nav
             className="gear-mobile-menu is-entering"
             id="ux-mobile-menu"
@@ -687,7 +688,8 @@ export default function Layout() {
                 Quản trị kho ↗
               </Link>
             )}
-          </nav>
+          </nav>,
+          document.body
         )}
       </header>
 
