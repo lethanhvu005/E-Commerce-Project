@@ -82,6 +82,33 @@ function Icon({ name, className }) {
       </>
     ),
     pad: <path d="M3 6h18v13H3zM7 10h10M7 14h6" />,
+    "mouse-pad": <path d="M3 6h18v13H3zM7 10h10M7 14h6" />,
+    "lot-chuot": <path d="M3 6h18v13H3zM7 10h10M7 14h6" />,
+    controller: (
+      <>
+        <rect x="2" y="7" width="20" height="11" rx="4.5" />
+        <path d="M8 10v5M5.5 12.5h5M15.5 11.5h.01M17.5 13.5h.01" />
+      </>
+    ),
+    "tay-cam": (
+      <>
+        <rect x="2" y="7" width="20" height="11" rx="4.5" />
+        <path d="M8 10v5M5.5 12.5h5M15.5 11.5h.01M17.5 13.5h.01" />
+      </>
+    ),
+    webcam: (
+      <>
+        <circle cx="12" cy="10" r="6" />
+        <circle cx="12" cy="10" r="2.2" />
+        <path d="M7 20h10M10 16l-1.5 4M14 16l1.5 4" />
+      </>
+    ),
+    microphone: (
+      <>
+        <rect x="9" y="3" width="6" height="11" rx="3" />
+        <path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8" />
+      </>
+    ),
     chair: <path d="M7 3h10l-1 11H8L7 3ZM5 12v5h14v-5M12 17v4M7 22l5-1 5 1" />,
     layers: (
       <>
@@ -623,7 +650,7 @@ export default function Layout() {
                   onClick={() => setMenuOpen(false)}
                 >
                   <img
-                    src={c.image || `/assets/images/categories/${c.code || "keyboards"}.png`}
+                    src={categoryImage(c)}
                     alt={c.name}
                   />
                   <strong>{c.name}</strong>

@@ -10,7 +10,13 @@ const CATEGORY_IMAGE_MAP = {
   "man-hinh": "/assets/images/categories/monitor.png",
   accessory: "/assets/images/categories/pad.png",
   pad: "/assets/images/categories/pad.png",
+  "mouse-pad": "/assets/images/categories/pad.png",
+  "lot-chuot": "/assets/images/categories/pad.png",
   "phu-kien": "/assets/images/categories/pad.png",
+  controller: "/assets/images/categories/controller.png",
+  "tay-cam": "/assets/images/categories/controller.png",
+  webcam: "/assets/images/categories/webcam.png",
+  microphone: "/assets/images/categories/microphone.png",
   chair: "/assets/images/categories/desk.png",
   desk: "/assets/images/categories/desk.png",
   "ghe-gaming": "/assets/images/categories/desk.png",
@@ -47,7 +53,14 @@ export function inferImageFromMeta(item) {
   if (!item) return "/assets/images/categories/keyboards.png";
 
   // 1. Check category code / slug
-  const catCode = String(item?.category?.code || item?.category?.slug || item?.category_code || "").toLowerCase();
+  const catCode = String(
+    item?.category?.code ||
+      item?.category?.slug ||
+      item?.category_code ||
+      item?.code ||
+      item?.slug ||
+      ""
+  ).toLowerCase();
   if (catCode && CATEGORY_IMAGE_MAP[catCode]) {
     return CATEGORY_IMAGE_MAP[catCode];
   }
@@ -59,12 +72,15 @@ export function inferImageFromMeta(item) {
   }
 
   // 3. Check product name / slug / category_name keywords
-  const text = `${item?.name || ""} ${item?.product_name || ""} ${item?.product_name_snapshot || ""} ${item?.slug || ""} ${item?.product_slug || ""} ${item?.category_name || ""}`.toLowerCase();
+  const text = `${item?.name || ""} ${item?.category?.name || ""} ${item?.product_name || ""} ${item?.product_name_snapshot || ""} ${item?.slug || ""} ${item?.product_slug || ""} ${item?.category_name || ""}`.toLowerCase();
+  if (/controller|tay cầm|tay-cam|gamepad|joypad|flydigi|gamesir/.test(text)) return "/assets/images/categories/controller.png";
+  if (/webcam|camera|obsbot|emeet|elough/.test(text)) return "/assets/images/categories/webcam.png";
+  if (/microphone|micro|micrô|quadcast|solocast|fifine|maono/.test(text)) return "/assets/images/categories/microphone.png";
   if (/headset|tai nghe|tai-nghe|blackshark|cloud|bsv2|aura/.test(text)) return "/assets/images/categories/headset.png";
+  if (/mat|pad|lót chuột|lot-chuot|lót bàn|phu-kien|phụ kiện|desk mat|atlas/.test(text)) return "/assets/images/categories/pad.png";
   if (/mouse|chuột|chuot|superlight|g502|gpx|viper|pulse|m75/.test(text)) return "/assets/images/categories/mouse.png";
   if (/monitor|màn hình|man-hinh|vision|vg27|v27|xg27|optix|qhd|oled/.test(text)) return "/assets/images/categories/monitor.png";
   if (/chair|ghế|ghe|ergo|tc100/.test(text)) return "/assets/images/categories/desk.png";
-  if (/mat|pad|lót bàn|phu-kien|phụ kiện|desk mat|atlas/.test(text)) return "/assets/images/categories/pad.png";
   if (/keyboard|bàn phím|ban-phim|k70|x75|s98|keychron|k2|q1|huntsman|tkl/.test(text)) return "/assets/images/categories/keyboards.png";
 
   return "/assets/images/categories/keyboards.png";

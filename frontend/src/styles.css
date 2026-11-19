@@ -3521,6 +3521,174 @@ html[data-theme="dark"] .ux-verified {
   color: #6ee7b7;
 }
 
+/* ReviewsPage card header & product selector layout (prevents long titles from crushing h2) */
+.nexa-reviews-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.nexa-reviews-card-head h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 !important;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.nexa-reviews-product-select {
+  flex: 1 1 210px;
+  width: auto !important;
+  max-width: 280px;
+  min-width: 0;
+  min-height: 38px !important;
+  padding: 7px 12px !important;
+  font-size: 12.5px !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Day / Night synchronization for ProductDetailPage (.pd-hero, .ux-detail-reviews) & ReviewsPage (.ux-card, .empty) */
+html[data-theme="dark"] .ux-card,
+html[data-theme="dark"] .ux-detail-reviews .ux-card,
+html[data-theme="dark"] .empty {
+  background: #0f192b !important;
+  border-color: #233552 !important;
+  color: #e7edff !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+}
+
+html[data-theme="light"] .ux-card,
+html[data-theme="light"] .ux-detail-reviews .ux-card,
+html[data-theme="light"] .empty {
+  background: #ffffff !important;
+  border-color: #dce5f2 !important;
+  color: #111d34 !important;
+  box-shadow: 0 6px 20px rgba(20, 42, 75, 0.05);
+}
+
+html[data-theme="dark"] .ux-card .empty {
+  background: rgba(10, 18, 32, 0.55) !important;
+  border: 1px dashed #243756 !important;
+  box-shadow: none !important;
+  margin: 10px 0 4px !important;
+}
+
+html[data-theme="light"] .ux-card .empty {
+  background: #f8fafd !important;
+  border: 1px dashed #cfdbee !important;
+  box-shadow: none !important;
+  margin: 10px 0 4px !important;
+}
+
+html[data-theme="dark"] .empty-illustration {
+  background: rgba(37, 99, 235, 0.16) !important;
+  border: 1px solid rgba(91, 157, 255, 0.28);
+  color: #8cbaff !important;
+}
+
+html[data-theme="light"] .empty-illustration {
+  background: #eaf1fd !important;
+  border: 1px solid #cce0fb;
+  color: #1558c9 !important;
+}
+
+html[data-theme="dark"] .empty h2,
+html[data-theme="dark"] .ux-card h2,
+html[data-theme="dark"] .ux-card h3,
+html[data-theme="dark"] .ux-detail-reviews .sec-head h2 {
+  color: #f3f6ff !important;
+}
+
+html[data-theme="light"] .empty h2,
+html[data-theme="light"] .ux-card h2,
+html[data-theme="light"] .ux-card h3,
+html[data-theme="light"] .ux-detail-reviews .sec-head h2 {
+  color: #111d34 !important;
+}
+
+html[data-theme="dark"] .empty p,
+html[data-theme="dark"] .ux-card p,
+html[data-theme="dark"] .ux-detail-reviews .sec-head p {
+  color: #a9bbd8 !important;
+}
+
+html[data-theme="light"] .empty p,
+html[data-theme="light"] .ux-card p,
+html[data-theme="light"] .ux-detail-reviews .sec-head p {
+  color: #526480 !important;
+}
+
+html[data-theme="dark"] .ux-card label,
+html[data-theme="dark"] .ux-detail-reviews label {
+  color: #e1eaff !important;
+}
+
+html[data-theme="light"] .ux-card label,
+html[data-theme="light"] .ux-detail-reviews label {
+  color: #1c2d48 !important;
+}
+
+html[data-theme="dark"] .ux-card .field,
+html[data-theme="dark"] .ux-detail-reviews .field {
+  background: #0b1322 !important;
+  border-color: #2c4061 !important;
+  color: #e5f2ff !important;
+}
+
+html[data-theme="dark"] .ux-card .field::placeholder,
+html[data-theme="dark"] .ux-detail-reviews .field::placeholder {
+  color: #7d92b3 !important;
+}
+
+html[data-theme="light"] .ux-card .field,
+html[data-theme="light"] .ux-detail-reviews .field {
+  background: #ffffff !important;
+  border-color: #cbd8ec !important;
+  color: #14233c !important;
+}
+
+html[data-theme="light"] .ux-card .field::placeholder,
+html[data-theme="light"] .ux-detail-reviews .field::placeholder {
+  color: #7586a0 !important;
+}
+
+/* Complete light-mode overrides for ProductDetailPage (.pd-hero) */
+html[data-theme="light"] .pd-hero .pd-topline b {
+  color: #586d8a !important;
+}
+
+html[data-theme="light"] .pd-hero .pd-art-caption {
+  color: #5b7190 !important;
+}
+
+html[data-theme="light"] .pd-hero .pd-tones {
+  color: #5b708d !important;
+}
+
+html[data-theme="light"] .pd-hero .pd-product-heading h1 {
+  color: #10203b !important;
+}
+
+html[data-theme="light"] .pd-hero .pd-stock {
+  color: #3a4f6d !important;
+}
+
+html[data-theme="light"] .pd-hero .pd-stock small {
+  color: #5d7290 !important;
+  border-left-color: #cbd8eb !important;
+}
+
+html[data-theme="light"] .pd-hero .pd-quantity button,
+html[data-theme="light"] .pd-hero .pd-quantity output {
+  color: #142542 !important;
+}
+
 @media (max-width: 620px) {
   .review-rating-field {
     align-items: flex-start;

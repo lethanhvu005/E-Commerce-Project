@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { catalogService, communityService } from "../api/client";
+import { cleanProductTitle } from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import { Empty, ErrorBox, Loading, Toast } from "../components/Feedback";
 import { ReviewCard, ReviewEligibilityNotice, StarRatingInput } from "../components/ReviewComponents";
@@ -100,6 +101,11 @@ export default function ReviewsPage() {
     }
   };
 
+  const selectedProduct = products.find((p) => p.slug === selectedSlug);
+  const selectedProductTitle = selectedProduct
+    ? cleanProductTitle(selectedProduct)
+    : "";
+
   return (
     <div className="container ux-page">
       <Toast message={toastMsg} onClose={() => setToastMsg("")} />
@@ -119,22 +125,22 @@ export default function ReviewsPage() {
         {/* Left Column: Reviews List */}
         <div>
           <div className="ux-card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <h2 style={{ margin: 0 }}>
+            <div className="nexa-reviews-card-head">
+              <h2>
                 Đánh giá sản phẩm <span className="demo-pill">{reviews.length} nhận xét</span>
               </h2>
 
               {/* Product selector filter */}
               {products.length > 0 && (
                 <select
-                  className="field"
+                  className="field nexa-reviews-product-select"
                   value={selectedSlug}
                   onChange={(e) => setSelectedSlug(e.target.value)}
-                  style={{ width: "auto", minHeight: "36px", padding: "6px 12px", fontSize: "12px" }}
+                  aria-label="Chọn sản phẩm xem đánh giá"
                 >
                   {products.map((p) => (
                     <option key={p.id} value={p.slug}>
-                      {p.short_name || p.name}
+                      {cleanProductTitle(p)}
                     </option>
                   ))}
                 </select>
@@ -175,13 +181,13 @@ export default function ReviewsPage() {
             )}
             <ReviewEligibilityNotice
               eligibility={eligibility}
-              productName={products.find((p) => p.slug === selectedSlug)?.name}
+              productName={selectedProductTitle}
             />
             {user && eligibility?.can_review && (
               <form className="review-compose" onSubmit={handleSubmitReview}>
                 <div className="review-selected-product">
                   <span>Sản phẩm đã mua</span>
-                  <strong>{products.find((p) => p.slug === selectedSlug)?.name}</strong>
+                  <strong>{selectedProductTitle}</strong>
                   {eligibility.order_number && <small>Đơn hàng #{eligibility.order_number}</small>}
                 </div>
 

@@ -824,7 +824,7 @@ export default function ProductDetailPage() {
                   Vui lòng <Link to="/login">đăng nhập</Link> để hệ thống kiểm tra đơn hàng đã giao.
                 </p>
               )}
-              <ReviewEligibilityNotice eligibility={reviewEligibility} productName={product?.name} />
+              <ReviewEligibilityNotice eligibility={reviewEligibility} productName={displayTitle} />
               {user && reviewEligibility?.can_review && (
                 <form className="review-compose" onSubmit={handleSubmitReview}>
                   <label>Mức độ hài lòng</label>
