@@ -172,3 +172,17 @@ Không xóa CSS hoặc asset chỉ dựa trên tìm kiếm chuỗi vì chúng c�
 Trạng thái đề xuất: **CONDITIONAL**.
 
 Nhóm thay đổi đã giảm request Admin Inventory, ngăn race condition, giảm xử lý/prefetch catalog, chống spam OTP và loại bỏ dependency/source chết mà không đổi contract nghiệp vụ. Frontend unit/regression test, build và static checks đều đạt. Chưa nên coi là sẵn sàng production tuyệt đối cho tới khi chạy đủ 102 backend tests trên PostgreSQL, E2E với API thật, xử lý lộ trình React Router/CRA và xác minh backup/monitoring/DB policy trên hạ tầng thực tế.
+
+## H. Rà soát file thừa bổ sung
+
+Các file sau đã được loại bỏ sau khi kiểm tra tham chiếu trong source, manifest, workflow và cấu hình triển khai:
+
+| File | Lý do loại bỏ | Bằng chứng |
+|---|---|---|
+| `.DS_Store` | Metadata Finder của macOS | Không được source, build, CI/CD hoặc deployment sử dụng |
+| `findings.json` | Kết quả sinh tự động của workflow audit | `.github/scripts/collect_findings.py` tạo file ở runtime; workflow upload artifact sau khi sinh |
+| `frontend/src/logo.svg` | Asset CRA mặc định còn sót | Không có import; favicon/manifest dùng `frontend/public/logo.svg` |
+| `frontend/src/assets/cobalt-motion.png` | Bản sao không được import | Trùng SHA-256 với `frontend/public/assets/images/campaign/cobalt-motion.png` |
+| `frontend/src/assets/cobalt-sound-user.png` | Bản sao không được import | Trùng SHA-256 với `frontend/public/assets/images/campaign/cobalt-sound-user.png` |
+
+Không xóa các asset illustration còn lại vì đường dẫn ảnh có thể đến từ API/database và không thể kết luận chỉ bằng static import search. Các thay đổi xóa sẵn trong `frontend_html/` tiếp tục được giữ ngoài phạm vi cleanup này.
