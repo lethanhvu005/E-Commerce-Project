@@ -1,12 +1,30 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { cartService, catalogService, communityService, wishlistService } from "../api/client";
-import { assetUrl, fallbackProductImage, money, productImage } from "../api/format";
+import {
+  assetUrl,
+  cleanProductTitle,
+  displayBrandName,
+  displayProductFeature,
+  fallbackProductImage,
+  money,
+  productImage,
+} from "../api/format";
 import { useAuth } from "../auth/AuthContext";
 import ProductCard from "../components/ProductCard";
 import { Interactive3DStage } from "../components/Motion3D";
 import { Empty, ErrorBox, Loading, Toast } from "../components/Feedback";
 import { ReviewCard, ReviewEligibilityNotice, StarRatingInput } from "../components/ReviewComponents";
+
+const INTERNAL_SPEC_KEYS = new Set([
+  "source",
+  "source_url",
+  "source_product_id",
+  "shop",
+  "keyword",
+  "units_sold_at_import",
+  "inventory_from_source",
+]);
 
 export default function ProductDetailPage() {
   const { slug } = useParams();
@@ -106,6 +124,7 @@ export default function ProductDetailPage() {
   }, [product]);
 
   const activeImage = imageList[activeImageIndex] || imageList[0];
+  const isMarketplaceImage = /^https?:\/\//i.test(activeImage || "");
 
   // 3D Drag Handlers
   const handleStagePointerDown = (e) => {
@@ -278,10 +297,21 @@ export default function ProductDetailPage() {
 
   const price = selectedVariant?.price || product.min_price || 0;
   const comparePrice = selectedVariant?.compare_at_price || product.compare_at_price;
+  const discountPercent =
+    price && comparePrice && Number(comparePrice) > Number(price)
+      ? Math.round(((Number(comparePrice) - Number(price)) / Number(comparePrice)) * 100)
+      : null;
   const specEntries =
     product.specifications && typeof product.specifications === "object"
-      ? Object.entries(product.specifications)
+      ? Object.entries(product.specifications).filter(
+          ([key, value]) => !INTERNAL_SPEC_KEYS.has(key.toLowerCase()) && value !== "" && value != null
+        )
       : [];
+  const displayTitle = cleanProductTitle(product);
+  const brandName = displayBrandName(product);
+  const catName = product.category?.name || "Gaming Gear";
+  const storySubtitle = displayProductFeature(product);
+  const publicSku = selectedVariant?.sku?.startsWith("TT-") ? "" : selectedVariant?.sku;
 
   return (
     <>
@@ -298,10 +328,10 @@ export default function ProductDetailPage() {
           <Link to="/">Trang chủ</Link>
           <span>/</span>
           <Link to={`/products?category=${product.category?.slug || ""}`}>
-            {product.category?.name || "Sản phẩm"}
+            {catName}
           </Link>
           <span>/</span>
-          <span>{product.short_name || product.name}</span>
+          <span>{displayTitle}</span>
         </nav>
 
         {/* Hero 3D Product Showcase Studio */}
@@ -313,8 +343,14 @@ export default function ProductDetailPage() {
           {/* Topline */}
           <div className="pd-topline">
             <span>
-              {product.brand?.name || "NEXA"} <b>/ {product.category?.name || "GEAR"}</b>
-              {selectedVariant?.sku && <b> · SKU: {selectedVariant.sku}</b>}
+              {brandName ? (
+                <>
+                  {brandName} <b>/ {catName}</b>
+                </>
+              ) : (
+                <>{catName}</>
+              )}
+              {publicSku && <b> · SKU: {publicSku}</b>}
             </span>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <button
@@ -352,7 +388,7 @@ export default function ProductDetailPage() {
           <Interactive3DStage
             className={`pd-artwork ${activeView === "spin3d" ? "is-spin3d-mode" : ""} ${
               isDragging3D ? "is-dragging" : ""
-            }`}
+            } ${isMarketplaceImage ? "has-marketplace-image" : ""}`}
             data-view={activeView}
             data-tone={activeTone}
             intensity={18}
@@ -362,20 +398,22 @@ export default function ProductDetailPage() {
             onPointerLeave={handleStagePointerUp}
           >
             <div className="pd-watermark" aria-hidden="true">
-              {product.brand?.name || "NEXA"}
+              {brandName || "NEXA"}
             </div>
 
             <div className="pd-wordmark" aria-hidden="true">
-              <span>{product.brand?.name || "NEXA"}</span>
-              <span>{product.short_name || product.category?.code || "PRO"}</span>
+              <span>{brandName || "NEXA"}</span>
+              <span>{product.category?.code || "PRO"}</span>
             </div>
 
             <div
-              className="pd-product-art nexa-pd-3d-object"
+              className={`pd-product-art nexa-pd-3d-object ${
+                isMarketplaceImage ? "is-marketplace-art" : ""
+              }`}
               style={
                 activeView === "spin3d"
                   ? {
-                      transform: `perspective(1100px) rotateX(${rotX}deg) rotateY(${rotY}deg) scale(1.08)`,
+                      transform: `perspective(1100px) rotateX(${rotX}deg) rotateY(${rotY}deg) scale(1.06)`,
                     }
                   : undefined
               }
@@ -413,12 +451,6 @@ export default function ProductDetailPage() {
                 </button>
               </div>
             )}
-
-            <div className="pd-art-caption">
-              <span>{product.short_name || product.name}</span>
-              <i />
-              <span>3D SPATIAL HARDWARE</span>
-            </div>
 
             {/* View angle buttons */}
             <div className="pd-view-dots" role="group" aria-label="Góc nhìn sản phẩm">
@@ -518,14 +550,19 @@ export default function ProductDetailPage() {
             <div className="pd-purchase">
               <div className="pd-product-heading">
                 <div>
-                  <span className="pd-label">
-                    {product.brand?.name || "NEXA"} / {product.category?.name || "SELECT"}
+                  <span className="pd-label pd-meta-kicker">
+                    {brandName ? `${brandName} · ${catName}` : `GAMING GEAR · ${catName}`}
                   </span>
-                  <h1 id="pd-title">{product.name}</h1>
+                  <h1 id="pd-title">{displayTitle}</h1>
                 </div>
                 <div className="pd-price">
                   <strong>{money(price)}</strong>
-                  {comparePrice && <del>{money(comparePrice)}</del>}
+                  {comparePrice && Number(comparePrice) > Number(price) && (
+                    <del>{money(comparePrice)}</del>
+                  )}
+                  {discountPercent ? (
+                    <span className="pd-discount-badge">-{discountPercent}%</span>
+                  ) : null}
                 </div>
               </div>
 
@@ -536,7 +573,7 @@ export default function ProductDetailPage() {
                     Còn <b>{availableStock}</b> sản phẩm sẵn sàng giao ngay
                   </>
                 ) : (
-                  <b style={{ color: "#ff6b81" }}>Tạm hết hàng</b>
+                  <b className="pd-stock-out-label">Tạm hết hàng</b>
                 )}
                 {product.warranty_months > 0 && (
                   <small>Bảo hành chính hãng {product.warranty_months} tháng</small>
@@ -554,7 +591,7 @@ export default function ProductDetailPage() {
                       const label =
                         [v.color, v.switch_type, v.connection, v.layout]
                           .filter(Boolean)
-                          .join(" · ") || v.sku;
+                          .join(" · ") || (v.sku?.startsWith("TT-") ? "Phiên bản tiêu chuẩn" : v.sku);
                       const isSelected = String(v.id) === String(variantId);
                       const out = v.available < 1;
                       return (
@@ -578,21 +615,24 @@ export default function ProductDetailPage() {
               )}
 
               {/* Buy Row */}
-              <div className="pd-buy-row" style={{ marginTop: "16px" }}>
+              <div
+                className={`pd-buy-row ${availableStock <= 0 ? "is-out-of-stock" : ""}`}
+                style={{ marginTop: "16px" }}
+              >
                 <div className="pd-quantity">
                   <button
                     type="button"
                     onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    disabled={quantity <= 1}
+                    disabled={availableStock <= 0 || quantity <= 1}
                     aria-label="Giảm số lượng"
                   >
                     −
                   </button>
-                  <output aria-live="polite">{quantity}</output>
+                  <output aria-live="polite">{availableStock <= 0 ? 0 : quantity}</output>
                   <button
                     type="button"
                     onClick={() => setQuantity((q) => Math.min(availableStock || 99, q + 1))}
-                    disabled={quantity >= availableStock}
+                    disabled={availableStock <= 0 || quantity >= availableStock}
                     aria-label="Tăng số lượng"
                   >
                     ＋
@@ -609,7 +649,7 @@ export default function ProductDetailPage() {
                     ? "✓ Đã thêm vào giỏ"
                     : availableStock > 0
                     ? "Thêm vào giỏ hàng"
-                    : "Hết hàng"}
+                    : "Tạm hết hàng"}
                 </button>
 
                 <button
@@ -630,10 +670,10 @@ export default function ProductDetailPage() {
           <div>
             <span className="pd-label">CÂU CHUYỆN THIẾT KẾ & TÍNH NĂNG</span>
             <h2>
-              {product.short_name || product.name}
-              <span>{product.summary || "Thiết bị chuẩn thi đấu chuyên nghiệp."}</span>
+              {displayTitle}
+              <span>{storySubtitle}</span>
             </h2>
-            <p>{product.description || product.summary}</p>
+            <p>{product.description || storySubtitle}</p>
 
             {product.features && product.features.length > 0 && (
               <ul className="nexa-feature-list">
@@ -654,16 +694,16 @@ export default function ProductDetailPage() {
             <dl className="pd-specs">
               <div>
                 <dt>THƯƠNG HIỆU</dt>
-                <dd>{product.brand?.name || "NEXA"}</dd>
+                <dd>{brandName || "Chính hãng"}</dd>
               </div>
               <div>
                 <dt>DANH MỤC</dt>
-                <dd>{product.category?.name || "Gaming Gear"}</dd>
+                <dd>{catName}</dd>
               </div>
-              {selectedVariant?.sku && (
+              {publicSku && (
                 <div>
                   <dt>MÃ SKU</dt>
-                  <dd>{selectedVariant.sku}</dd>
+                  <dd>{publicSku}</dd>
                 </div>
               )}
               {product.warranty_months > 0 && (

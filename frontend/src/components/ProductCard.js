@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { money, productImage } from "../api/format";
+import {
+  cleanProductTitle,
+  displayBrandName,
+  displayProductFeature,
+  money,
+  productImage,
+} from "../api/format";
 import { Tilt3DCard } from "./Motion3D";
 
 function GearIcon({ name }) {
@@ -31,7 +37,34 @@ function GearIcon({ name }) {
         <path d="M12 17v4M7 21h10" />
       </>
     ),
+    controller: (
+      <>
+        <path d="M6 8h12a4 4 0 0 1 3.8 5.2l-1.1 3.5a2.5 2.5 0 0 1-4.3.8L14.2 15H9.8l-2.2 2.5a2.5 2.5 0 0 1-4.3-.8L2.2 13.2A4 4 0 0 1 6 8Z" />
+        <path d="M7.5 10.5v3M6 12h3M15.5 11h.01M17.5 12.5h.01" />
+      </>
+    ),
+    "tay-cam": (
+      <>
+        <path d="M6 8h12a4 4 0 0 1 3.8 5.2l-1.1 3.5a2.5 2.5 0 0 1-4.3.8L14.2 15H9.8l-2.2 2.5a2.5 2.5 0 0 1-4.3-.8L2.2 13.2A4 4 0 0 1 6 8Z" />
+        <path d="M7.5 10.5v3M6 12h3M15.5 11h.01M17.5 12.5h.01" />
+      </>
+    ),
+    webcam: (
+      <>
+        <circle cx="12" cy="10" r="6" />
+        <circle cx="12" cy="10" r="2.2" />
+        <path d="M7 20h10M10 16l-1.5 4M14 16l1.5 4" />
+      </>
+    ),
+    microphone: (
+      <>
+        <rect x="9" y="3" width="6" height="11" rx="3" />
+        <path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8" />
+      </>
+    ),
     pad: <path d="M3 6h18v13H3zM7 10h10M7 14h6" />,
+    "mouse-pad": <path d="M3 6h18v13H3zM7 10h10M7 14h6" />,
+    "lot-chuot": <path d="M3 6h18v13H3zM7 10h10M7 14h6" />,
     chair: <path d="M7 3h10l-1 11H8L7 3ZM5 12v5h14v-5M12 17v4M7 22l5-1 5 1" />,
     eye: (
       <>
@@ -75,10 +108,12 @@ export default function ProductCard({
   const slug = product.slug || "";
   const link = slug ? `/products/${slug}` : "#";
   const imgSrc = productImage(product);
+  const isMarketplaceImage = /^https?:\/\//i.test(imgSrc || "");
 
-  const brandName = product.brand?.name || "NEXA";
+  const brandName = displayBrandName(product);
   const catName = product.category?.name || "Gaming Gear";
-  const catCode = product.category?.code || "keyboard";
+  const catCode = product.category?.code || product.category?.slug || "keyboard";
+  const cardTitle = cleanProductTitle(product);
 
   const badge = product.badge || "";
   let badgeClass = "";
@@ -86,7 +121,7 @@ export default function ProductCard({
   else if (badge === "Mới" || badge === "New") badgeClass = "gear-badge-new";
   else if (badge) badgeClass = "gear-badge-hot";
 
-  const feature = product.summary || product.description || "Thiết bị gaming chuẩn eSports";
+  const feature = displayProductFeature(product);
   const availableStock = product.available_stock;
   const isOutOfStock = availableStock !== undefined && availableStock <= 0;
 
@@ -148,11 +183,17 @@ export default function ProductCard({
 
       {/* 3D Floating Product Photo Stage */}
       <div className="gear-product-photo-wrap">
-        <Link className="gear-product-photo" to={link} aria-label={`Xem ${product.name}`}>
+        <Link
+          className={`gear-product-photo ${isMarketplaceImage ? "has-marketplace-image" : ""}`}
+          to={link}
+          aria-label={`Xem ${product.name}`}
+        >
           <span className="gear-photo-halo" aria-hidden="true" />
           {imgSrc && !imgFailed ? (
             <img
-              className="nexa-product-img nexa-3d-float-img"
+              className={`nexa-product-img nexa-3d-float-img ${
+                isMarketplaceImage ? "nexa-marketplace-image" : ""
+              }`}
               src={imgSrc}
               loading="lazy"
               decoding="async"
@@ -186,8 +227,17 @@ export default function ProductCard({
       {/* Card Metadata */}
       <div className="gear-product-meta">
         <div className="gear-meta-toprow">
-          <span className="gear-kicker" title={`${brandName} / ${catName}`}>
-            {brandName} <i aria-hidden="true">/</i> {catName}
+          <span
+            className="gear-kicker"
+            title={brandName ? `${brandName} / ${catName}` : catName}
+          >
+            {brandName ? (
+              <>
+                {brandName} <i aria-hidden="true">/</i> {catName}
+              </>
+            ) : (
+              catName
+            )}
           </span>
           {availableStock !== undefined ? (
             <span
@@ -209,8 +259,8 @@ export default function ProductCard({
         </div>
 
         <h3>
-          <Link to={link} title={product.name}>
-            {product.short_name || product.name}
+          <Link to={link} title={cardTitle}>
+            {cardTitle}
           </Link>
         </h3>
 

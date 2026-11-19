@@ -150,3 +150,180 @@ export function orderStatusLabel(status) {
   return ORDER_STATUS_LABELS[status] || status;
 }
 
+const KNOWN_GEAR_BRANDS = [
+  "Attack Shark",
+  "BigBig Won",
+  "SteelSeries",
+  "ThundeRobot",
+  "PlayStation",
+  "DualSense",
+  "ViewSonic",
+  "Machenike",
+  "Ziyoulang",
+  "Keychron",
+  "Logitech",
+  "Flydigi",
+  "GameSir",
+  "EasySMX",
+  "Beitong",
+  "GuliKit",
+  "Gigabyte",
+  "FreeWolf",
+  "Nintendo",
+  "Zeuslap",
+  "Xinmeng",
+  "Onikuma",
+  "Corsair",
+  "Samsung",
+  "Edifier",
+  "Fantech",
+  "8BitDo",
+  "Cervus",
+  "HyperX",
+  "Mchose",
+  "INPHIC",
+  "Ugreen",
+  "Baseus",
+  "Langtu",
+  "Leaven",
+  "Xiaomi",
+  "Fifine",
+  "Razer",
+  "Rapoo",
+  "DareU",
+  "Maono",
+  "Ajazz",
+  "E-Dra",
+  "Havit",
+  "Monka",
+  "Betop",
+  "ASUS",
+  "ROG",
+  "TUF",
+  "Acer",
+  "Dell",
+  "Sony",
+  "Akko",
+  "Aula",
+  "Edra",
+  "Kzzi",
+  "Xbox",
+  "MSI",
+  "JBL",
+  "VGN",
+  "VXE",
+  "AOC",
+  "HKC",
+  "PXN",
+  "LG",
+];
+
+const GENERIC_SUMMARY_KEYWORDS = new Set([
+  "tay cầm",
+  "tay cầm chơi game",
+  "tay cam choi game",
+  "bàn phím",
+  "bàn phím cơ",
+  "bàn phím gaming",
+  "ban phim co",
+  "chuột",
+  "chuột gaming",
+  "chuột không dây",
+  "chuột máy tính",
+  "tai nghe",
+  "tai nghe gaming",
+  "tai nghe bluetooth",
+  "tai nghe chụp tai",
+  "màn hình",
+  "màn hình máy tính",
+  "màn hình gaming",
+  "lót chuột",
+  "lót chuột gaming",
+  "bàn di chuột",
+  "webcam",
+  "webcam máy tính",
+  "webcam học online",
+  "microphone",
+  "mic thu âm",
+  "micro thu âm",
+  "gaming gear",
+]);
+
+const CATEGORY_DEFAULT_FEATURES = {
+  controller: "Kết nối đa nền tảng · Phản hồi nhạy",
+  "tay-cam": "Kết nối đa nền tảng · Phản hồi nhạy",
+  keyboard: "Switch cơ học · Độ trễ thấp",
+  "ban-phim": "Switch cơ học · Độ trễ thấp",
+  mouse: "Cảm biến quang học chính xác cao",
+  chuot: "Cảm biến quang học chính xác cao",
+  headset: "Âm thanh chi tiết · Mic đàm thoại rõ",
+  "tai-nghe": "Âm thanh chi tiết · Mic đàm thoại rõ",
+  monitor: "Tần số quét cao · Hiển thị sắc nét",
+  "man-hinh": "Tần số quét cao · Hiển thị sắc nét",
+  "mouse-pad": "Bề mặt dệt mịn · Đế cao su chống trượt",
+  "lot-chuot": "Bề mặt dệt mịn · Đế cao su chống trượt",
+  pad: "Bề mặt dệt mịn · Đế cao su chống trượt",
+  webcam: "Ghi hình sắc nét · Tự động cân bằng sáng",
+  microphone: "Thu âm định hướng · Lọc tạp âm",
+  chair: "Thiết kế công thái học · Đệm đàn hồi cao",
+};
+
+export function cleanProductTitle(product) {
+  const raw = String(product?.name || product?.short_name || "Sản phẩm");
+  const stripped = raw
+    .replace(/^(?:\s*\[[^\]]+\]\s*)+/u, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return stripped || raw.trim() || "Sản phẩm";
+}
+
+export function displayBrandName(product) {
+  const rawBrand = String(product?.brand?.name || "").trim();
+  if (rawBrand && !/^(khác|other|unknown|n\/a)$/i.test(rawBrand)) {
+    return rawBrand;
+  }
+  const title = cleanProductTitle(product);
+  const lowerTitle = title.toLowerCase();
+  for (const candidate of KNOWN_GEAR_BRANDS) {
+    const escaped = candidate.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}(?=$|[^\\p{L}\\p{N}])`, "iu");
+    if (regex.test(lowerTitle)) {
+      return candidate;
+    }
+  }
+  return "";
+}
+
+export function displayProductFeature(product) {
+  const rawSummary = String(product?.summary || "").replace(/\s+/g, " ").trim();
+  const catName = String(product?.category?.name || "").replace(/\s+/g, " ").trim();
+  const catKey = String(product?.category?.code || product?.category?.slug || "keyboard").toLowerCase();
+
+  const isGenericSummary =
+    !rawSummary ||
+    rawSummary.toLowerCase() === catName.toLowerCase() ||
+    GENERIC_SUMMARY_KEYWORDS.has(rawSummary.toLowerCase()) ||
+    (rawSummary.length <= 24 && rawSummary === rawSummary.toLowerCase());
+
+  if (!isGenericSummary) {
+    return rawSummary;
+  }
+
+  // Extract meaningful hardware spec clauses from product title when summary is just a search keyword
+  const title = cleanProductTitle(product);
+  const clauses = title
+    .split(/\s*(?:,|;|–|—|\||\/|\s-\s)\s*/u)
+    .map((part) => part.trim())
+    .filter((part) => part.length >= 6);
+
+  if (clauses.length > 1) {
+    const picked = clauses.slice(1, 3).join(" · ");
+    if (picked.length >= 8) {
+      return picked.charAt(0).toUpperCase() + picked.slice(1);
+    }
+  }
+
+  return CATEGORY_DEFAULT_FEATURES[catKey] || "Thiết bị gaming chính hãng hiệu năng cao";
+}
+
+
