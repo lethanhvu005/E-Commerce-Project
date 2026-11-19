@@ -263,25 +263,6 @@ const GENERIC_SUMMARY_KEYWORDS = new Set([
   "gaming gear",
 ]);
 
-const CATEGORY_DEFAULT_FEATURES = {
-  controller: "Kết nối USB / Không dây",
-  "tay-cam": "Kết nối USB / Không dây",
-  keyboard: "Switch cơ học · Keycap PBT",
-  "ban-phim": "Switch cơ học · Keycap PBT",
-  mouse: "Cảm biến quang học · DPI tùy chỉnh",
-  chuot: "Cảm biến quang học · DPI tùy chỉnh",
-  headset: "Driver âm thanh · Micro đàm thoại",
-  "tai-nghe": "Driver âm thanh · Micro đàm thoại",
-  monitor: "Tấm nền IPS · Tần số quét cao",
-  "man-hinh": "Tấm nền IPS · Tần số quét cao",
-  "mouse-pad": "Bề mặt chống nước · Đế cao su",
-  "lot-chuot": "Bề mặt chống nước · Đế cao su",
-  pad: "Bề mặt chống nước · Đế cao su",
-  webcam: "Kết nối USB · Tích hợp Micro",
-  microphone: "Micro Condenser · Lọc tạp âm",
-  chair: "Khung thép · Đệm đàn hồi",
-};
-
 const FLUFF_PATTERNS = [
   /\b(?:rẻ nhất tiktok\s*shop|vô địch tầm giá|giá học sinh|kèm quà tặng|lỗi 1 đổi 1|lỗi 1 dổi 1|sản phẩm bán chạy|giao hàng nội địa|hỗ trợ cài game|cổng xịn)\b/giu,
   /\b9\/10\s*game\s*thủ\s*tin\s*dùng\b/giu,
@@ -404,7 +385,6 @@ export function displayBrandName(product) {
 export function displayProductFeature(product) {
   const rawSummary = String(product?.summary || "").replace(/\s+/g, " ").trim();
   const catName = String(product?.category?.name || "").replace(/\s+/g, " ").trim();
-  const catKey = String(product?.category?.code || product?.category?.slug || "keyboard").toLowerCase();
 
   const isGenericSummary =
     !rawSummary ||
@@ -434,7 +414,7 @@ export function displayProductFeature(product) {
     }
   }
 
-  return CATEGORY_DEFAULT_FEATURES[catKey] || catName || "Phụ kiện máy tính";
+  return rawSummary || catName || "";
 }
 
 const INTERNAL_SPEC_KEYS = new Set([
@@ -478,7 +458,6 @@ export function extractProductSpecs(product, selectedVariant = null) {
   if (!product) return [];
 
   const rawName = String(product?.name || product?.short_name || "");
-  const cleanedFull = stripBracketTagsAndFluff(rawName);
   const brand = displayBrandName(product) || "Chính hãng";
   const categoryName = product?.category?.name || "Thiết bị ngoại vi";
   const catCode = String(product?.category?.code || product?.category?.slug || "").toLowerCase();
@@ -546,11 +525,9 @@ export function extractProductSpecs(product, selectedVariant = null) {
     addRow("KẾT NỐI", selectedVariant.connection);
   } else if (connTokens.length > 0) {
     addRow("KẾT NỐI", connTokens.join(" · "));
-  } else if (!/lot-chuot|mouse-pad|pad|chair/i.test(catCode)) {
-    addRow("KẾT NỐI", /webcam|microphone/i.test(catCode) ? "USB Plug & Play" : /monitor|man-hinh/i.test(catCode) ? "HDMI / DisplayPort" : "USB / Không dây");
   }
 
-  // Compatibility / Platforms
+  // Compatibility / Platforms (only when explicitly stated in product.name)
   const platforms = [];
   if (/\bpc\b|máy tính để bàn/iu.test(rawName)) platforms.push("PC");
   if (/\blaptop\b|máy tính xách tay/iu.test(rawName)) platforms.push("Laptop");
@@ -563,12 +540,10 @@ export function extractProductSpecs(product, selectedVariant = null) {
     platforms.push("Điện thoại di động");
   }
   if (/đa nền tảng/iu.test(rawName) && platforms.length === 0) {
-    platforms.push("PC, Laptop, Android, iOS, Switch");
+    platforms.push("Đa nền tảng");
   }
   if (platforms.length > 0) {
     addRow("TƯƠNG THÍCH", platforms.join(", "));
-  } else if (!/lot-chuot|mouse-pad|pad|chair/i.test(catCode)) {
-    addRow("TƯƠNG THÍCH", "PC, Laptop (Windows / macOS)");
   }
 
   // Sensor / Core Technology
@@ -656,26 +631,25 @@ export function extractProductSpecs(product, selectedVariant = null) {
     }
   }
 
-  // Warranty (from product.warranty_months or parsed from rawName)
+  // Warranty (strictly from product.warranty_months in DB or explicitly written in product.name)
   const parsedWarranty = rawName.match(/\b(?:bảo hành|bh)\s*(\d+)\s*(tháng|t|năm)\b/iu);
   if (product.warranty_months > 0) {
-    addRow("BẢO HÀNH", `${product.warranty_months} tháng chính hãng`);
+    addRow("BẢO HÀNH", `${product.warranty_months} tháng`);
   } else if (parsedWarranty) {
     const unit = /năm/iu.test(parsedWarranty[2]) ? "năm" : "tháng";
     addRow("BẢO HÀNH", `${parsedWarranty[1]} ${unit}`);
-  } else {
-    addRow("BẢO HÀNH", "12 tháng theo chính sách cửa hàng");
   }
 
-  // Distributor / Shop if present in specifications
+  // Distributor / Shop if present in specifications in DB
   const shopName = product?.specifications?.shop;
   if (shopName && String(shopName).trim()) {
-    addRow("ĐƠN VỊ CUNG CẤP", String(shopName).trim());
+    addRow("CỬA HÀNG / NHÀ CUNG CẤP", String(shopName).trim());
   }
 
-  // Ensure even short titles have at least 6 informative rows
-  if (rows.length < 6 && cleanedFull) {
-    addRow("MÔ TẢ KỸ THUẬT", displayProductFeature(product));
+  // Remaining clauses literally present in product.name in DB
+  const extraFeature = displayProductFeature(product);
+  if (extraFeature && extraFeature.toLowerCase() !== categoryName.toLowerCase()) {
+    addRow("ĐẶC ĐIỂM TRONG MÔ TẢ", extraFeature);
   }
 
   return rows;
