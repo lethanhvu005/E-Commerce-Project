@@ -5,7 +5,7 @@ services:
     rootDir: backend
     region: singapore
     plan: free
-    autoDeployTrigger: checksPass
+    autoDeployTrigger: commit
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput
     startCommand: python manage.py migrate --noinput && gunicorn backend.wsgi:application --bind 0.0.0.0:$PORT --timeout 60
     healthCheckPath: /api/health/
@@ -83,7 +83,7 @@ services:
     rootDir: frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: ./build
-    autoDeployTrigger: checksPass
+    autoDeployTrigger: commit
     routes:
       - type: rewrite
         source: /*
