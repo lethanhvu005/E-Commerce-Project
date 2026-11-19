@@ -8,6 +8,7 @@ import {
   displayProductFeature,
   extractProductHighlights,
   extractProductSpecs,
+  extractShortWordmarkCode,
   fallbackProductImage,
   money,
   productImage,
@@ -289,16 +290,13 @@ export default function ProductDetailPage() {
 
   const price = selectedVariant?.price || product.min_price || 0;
   const comparePrice = selectedVariant?.compare_at_price || product.compare_at_price;
-  const discountPercent =
-    price && comparePrice && Number(comparePrice) > Number(price)
-      ? Math.round(((Number(comparePrice) - Number(price)) / Number(comparePrice)) * 100)
-      : null;
   const specEntries = extractProductSpecs(product, selectedVariant);
   const highlightList = extractProductHighlights(product);
   const displayTitle = cleanProductTitle(product);
   const brandName = displayBrandName(product);
   const catName = product.category?.name || "Gaming Gear";
   const storySubtitle = displayProductFeature(product);
+  const wordmarkCode = extractShortWordmarkCode(product);
   const rawDescription = String(product.description || "").trim();
   const hasDetailedDescription =
     rawDescription.length > 0 && !/^sản phẩm từ\s+/iu.test(rawDescription);
@@ -325,7 +323,7 @@ export default function ProductDetailPage() {
           <span>{displayTitle}</span>
         </nav>
 
-        {/* Hero 3D Product Showcase Studio */}
+        {/* Hero Open Product Showcase Studio (Image 2 composition) */}
         <section className="pd-hero nexa-pd-hero-3d" aria-labelledby="pd-title">
           <div className="pd-orbit pd-orbit-one" aria-hidden="true" />
           <div className="pd-orbit pd-orbit-two" aria-hidden="true" />
@@ -334,67 +332,52 @@ export default function ProductDetailPage() {
           {/* Topline */}
           <div className="pd-topline">
             <span>
-              {brandName ? (
-                <>
-                  {brandName} <b>/ {catName}</b>
-                </>
-              ) : (
-                <>{catName}</>
-              )}
-              {publicSku && <b> · SKU: {publicSku}</b>}
+              {brandName || "NEXA SELECT"} <b>/ {catName}</b>
+              {publicSku && <b> · {publicSku}</b>}
             </span>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <button
-                type="button"
-                className={`nexa-3d-mode-btn ${activeView === "spin3d" ? "active" : ""}`}
-                onClick={() => setActiveView(activeView === "spin3d" ? "full" : "spin3d")}
+            <button
+              type="button"
+              className={`pd-save ${isFav ? "is-popping" : ""}`}
+              onClick={toggleWishlist}
+              aria-pressed={isFav}
+              aria-label={`Yêu thích ${product.name}`}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="21"
+                height="21"
+                fill={isFav ? "currentColor" : "none"}
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
               >
-                ◇ 3D {activeView === "spin3d" ? "Đang bật (Kéo để xoay)" : "Xoay 3D"}
-              </button>
-              <button
-                type="button"
-                className={`pd-save ${isFav ? "is-popping" : ""}`}
-                onClick={toggleWishlist}
-                aria-pressed={isFav}
-                aria-label={`Yêu thích ${product.name}`}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  width="21"
-                  height="21"
-                  fill={isFav ? "currentColor" : "none"}
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M20 5c-3-3-7-1-8 1-1-2-5-4-8-1-4 4 1 9 8 15 7-6 12-11 8-15Z" />
-                </svg>
-              </button>
-            </div>
+                <path d="M20 5c-3-3-7-1-8 1-1-2-5-4-8-1-4 4 1 9 8 15 7-6 12-11 8-15Z" />
+              </svg>
+            </button>
           </div>
 
-          {/* 3D Interactive Artwork Stage */}
+          {/* Open Full-Width Artwork Stage */}
           <Interactive3DStage
             className={`pd-artwork ${activeView === "spin3d" ? "is-spin3d-mode" : ""} ${
               isDragging3D ? "is-dragging" : ""
             } ${isMarketplaceImage ? "has-marketplace-image" : ""}`}
             data-view={activeView}
             data-tone={activeTone}
-            intensity={18}
+            intensity={16}
             onPointerDown={handleStagePointerDown}
             onPointerMove={handleStagePointerMove}
             onPointerUp={handleStagePointerUp}
             onPointerLeave={handleStagePointerUp}
           >
             <div className="pd-watermark" aria-hidden="true">
-              {brandName || "NEXA"}
+              {brandName || catName}
             </div>
 
             <div className="pd-wordmark" aria-hidden="true">
               <span>{brandName || "NEXA"}</span>
-              <span>{product.category?.code || "PRO"}</span>
+              <span>{wordmarkCode}</span>
             </div>
 
             <div
@@ -420,36 +403,18 @@ export default function ProductDetailPage() {
               />
             </div>
 
-            {activeView === "spin3d" && (
-              <div className="nexa-3d-controls-bar" onClick={(e) => e.stopPropagation()}>
-                <span>Góc xoay 3D:</span>
-                <input
-                  type="range"
-                  min="-60"
-                  max="60"
-                  value={rotY}
-                  onChange={(e) => setRotY(Number(e.target.value))}
-                  aria-label="Xoay ngang 3D"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRotX(8);
-                    setRotY(-14);
-                  }}
-                >
-                  Đặt lại
-                </button>
-              </div>
-            )}
+            <div className="pd-art-caption" aria-hidden="true">
+              <span>{publicSku || wordmarkCode}</span>
+              <i />
+              <span>HÌNH ẢNH SẢN PHẨM</span>
+            </div>
 
             {/* View angle buttons */}
             <div className="pd-view-dots" role="group" aria-label="Góc nhìn sản phẩm">
               {[
                 { key: "full", label: "Toàn cảnh" },
-                { key: "angle", label: "Góc nghiêng 3D" },
+                { key: "angle", label: "Góc nghiêng" },
                 { key: "close", label: "Cận cảnh" },
-                { key: "spin3d", label: "Xoay 3D tự do" },
               ].map((v) => (
                 <button
                   type="button"
@@ -465,11 +430,11 @@ export default function ProductDetailPage() {
             </div>
           </Interactive3DStage>
 
-          {/* Bottom 2-Column Grid inside Hero: Gallery + Purchase */}
+          {/* Bottom 2-Column Row inside Hero: Gallery Left + Purchase Right */}
           <div className="pd-bottom">
-            {/* Left: Gallery Thumbnails & Tone Switcher */}
+            {/* Left: Flat Gallery Tabs & Tone Switcher */}
             <div className="pd-gallery">
-              <span className="pd-label">GÓC NHÌN & HÌNH ẢNH ({imageList.length})</span>
+              <span className="pd-label">KHÁM PHÁ THIẾT KẾ</span>
               <div className="pd-thumbnails">
                 {imageList.map((img, idx) => (
                   <button
@@ -484,9 +449,9 @@ export default function ProductDetailPage() {
                     }}
                   >
                     <span className="pd-thumbnail-art">
-                      <img src={img} alt={`Góc nhìn ${idx + 1}`} />
+                      <img src={img} alt={`Toàn cảnh ${idx + 1}`} />
                     </span>
-                    Ảnh {idx + 1}
+                    {imageList.length > 1 ? `Ảnh ${idx + 1}` : "Toàn cảnh"}
                   </button>
                 ))}
                 <button
@@ -495,9 +460,9 @@ export default function ProductDetailPage() {
                   onClick={() => setActiveView("angle")}
                 >
                   <span className="pd-thumbnail-art pd-thumb-angle">
-                    <img src={activeImage} alt="Góc nghiêng 3D" />
+                    <img src={activeImage} alt="Góc nghiêng" />
                   </span>
-                  Góc 3D
+                  Góc nghiêng
                 </button>
                 <button
                   type="button"
@@ -507,12 +472,12 @@ export default function ProductDetailPage() {
                   <span className="pd-thumbnail-art pd-thumb-close">
                     <img src={activeImage} alt="Cận cảnh" />
                   </span>
-                  Zoom
+                  Cận cảnh
                 </button>
               </div>
 
               <div className="pd-tones">
-                <span>Ánh sáng Studio:</span>
+                <span>Màu ánh sáng</span>
                 <button
                   type="button"
                   className={`pd-tone ${activeTone === "original" ? "active" : ""}`}
@@ -541,8 +506,8 @@ export default function ProductDetailPage() {
             <div className="pd-purchase">
               <div className="pd-product-heading">
                 <div>
-                  <span className="pd-label pd-meta-kicker">
-                    {brandName ? `${brandName} · ${catName}` : `GAMING GEAR · ${catName}`}
+                  <span className="pd-label">
+                    {brandName || "NEXA"} / {catName}
                   </span>
                   <h1 id="pd-title">{displayTitle}</h1>
                 </div>
@@ -551,9 +516,6 @@ export default function ProductDetailPage() {
                   {comparePrice && Number(comparePrice) > Number(price) && (
                     <del>{money(comparePrice)}</del>
                   )}
-                  {discountPercent ? (
-                    <span className="pd-discount-badge">-{discountPercent}%</span>
-                  ) : null}
                 </div>
               </div>
 
@@ -561,55 +523,44 @@ export default function ProductDetailPage() {
                 <span className={availableStock > 0 ? "" : "out"} />
                 {availableStock > 0 ? (
                   <>
-                    Còn <b>{availableStock}</b> sản phẩm sẵn sàng giao ngay
+                    Còn <b>{availableStock}</b> sản phẩm
                   </>
                 ) : (
                   <b className="pd-stock-out-label">Tạm hết hàng</b>
                 )}
-                {product.warranty_months > 0 && (
-                  <small>Bảo hành chính hãng {product.warranty_months} tháng</small>
-                )}
+                {product.warranty_months > 0 ? (
+                  <small>Bảo hành {product.warranty_months} tháng</small>
+                ) : product.specifications?.shop ? (
+                  <small>{product.specifications.shop}</small>
+                ) : null}
               </div>
 
-              {/* Interactive Variant Selector Pills */}
-              {product.variants && product.variants.length > 0 && (
-                <div className="nexa-variant-picker">
-                  <span className="pd-label" style={{ marginBottom: "8px" }}>
-                    CHỌN CẤU HÌNH / PHIÊN BẢN ({product.variants.length})
-                  </span>
-                  <div className="nexa-variant-pills">
+              {/* Compact Variant Selector only when multiple variants exist */}
+              {product.variants && product.variants.length > 1 && (
+                <div className="pd-variant">
+                  <span>Phiên bản:</span>
+                  <select
+                    value={variantId}
+                    onChange={(e) => setVariantId(e.target.value)}
+                    aria-label="Chọn cấu hình phiên bản"
+                  >
                     {product.variants.map((v) => {
                       const label =
                         [v.color, v.switch_type, v.connection, v.layout]
                           .filter(Boolean)
-                          .join(" · ") || (v.sku?.startsWith("TT-") ? "Phiên bản tiêu chuẩn" : v.sku);
-                      const isSelected = String(v.id) === String(variantId);
-                      const out = v.available < 1;
+                          .join(" · ") || v.sku;
                       return (
-                        <button
-                          type="button"
-                          key={v.id}
-                          className={`nexa-variant-pill ${isSelected ? "active" : ""} ${
-                            out ? "is-out" : ""
-                          }`}
-                          onClick={() => setVariantId(String(v.id))}
-                        >
-                          <strong>{label}</strong>
-                          <span>
-                            {money(v.price)} · {out ? "Hết hàng" : `Còn ${v.available}`}
-                          </span>
-                        </button>
+                        <option key={v.id} value={v.id}>
+                          {label} — {money(v.price)} ({v.available > 0 ? `Còn ${v.available}` : "Hết hàng"})
+                        </option>
                       );
                     })}
-                  </div>
+                  </select>
                 </div>
               )}
 
               {/* Buy Row */}
-              <div
-                className={`pd-buy-row ${availableStock <= 0 ? "is-out-of-stock" : ""}`}
-                style={{ marginTop: "16px" }}
-              >
+              <div className={`pd-buy-row ${availableStock <= 0 ? "is-out-of-stock" : ""}`}>
                 <div className="pd-quantity">
                   <button
                     type="button"
@@ -626,7 +577,7 @@ export default function ProductDetailPage() {
                     disabled={availableStock <= 0 || quantity >= availableStock}
                     aria-label="Tăng số lượng"
                   >
-                    ＋
+                    +
                   </button>
                 </div>
 
@@ -636,10 +587,24 @@ export default function ProductDetailPage() {
                   disabled={availableStock <= 0}
                   onClick={handleAddToCart}
                 >
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="15"
+                    height="15"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.9"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M6 7h12l-1 13H7L6 7Z" />
+                    <path d="M9 7V5a3 3 0 0 1 6 0v2" />
+                  </svg>
                   {addedSuccess
-                    ? "✓ Đã thêm vào giỏ"
+                    ? "Đã thêm vào giỏ"
                     : availableStock > 0
-                    ? "Thêm vào giỏ hàng"
+                    ? "Thêm vào giỏ"
                     : "Tạm hết hàng"}
                 </button>
 

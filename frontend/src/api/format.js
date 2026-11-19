@@ -454,6 +454,26 @@ export function extractProductHighlights(product) {
   return unique;
 }
 
+export function extractShortWordmarkCode(product) {
+  const rawName = String(product?.name || product?.short_name || "");
+  if (/superlight\s*2/iu.test(rawName)) return "GPX2";
+  const modelMatch = rawName.match(
+    /\b(Apex\s*\d+|Vader\s*\d+|Dune\s*Fox|Direwolf\s*\d+|A102L?|T3\s*Lite|Nova\s*2|X5\s*Lite|X05\s*Pro|G5\s*Pro|TGZ-850M|RSP\s*G4|T28|T46|DualShock\s*4|P4|LOQ\s*27|VG27[A-Z0-9]{0,2}|A27Qi|EGM24|C960|C950|C60E|Tiny\s*2|K18|SP3|SC-1|Q20|NC900|X75|S98|Q1\s*Pro|K2|K70|G502|M75|TC100|V27)\b/iu
+  );
+  if (modelMatch) {
+    return modelMatch[1].replace(/\s+/g, " ").trim().toUpperCase();
+  }
+  const shortName = String(product?.short_name || "").trim();
+  const brand = displayBrandName(product);
+  if (shortName && shortName.length <= 18) {
+    const stripped = brand
+      ? shortName.replace(new RegExp(`^${brand}\\s*`, "iu"), "").trim()
+      : shortName;
+    if (stripped && stripped.length <= 12) return stripped.toUpperCase();
+  }
+  return String(product?.category?.code || "GEAR").toUpperCase();
+}
+
 export function extractProductSpecs(product, selectedVariant = null) {
   if (!product) return [];
 
