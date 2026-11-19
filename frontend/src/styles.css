@@ -490,9 +490,19 @@ html[data-theme="light"] .gear-product-grid.home-grid-5 .gear-product-photo.has-
    ========================================================================== */
 .pd-hero {
   display: block !important;
+  grid-template-areas: none !important;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
   height: auto !important;
   min-height: 0 !important;
   padding: 22px 30px 26px !important;
+}
+
+.pd-topline,
+.pd-artwork,
+.pd-gallery,
+.pd-purchase {
+  grid-area: auto !important;
 }
 
 .pd-artwork,
@@ -517,6 +527,7 @@ html[data-theme="light"] .pd-artwork.has-marketplace-image {
 
 .pd-wordmark {
   display: flex !important;
+  padding: 0 44px 0 12px !important;
 }
 
 .pd-wordmark > span {
