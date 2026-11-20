@@ -98,7 +98,7 @@ export default function AdminLayout() {
 
   return (
     <div className="admin-app">
-      <aside className={`admin-sidebar${open ? " open" : ""}`} id="admin-sidebar">
+      <aside className={`admin-sidebar${open ? " open" : ""}`} id="admin-sidebar" data-lenis-prevent>
         <div className="admin-logo">
           <span
             className="brand-mark admin-brand-mark"

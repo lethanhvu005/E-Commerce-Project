@@ -26,8 +26,10 @@ function isMotionAllowed() {
  * Lenis Smooth Inertia Scrolling synchronized with GSAP ticker.
  * Loaded dynamically in browser runtime so Jest CJS runner never trips on lenis.mjs.
  */
-export function useLenisSmoothScroll(pathname) {
+export function useLenisSmoothScroll(pathname, paused = false) {
   const lenisRef = useRef(null);
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
 
   useEffect(() => {
     if (!isMotionAllowed()) return undefined;
@@ -46,6 +48,9 @@ export function useLenisSmoothScroll(pathname) {
           wheelMultiplier: 0.95,
         });
         lenisRef.current = lenisInstance;
+        if (pausedRef.current) {
+          lenisInstance.stop();
+        }
         tickerFn = (time) => {
           lenisInstance.raf(time * 1000);
         };
@@ -61,6 +66,16 @@ export function useLenisSmoothScroll(pathname) {
       lenisRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    const lenis = lenisRef.current;
+    if (!lenis) return;
+    if (paused) {
+      lenis.stop();
+    } else {
+      lenis.start();
+    }
+  }, [paused]);
 
   useEffect(() => {
     if (lenisRef.current) {

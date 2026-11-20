@@ -3979,6 +3979,41 @@ html[data-theme="dark"] .light-area .order-card {
   }
 }
 
+/* Mobile menu & drawer mouse-wheel / touch scrollability on narrow screens */
+html.menu-is-open,
+body.menu-is-open {
+  overflow: hidden !important;
+}
+
+@media (max-width: 1200px) {
+  .gear-mobile-menu:not([hidden]) {
+    position: fixed !important;
+    inset: 0 !important;
+    height: 100dvh;
+    max-height: 100dvh;
+    z-index: 120 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom)) !important;
+  }
+  .gear-mobile-menu > * {
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 850px) {
+  .admin-sidebar {
+    max-height: 100dvh;
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 /* U13: Respect user prefers-reduced-motion across all 3D & transition elements */
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -193,7 +193,16 @@ export default function Layout() {
   const [showBackTop, setShowBackTop] = useState(false);
   const megaRef = useRef(null);
 
-  useLenisSmoothScroll(location.pathname);
+  useLenisSmoothScroll(location.pathname, menuOpen);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("menu-is-open", menuOpen);
+    document.body.classList.toggle("menu-is-open", menuOpen);
+    return () => {
+      document.documentElement.classList.remove("menu-is-open");
+      document.body.classList.remove("menu-is-open");
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -413,7 +422,7 @@ export default function Layout() {
                   ⌄
                 </span>
               </summary>
-              <div className="mega-panel">
+              <div className="mega-panel" data-lenis-prevent>
                 <div className="mega-panel-inner">
                   <div className="mega-catalog">
                     <div className="mega-heading">
@@ -607,6 +616,7 @@ export default function Layout() {
             className="gear-mobile-menu is-entering"
             id="ux-mobile-menu"
             aria-label="Menu di động"
+            data-lenis-prevent
           >
             <div className="mobile-menu-top">
               <b>KHÁM PHÁ NEXA</b>
