@@ -117,7 +117,13 @@ export async function apiFetch(path, options = {}, retry = true) {
 
   const normalizedPath = path.startsWith("http") ? path : `${API_ROOT}${path.startsWith("/") ? "" : "/"}${path}`;
   const isLocalBackend = /^https?:\/\/(127\.0\.0\.1|localhost)\b/i.test(API_ROOT) || API_ROOT.startsWith("/");
-  const timeoutMs = Number(customTimeoutMs || 25000);
+  const method = (fetchOptions.method || "GET").toUpperCase();
+  const isRender = API_ROOT.includes(".onrender.com");
+
+  const defaultTimeout =
+    method === "GET" && isRender ? 90000 : 25000;
+
+  const timeoutMs = Number(customTimeoutMs ?? defaultTimeout);
   const controller = !fetchOptions.signal && typeof AbortController !== "undefined" ? new AbortController() : null;
   const timerId = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
 

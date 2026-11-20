@@ -5,7 +5,19 @@ export function Loading({ label = "Đang tải dữ liệu từ máy chủ..." }
   return (
     <div className="empty" style={{ margin: "30px 0" }} role="status">
       <div className="spinner" style={{ margin: "0 auto 12px" }} />
-      <p style={{ margin: 0, color: "var(--muted)" }}>{label}</p>
+      <p style={{ margin: 0, color: "var(--muted)", fontWeight: 600 }}>{label}</p>
+      <p
+        style={{
+          margin: "8px auto 0",
+          maxWidth: "480px",
+          fontSize: "12.5px",
+          lineHeight: 1.55,
+          color: "var(--muted)",
+          opacity: 0.88,
+        }}
+      >
+        Hệ thống đang chạy trên máy chủ Render (gói miễn phí) nên có thể mất khoảng 45–60 giây để khởi động lại sau thời gian dài không có lượt truy cập. Vui lòng đợi trong giây lát...
+      </p>
     </div>
   );
 }
