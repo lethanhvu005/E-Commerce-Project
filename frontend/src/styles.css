@@ -844,11 +844,13 @@ html[data-theme="light"] .pd-purchase {
 .pd-product-heading {
   display: flex !important;
   justify-content: space-between !important;
-  align-items: flex-start !important;
-  gap: 28px !important;
+  align-items: baseline !important;
+  gap: 24px !important;
+  margin-top: 6px !important;
 }
 
-.pd-product-heading > div:first-child {
+.pd-product-heading > div:first-child,
+.pd-product-heading > h1 {
   flex: 1;
   min-width: 0;
 }
@@ -858,7 +860,7 @@ html[data-theme="light"] .pd-purchase {
   line-height: 1.28 !important;
   font-weight: 700 !important;
   letter-spacing: -0.025em !important;
-  margin: 6px 0 0 !important;
+  margin: 0 !important;
   max-width: none !important;
   display: block !important;
   overflow: visible !important;
@@ -875,10 +877,12 @@ html[data-theme="light"] .pd-purchase {
 .pd-price strong {
   display: block;
   font-family: var(--font-sans) !important;
+  font-variant-numeric: lining-nums tabular-nums !important;
   font-size: clamp(24px, 2.3vw, 30px) !important;
-  line-height: 1.15 !important;
+  line-height: 1.2 !important;
   font-weight: 800 !important;
   letter-spacing: -0.025em !important;
+  white-space: nowrap !important;
   color: #9cc6ff !important;
 }
 
@@ -1072,6 +1076,7 @@ html[data-theme="light"] .pd-hero .pd-buy {
   }
   .pd-product-heading {
     flex-direction: column !important;
+    align-items: flex-start !important;
     gap: 10px !important;
   }
   .pd-price {

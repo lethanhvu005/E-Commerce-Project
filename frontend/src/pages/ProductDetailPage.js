@@ -508,13 +508,11 @@ export default function ProductDetailPage() {
 
             {/* Right: Purchase Details */}
             <div className="pd-purchase">
+              <span className="pd-label">
+                {brandName || "NEXA"} / {catName}
+              </span>
               <div className="pd-product-heading">
-                <div>
-                  <span className="pd-label">
-                    {brandName || "NEXA"} / {catName}
-                  </span>
-                  <h1 id="pd-title">{displayTitle}</h1>
-                </div>
+                <h1 id="pd-title">{displayTitle}</h1>
                 <div className="pd-price">
                   <strong>{money(price)}</strong>
                   {comparePrice && Number(comparePrice) > Number(price) && (
